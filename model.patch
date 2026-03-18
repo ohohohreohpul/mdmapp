@@ -1,0 +1,12 @@
+diff --git a/frontend/app/auth.tsx b/frontend/app/auth.tsx
+index 1a26797..ebd86ef 100644
+--- a/frontend/app/auth.tsx
++++ b/frontend/app/auth.tsx
+@@ -180,6 +180,7 @@ const styles = StyleSheet.create({
+     paddingTop: 80,
+     paddingBottom: 60,
+     alignItems: 'center',
++    backgroundColor: COLORS.primary,
+     borderBottomLeftRadius: RADIUS.xxl,
+     borderBottomRightRadius: RADIUS.xxl,
+   },
