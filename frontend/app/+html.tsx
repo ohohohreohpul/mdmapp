@@ -21,7 +21,7 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Android theme color */}
         <meta name="theme-color" content="#FFFFFF" />
         {/* iOS home screen icon */}
-        <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+        <link rel="apple-touch-icon" href="/assets/images/mascot.png" />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and
