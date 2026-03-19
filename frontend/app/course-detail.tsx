@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../contexts/UserContext';
@@ -30,14 +30,19 @@ export default function CourseDetail() {
   const [error, setError] = useState('');
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [lessonsMap, setLessonsMap] = useState<{[key: string]: any[]}>({});
+  const [practiceModules, setPracticeModules] = useState<any[]>([]);
+  const hasFetchedRef = useRef(false);
 
-  useEffect(() => {
-    loadCourseData();
-  }, [courseId]);
+  // Reload every time this screen is focused — catches returning from duolingo/lesson/quiz.
+  // After the first load, refresh silently (no spinner) so returning from quiz feels instant.
+  useFocusEffect(useCallback(() => {
+    loadCourseData(!hasFetchedRef.current);
+    hasFetchedRef.current = true;
+  }, [courseId, user?._id]));
 
-  const loadCourseData = async () => {
+  const loadCourseData = async (showSpinner = true) => {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       const [courseRes, modulesRes] = await Promise.all([
         axios.get(`${API_URL}/api/courses/${courseId}`),
         axios.get(`${API_URL}/api/modules/course/${courseId}`),
@@ -57,7 +62,17 @@ export default function CourseDetail() {
         }
       }
       setLessonsMap(lessonsData);
-      
+
+      // Load practice modules (duolingo content) — optional, won't break if absent
+      try {
+        const practiceRes = await axios.get(
+          `${API_URL}/api/practice/course/${courseId}?user_id=${user?._id || 'demo_user'}`
+        );
+        setPracticeModules(practiceRes.data || []);
+      } catch (_) {
+        setPracticeModules([]);
+      }
+
     } catch (err) {
       console.error('Error loading course:', err);
       setError('ไม่สามารถโหลดข้อมูลคอร์สได้');
@@ -74,8 +89,22 @@ export default function CourseDetail() {
     );
   };
 
+  // Find the next lesson the user hasn't completed yet
+  const getNextLesson = () => {
+    for (const module of modules) {
+      for (const lesson of (lessonsMap[module._id] || [])) {
+        if (!isLessonCompleted(lesson._id)) return lesson;
+      }
+    }
+    return null; // all done
+  };
+
   const startCourse = () => {
-    if (modules.length > 0 && lessonsMap[modules[0]._id]?.length > 0) {
+    const next = getNextLesson();
+    if (next) {
+      router.push(`/lesson?id=${next._id}&courseId=${courseId}`);
+    } else if (modules.length > 0 && lessonsMap[modules[0]._id]?.length > 0) {
+      // All done — restart from lesson 1
       router.push(`/lesson?id=${lessonsMap[modules[0]._id][0]._id}&courseId=${courseId}`);
     } else {
       alert('คอร์สนี้ยังไม่มีบทเรียน');
@@ -83,12 +112,14 @@ export default function CourseDetail() {
   };
 
   const getUserProgress = () => {
-    if (!user?.progress || !user.progress[courseId]) return { completed: 0, percentage: 0 };
-    const completed = user.progress[courseId].completed_lessons?.length || 0;
-    const percentage = course?.total_lessons > 0 
-      ? Math.round((completed / course.total_lessons) * 100) 
-      : 0;
-    return { completed, percentage };
+    const completedLessons = user?.progress?.[courseId]?.completed_lessons?.length || 0;
+    const completedPractice = practiceModules.filter((m: any) => m.user_completed).length;
+    const totalLessons = course?.total_lessons || 0;
+    const totalPractice = practiceModules.length;
+    const totalUnits = totalLessons + totalPractice;
+    const completedUnits = completedLessons + completedPractice;
+    const percentage = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+    return { completed: completedUnits, percentage, completedLessons, completedPractice, totalPractice };
   };
 
   const isLessonCompleted = (lessonId: string) => {
@@ -110,7 +141,7 @@ export default function CourseDetail() {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.errorContainer}>
-          <TouchableOpacity style={styles.backButtonFloat} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButtonFloat} onPress={() => router.replace('/(tabs)/explore')}>
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Ionicons name="alert-circle" size={64} color={COLORS.error} />
@@ -128,11 +159,19 @@ export default function CourseDetail() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Section with Solid Pink */}
+        {/* Hero Section — Cover Image */}
         <View style={styles.heroSection}>
-          <SafeAreaView edges={['top']}>
+          {/* Cover image or placeholder */}
+          {course.thumbnail ? (
+            <Image source={{ uri: course.thumbnail }} style={styles.coverImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.coverImage, { backgroundColor: COLORS.primary }]} />
+          )}
+
+          {/* Back / share buttons float on top of image */}
+          <SafeAreaView edges={['top']} style={styles.heroOverlay}>
             <View style={styles.heroHeader}>
-              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home')}>
                 <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareButton}>
@@ -141,12 +180,12 @@ export default function CourseDetail() {
             </View>
           </SafeAreaView>
 
+          {/* Title bar at bottom of image */}
           <View style={styles.heroContent}>
             <View style={styles.courseBadge}>
               <Text style={styles.courseBadgeText}>{course.career_path}</Text>
             </View>
-            <Text style={styles.courseTitle}>{course.title}</Text>
-            <Text style={styles.courseDescription}>{stripHtml(course.description)}</Text>
+            <Text style={styles.courseTitle} numberOfLines={3}>{course.title}</Text>
 
             {/* Stats */}
             <View style={styles.statsRow}>
@@ -184,7 +223,10 @@ export default function CourseDetail() {
               <View style={[styles.progressBar, { width: `${progress.percentage}%` }]} />
             </View>
             <Text style={styles.progressSubtext}>
-              เรียนแล้ว {progress.completed} จาก {course.total_lessons} บทเรียน
+              บทเรียน {progress.completedLessons}/{course.total_lessons}
+              {progress.totalPractice > 0
+                ? `  ·  แบบฝึกหัด ${progress.completedPractice}/${progress.totalPractice}`
+                : ''}
             </Text>
           </View>
         )}
@@ -200,6 +242,76 @@ export default function CourseDetail() {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* About this course */}
+        {course.description ? (
+          <View style={styles.aboutSection}>
+            <Text style={styles.sectionTitle}>เกี่ยวกับคอร์สนี้</Text>
+            <Text style={styles.aboutText}>{stripHtml(course.description)}</Text>
+          </View>
+        ) : null}
+
+        {/* ── Practice Modules (Duolingo) ── */}
+        {practiceModules.length > 0 && (
+          <View style={styles.curriculumSection}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md, gap: 8 }}>
+              <Text style={styles.sectionTitle}>🎯 ฝึกทำ</Text>
+              <View style={{ backgroundColor: COLORS.primary + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
+                  {practiceModules.filter(m => m.user_completed).length}/{practiceModules.length} ผ่าน
+                </Text>
+              </View>
+            </View>
+            {practiceModules.map((pm, idx) => {
+              const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
+              return (
+                <TouchableOpacity
+                  key={pm.id}
+                  style={[
+                    styles.moduleCard,
+                    { opacity: unlocked ? 1 : 0.5 },
+                  ]}
+                  onPress={() => unlocked && router.push(
+                    `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
+                  )}
+                  activeOpacity={unlocked ? 0.7 : 1}
+                >
+                  <View style={styles.moduleHeader}>
+                    <View style={styles.moduleLeft}>
+                      <View style={[styles.moduleNumber, {
+                        backgroundColor: pm.user_completed ? COLORS.success : unlocked ? COLORS.primary : '#9CA3AF'
+                      }]}>
+                        {pm.user_completed
+                          ? <Ionicons name="checkmark" size={18} color="#fff" />
+                          : unlocked
+                          ? <Text style={styles.moduleNumberText}>{idx + 1}</Text>
+                          : <Ionicons name="lock-closed" size={16} color="#fff" />
+                        }
+                      </View>
+                      <View style={styles.moduleInfo}>
+                        <Text style={styles.moduleTitle}>{pm.title}</Text>
+                        <Text style={styles.moduleSubtitle}>
+                          {pm.question_count} คำถาม
+                          {pm.user_completed && ` • ✅ ผ่านแล้ว (${pm.user_best_score}%)`}
+                          {!pm.user_completed && pm.user_attempts > 0 && ` • ลองแล้ว ${pm.user_attempts} ครั้ง`}
+                          {!unlocked && ' • 🔒 ทำโมดูลก่อนหน้าให้ผ่านก่อน'}
+                        </Text>
+                      </View>
+                    </View>
+                    {unlocked && !pm.user_completed && (
+                      <Ionicons name="play-circle" size={28} color={COLORS.primary} />
+                    )}
+                    {pm.user_completed && (
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.success }}>{pm.user_best_score}%</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Curriculum Section */}
         <View style={styles.curriculumSection}>
@@ -374,20 +486,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroSection: {
+    position: 'relative',
     paddingBottom: 50,
-    backgroundColor: COLORS.primary,
+  },
+  coverImage: {
+    width: '100%',
+    height: 260,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+    // ensure buttons always stay above title content
+    zIndex: 10,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -395,13 +522,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroContent: {
+    position: 'absolute',
+    bottom: 50,
+    top: 80,           // never encroach above the back button area
+    left: 0,
+    right: 0,
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    justifyContent: 'flex-end', // pin content to the bottom of this box
   },
   courseBadge: {
     alignSelf: 'flex-start',
@@ -516,6 +650,18 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodyLarge,
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  aboutSection: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
+    paddingBottom: SPACING.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border || '#F3F4F6',
+  },
+  aboutText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    lineHeight: 26,
   },
   curriculumSection: {
     paddingHorizontal: SPACING.xl,

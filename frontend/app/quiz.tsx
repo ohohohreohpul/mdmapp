@@ -12,11 +12,13 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useUser } from '../contexts/UserContext';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function Quiz() {
   const router = useRouter();
+  const { user, updateProgress } = useUser();
   const params = useLocalSearchParams();
   const lessonId = params.lessonId as string;
   const courseId = params.courseId as string;
@@ -28,6 +30,7 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<any>(null);
+  const [xpAwarded, setXpAwarded] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
@@ -109,12 +112,23 @@ export default function Quiz() {
     try {
       const response = await axios.post(`${API_URL}/api/quizzes/submit`, {
         quiz_id: quiz._id,
-        user_id: 'demo_user', // This should come from auth context
+        user_id: user?._id || 'demo_user',
         answers: answers,
       });
 
       setResults(response.data);
       setShowResults(true);
+      // Calculate XP awarded: 5 per correct + 25 bonus for 100%
+      const xp = (response.data.correct_answers || 0) * 5 + (response.data.score === 100 ? 25 : 0);
+      setXpAwarded(xp);
+
+      // If quiz passed and this is a lesson quiz → auto-mark lesson complete in context
+      // (updateProgress also refreshes user.progress so course-detail shows it unlocked)
+      if (response.data.passed && lessonId && courseId && user && quizType !== 'final_exam') {
+        try {
+          await updateProgress(courseId, lessonId);
+        } catch (_) {}
+      }
     } catch (error) {
       console.error('Error submitting quiz:', error);
       Alert.alert('ผิดพลาด', 'ไม่สามารถส่งคำตอบได้');
@@ -178,6 +192,11 @@ export default function Quiz() {
               ตอบถูก {results.correct_answers} จาก {results.total_questions} ข้อ
             </Text>
             <Text style={styles.passingScore}>คะแนนผ่าน: {quiz.passing_score}%</Text>
+            {xpAwarded > 0 && (
+              <View style={styles.xpBadge}>
+                <Text style={styles.xpBadgeText}>⚡ +{xpAwarded} XP</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.actionButtons}>
@@ -619,6 +638,18 @@ const styles = StyleSheet.create({
   passingScore: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+  xpBadge: {
+    marginTop: 12,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  xpBadgeText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#D97706',
   },
   actionButtons: {
     gap: 12,

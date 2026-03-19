@@ -12,12 +12,16 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser } from '../contexts/UserContext';
 import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 export default function Admin() {
   const router = useRouter();
+  const { user } = useUser();
+  const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
@@ -32,8 +36,12 @@ export default function Admin() {
   const [bunnyLibraryId, setBunnyLibraryId] = useState('');
 
   useEffect(() => {
+    if (!isAdmin) {
+      router.replace('/(tabs)/home');
+      return;
+    }
     loadSettings();
-  }, []);
+  }, [isAdmin]);
 
   const loadSettings = async () => {
     try {

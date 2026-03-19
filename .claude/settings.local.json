@@ -28,7 +28,21 @@
       "Bash(python3 -c \"import import_wordpress; print\\(''''import_wordpress.py OK''''\\)\")",
       "Bash(ls /Users/jirananpanlanatiyarak/Downloads/mdmapp/frontend/.env*)",
       "Bash(pkill -f \"expo start\")",
-      "Bash(curl -s http://localhost:8081)"
+      "Bash(curl -s http://localhost:8081)",
+      "Bash(head -30 grep -n \"ai-learning\\\\|generateQuiz\\\\|generate-quiz\" /Users/jirananpanlanatiyarak/Downloads/mdmapp/frontend/contexts/UserContext.tsx)",
+      "Bash(python3 import_practice_content.py /Users/jirananpanlanatiyarak/Downloads/ux-intro-2026-03-19.json 0f879dc3-0c1f-434c-b630-d4912d48e4f3)",
+      "Bash(python3 award_all_certificates.py jiranan@mydemy.co)",
+      "WebFetch(domain:www.linkedin.com)",
+      "Bash(ls ~/Downloads/*.png ~/Downloads/mydemy*.png)",
+      "Bash(ls ~/Downloads/*.json)",
+      "Bash(head -20 ls ~/Downloads/mdmapp/backend/*.py)",
+      "Bash(ls ~/Downloads/*ux* ~/Downloads/*intro* ~/Downloads/*lesson*)",
+      "Bash(ls ~/Downloads/mdmapp/backend/*.sql)",
+      "Bash(grep -l \"practice_modules\\\\|practice_content\" ~/Downloads/mdmapp/backend/*.sql)",
+      "Bash(python3 import_practice_content.py ~/Downloads/ux-research-ready.json)",
+      "Bash(python3 import_practice_content.py ~/Downloads/ux-ideation-ready.json)",
+      "Bash(python3 -:*)",
+      "Bash(curl -s http://localhost:8000/api/)"
     ]
   }
 }

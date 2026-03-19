@@ -10,7 +10,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
@@ -89,7 +88,9 @@ export default function LessonView() {
 
   const goToQuiz = () => {
     if (lesson?.has_quiz) {
-      router.push(`/quiz?lessonId=${lessonId}&courseId=${courseId}`);
+      // replace (not push) so quiz takes lesson's slot in stack —
+      // then router.back() from quiz goes directly to course-detail (no double-back)
+      router.replace(`/quiz?lessonId=${lessonId}&courseId=${courseId}`);
     } else {
       Alert.alert('แจ้งเตือน', 'บทเรียนนี้ยังไม่มีแบบทดสอบ');
     }
@@ -118,7 +119,7 @@ export default function LessonView() {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.errorContainer}>
-          <TouchableOpacity style={styles.backButtonFloat} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButtonFloat} onPress={() => router.canGoBack() ? router.back() : router.replace(`/course-detail?id=${courseId}`)}>
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Ionicons name="alert-circle" size={64} color={COLORS.error} />
@@ -168,14 +169,9 @@ export default function LessonView() {
               />
             ) : (
               <View style={styles.placeholderContainer}>
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryLight]}
-                  style={styles.placeholderIcon}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
+                <View style={[styles.placeholderIcon, { backgroundColor: COLORS.primary }]}>
                   <Ionicons name="videocam" size={48} color="#FFFFFF" />
-                </LinearGradient>
+                </View>
                 <Text style={styles.placeholderText}>วิดีโอจะพร้อมใช้งานเร็วๆ นี้</Text>
                 <Text style={styles.placeholderSubtext}>กรุณาใส่ Bunny.net URL ใน Admin</Text>
               </View>
@@ -187,14 +183,9 @@ export default function LessonView() {
         {lesson.content_type === 'article' && (
           <View style={styles.articleContainer}>
             <View style={styles.articleHeader}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryLight]}
-                style={styles.articleIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+              <View style={[styles.articleIcon, { backgroundColor: COLORS.primary }]}>
                 <Ionicons name="document-text" size={28} color="#FFFFFF" />
-              </LinearGradient>
+              </View>
               <View style={styles.articleTitleContainer}>
                 <Text style={styles.articleTitle}>{lesson.title}</Text>
                 {lesson.duration_minutes > 0 && (
@@ -207,15 +198,10 @@ export default function LessonView() {
             
             {lesson.audio_url && (
               <TouchableOpacity style={styles.podcastButton}>
-                <LinearGradient
-                  colors={['#6366F1', '#8B5CF6']}
-                  style={styles.podcastGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
+                <View style={[styles.podcastGradient, { backgroundColor: '#6366F1' }]}>
                   <Ionicons name="headset" size={20} color="#FFFFFF" />
                   <Text style={styles.podcastButtonText}>ฟังเป็น Podcast</Text>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -243,12 +229,7 @@ export default function LessonView() {
         {/* Audio/Podcast Content */}
         {lesson.content_type === 'audio' && (
           <View style={styles.audioContainer}>
-            <LinearGradient
-              colors={[COLORS.gradientStart, COLORS.gradientMiddle, COLORS.gradientEnd]}
-              style={styles.podcastHeader}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+            <View style={[styles.podcastHeader, { backgroundColor: COLORS.primary }]}>
               <View style={styles.podcastIconContainer}>
                 <Ionicons name="headset" size={48} color="#FFFFFF" />
               </View>
@@ -256,7 +237,7 @@ export default function LessonView() {
               <View style={styles.podcastBadge}>
                 <Text style={styles.podcastBadgeText}>Podcast Mode</Text>
               </View>
-            </LinearGradient>
+            </View>
 
             {lesson.audio_url ? (
               <View style={styles.audioPlayer}>
@@ -264,14 +245,9 @@ export default function LessonView() {
                   style={styles.playButton}
                   onPress={() => setIsPlaying(!isPlaying)}
                 >
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryLight]}
-                    style={styles.playGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
+                  <View style={[styles.playGradient, { backgroundColor: COLORS.primary }]}>
                     <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="#FFFFFF" />
-                  </LinearGradient>
+                  </View>
                 </TouchableOpacity>
                 <View style={styles.audioProgressContainer}>
                   <View style={styles.audioProgress}>
@@ -325,37 +301,12 @@ export default function LessonView() {
 
         {/* Action Buttons */}
         <View style={styles.actionSection}>
-          {/* AI Learning Session Button - Primary Action */}
-          <TouchableOpacity 
-            style={styles.aiLearningButton} 
-            onPress={() => router.push(`/ai-learning?lessonId=${lessonId}&courseId=${courseId}&title=${encodeURIComponent(lesson.title)}`)}
-          >
-            <LinearGradient
-              colors={[COLORS.primary, '#f472b6']}
-              style={styles.aiLearningGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.aiLearningEmoji}>🧠</Text>
-              <View style={styles.aiLearningTextContainer}>
-                <Text style={styles.aiLearningTitle}>AI Learning Session</Text>
-                <Text style={styles.aiLearningSubtitle}>เรียนรู้แบบ Duolingo • ตอบถูก 80% ถึงผ่าน</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-
           {!isCompleted ? (
             <TouchableOpacity style={styles.completeButton} onPress={markAsComplete}>
-              <LinearGradient
-                colors={[COLORS.success, '#14B8A6']}
-                style={styles.completeGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+              <View style={[styles.completeGradient, { backgroundColor: COLORS.success }]}>
                 <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
                 <Text style={styles.completeButtonText}>ทำเครื่องหมายว่าเสร็จแล้ว</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           ) : (
             <View style={styles.completedBadge}>
@@ -367,7 +318,7 @@ export default function LessonView() {
           {lesson.has_quiz && (
             <TouchableOpacity style={styles.quizButton} onPress={goToQuiz}>
               <Ionicons name="clipboard" size={22} color={COLORS.primary} />
-              <Text style={styles.quizButtonText}>ทำแบบทดสอบแบบเดิม</Text>
+              <Text style={styles.quizButtonText}>ทำแบบทดสอบ</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </TouchableOpacity>
           )}
@@ -730,34 +681,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'center',
-  },
-  // AI Learning Button Styles
-  aiLearningButton: {
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    ...SHADOWS.medium,
-  },
-  aiLearningGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.md,
-  },
-  aiLearningEmoji: {
-    fontSize: 32,
-  },
-  aiLearningTextContainer: {
-    flex: 1,
-  },
-  aiLearningTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  aiLearningSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 2,
   },
 });

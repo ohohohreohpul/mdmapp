@@ -50,7 +50,7 @@ export default function Auth() {
       if (mustResetPassword) {
         setScreen('reset-password');
       } else {
-        router.replace('/home');
+        router.replace('/(tabs)/home');
       }
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
@@ -85,7 +85,7 @@ export default function Auth() {
     setLoading(true);
     try {
       await register(username, email.trim(), password);
-      router.replace('/home');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('สมัครสมาชิกไม่สำเร็จ', msg);
@@ -114,17 +114,16 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/api/auth/setup-password`, {
+      // Set the password in the DB
+      await axios.post(`${API_URL}/api/auth/setup-password`, {
         email: email.trim(),
         new_password: newPassword,
       });
-      // setup-password logs the user in — store and proceed
-      const userData = response.data;
-      // Manually trigger login to store the session
+      // Log in with the new password to store the session in context
       await login(email.trim(), newPassword);
-      Alert.alert('สำเร็จ!', 'ตั้งรหัสผ่านเรียบร้อยแล้ว ยินดีต้อนรับสู่ Mydemy!', [
-        { text: 'เริ่มเรียน', onPress: () => router.replace('/home') },
-      ]);
+      // Navigate directly — don't use Alert.onPress because setUser()
+      // re-renders the component and can dismiss the alert before the user taps
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('ข้อผิดพลาด', msg);
@@ -154,9 +153,9 @@ export default function Auth() {
     setLoading(true);
     try {
       await changePassword(user._id, newPassword);
-      Alert.alert('สำเร็จ!', 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว', [
-        { text: 'ตกลง', onPress: () => router.replace('/home') },
-      ]);
+      // Navigate directly — Alert.onPress can be swallowed by a re-render triggered
+      // by changePassword's setUser() call
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('ข้อผิดพลาด', msg);
@@ -165,12 +164,12 @@ export default function Auth() {
     }
   };
 
-  const handleSkip = () => router.replace('/home');
+  const handleSkip = () => router.replace('/(tabs)/home');
 
   // ── Shared header ──────────────────────────────────────────
   const Header = ({ subtitle }: { subtitle: string }) => (
     <View style={styles.header}>
-      <Image source={require('../assets/images/logo.png')} style={[styles.logo, { width: width * 0.5 }]} resizeMode="contain" />
+      <Image source={require('../assets/images/logo-wordmark.png')} style={[styles.logo, { width: width * 0.5 }]} resizeMode="contain" />
       <Text style={styles.headerSubtitle}>{subtitle}</Text>
     </View>
   );
@@ -436,15 +435,15 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   header: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#FFFFFF',
     paddingTop: 40,
-    paddingBottom: 40,
+    paddingBottom: 32,
     alignItems: 'center',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  logo: { height: 80 },
-  headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginTop: 12 },
+  logo: { height: 52 },
+  headerSubtitle: { fontSize: 16, color: COLORS.textSecondary, marginTop: 10 },
   formContainer: { padding: 24 },
   infoBox: {
     flexDirection: 'row',

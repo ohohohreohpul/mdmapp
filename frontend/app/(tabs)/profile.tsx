@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,36 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS } from '../../constants/theme';
 
+const ADMIN_EMAILS = ['jiranan@mydemy.co'];
+import axios from 'axios';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+interface GamDashboard {
+  xp_total: number;
+  level_info: { level: number };
+  current_streak: number;
+}
+
 export default function Profile() {
   const router = useRouter();
   const { user, logout } = useUser();
+  const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
+  const [gam, setGam] = useState<GamDashboard | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    if (user?._id) {
+      axios.get(`${API_URL}/api/gamification/dashboard/${user._id}`)
+        .then(r => setGam(r.data))
+        .catch(() => {});
+    }
+  }, [user?._id]));
 
   const handleLogout = async () => {
     await logout();
@@ -65,32 +86,34 @@ export default function Profile() {
           </View>
           
           {/* Name & Email */}
-          <Text style={styles.userName}>{user.username || 'User'}</Text>
+          <Text style={styles.userName}>{user.display_name || user.username || 'User'}</Text>
           <Text style={styles.userEmail}>{user.email || 'email@example.com'}</Text>
 
           {/* Stats Row */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {Object.keys(user.progress || {}).length}
+                {gam?.xp_total ?? 0}
               </Text>
-              <Text style={styles.statLabel}>คอร์ส</Text>
+              <Text style={styles.statLabel}>⚡ XP</Text>
             </View>
-            
+
             <View style={styles.statDivider} />
-            
+
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {user.certificates?.length || 0}
+                Lv.{gam?.level_info?.level ?? 1}
               </Text>
-              <Text style={styles.statLabel}>ใบประกาศ</Text>
+              <Text style={styles.statLabel}>👑 ระดับ</Text>
             </View>
-            
+
             <View style={styles.statDivider} />
-            
+
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Streak</Text>
+              <Text style={styles.statNumber}>
+                {gam?.current_streak ?? 0}
+              </Text>
+              <Text style={styles.statLabel}>🔥 Streak</Text>
             </View>
           </View>
         </SafeAreaView>
@@ -192,19 +215,21 @@ export default function Profile() {
           <Ionicons name="chevron-forward" size={20} color="#CCC" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.menuCard}
-          onPress={() => router.push('/admin')}
-        >
-          <View style={styles.menuIconGray}>
-            <Ionicons name="shield-checkmark-outline" size={22} color="#666" />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>Admin Panel</Text>
-            <Text style={styles.menuSubtitle}>จัดการคอร์สและระบบ</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#CCC" />
-        </TouchableOpacity>
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.menuCard}
+            onPress={() => router.push('/admin')}
+          >
+            <View style={styles.menuIconGray}>
+              <Ionicons name="shield-checkmark-outline" size={22} color="#666" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Admin Panel</Text>
+              <Text style={styles.menuSubtitle}>จัดการคอร์สและระบบ</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#CCC" />
+          </TouchableOpacity>
+        )}
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

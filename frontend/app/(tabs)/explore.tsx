@@ -12,12 +12,16 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
+import { useUser } from '../../contexts/UserContext';
 import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 export default function Explore() {
   const router = useRouter();
+  const { user } = useUser();
+  const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [courses, setCourses] = useState([]);
@@ -28,6 +32,7 @@ export default function Explore() {
     { id: 'data-analysis', title: 'Data Analysis', icon: 'bar-chart', color: '#10B981' },
     { id: 'digital-marketing', title: 'Digital Marketing', icon: 'megaphone', color: '#F59E0B' },
     { id: 'project-management', title: 'Project Management', icon: 'briefcase', color: COLORS.primary },
+    { id: 'learning-designer', title: 'Learning Designer', icon: 'school', color: '#EC4899' },
   ];
 
   useEffect(() => {
@@ -44,6 +49,7 @@ export default function Explore() {
           'data-analysis': 'Data Analysis',
           'digital-marketing': 'Digital Marketing',
           'project-management': 'Project Management',
+          'learning-designer': 'Learning Designer',
         };
         params.career_path = pathNames[selectedPath];
       }
@@ -72,12 +78,14 @@ export default function Explore() {
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>สำรวจคอร์ส</Text>
-          <TouchableOpacity 
-            style={styles.adminButton}
-            onPress={() => router.push('/admin')}
-          >
-            <Ionicons name="settings-outline" size={22} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.adminButton}
+              onPress={() => router.push('/admin')}
+            >
+              <Ionicons name="settings-outline" size={22} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
 

@@ -40,7 +40,7 @@ export default function Splash() {
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('../assets/images/logo.png')}
+          source={require('../assets/images/logo-wordmark.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -62,7 +62,7 @@ export default function Splash() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
@@ -73,11 +73,11 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: width * 0.6,
-    height: width * 0.4,
+    height: width * 0.25,
   },
   tagline: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 16,
   },
@@ -90,11 +90,11 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: COLORS.primaryLight,
   },
   dot1: {
     opacity: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.primary,
   },
   dot2: {
     opacity: 0.7,

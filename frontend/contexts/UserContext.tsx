@@ -11,6 +11,7 @@ interface UserContextType {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (userId: string, newPassword: string, currentPassword?: string) => Promise<void>;
+  updateProfile: (userId: string, fields: { username?: string; display_name?: string }) => Promise<void>;
   updateProgress: (courseId: string, lessonId: string) => Promise<void>;
   getUserProgress: (courseId: string) => any;
 }
@@ -98,6 +99,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (userId: string, fields: { username?: string; display_name?: string }) => {
+    await axios.patch(`${API_URL}/api/users/${userId}`, fields);
+    const refreshed = await axios.get(`${API_URL}/api/users/${userId}`);
+    if (refreshed.data) {
+      setUser(refreshed.data);
+      await AsyncStorage.setItem('user', JSON.stringify(refreshed.data));
+    }
+  };
+
   const updateProgress = async (courseId: string, lessonId: string) => {
     if (!user) return;
     try {
@@ -117,7 +127,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <UserContext.Provider
-      value={{ user, loading, login, register, logout, changePassword, updateProgress, getUserProgress }}
+      value={{ user, loading, login, register, logout, changePassword, updateProfile, updateProgress, getUserProgress }}
     >
       {children}
     </UserContext.Provider>

@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../../contexts/UserContext';
@@ -58,14 +57,9 @@ export default function Learning() {
           </View>
         </SafeAreaView>
         <View style={styles.emptyState}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryLight]}
-            style={styles.emptyIcon}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <View style={[styles.emptyIcon, { backgroundColor: COLORS.primary }]}>
             <Ionicons name="book" size={48} color="#FFFFFF" />
-          </LinearGradient>
+          </View>
           <Text style={styles.emptyTitle}>เข้าสู่ระบบเพื่อเรียน</Text>
           <Text style={styles.emptyText}>
             เข้าสู่ระบบเพื่อติดตามความคืบหน้าและบันทึกคอร์สของคุณ
@@ -74,14 +68,7 @@ export default function Learning() {
             style={styles.loginButton}
             onPress={() => router.push('/auth')}
           >
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryLight]}
-              style={styles.loginGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.loginButtonText}>เข้าสู่ระบบ</Text>
-            </LinearGradient>
+            <Text style={styles.loginButtonText}>เข้าสู่ระบบ</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -106,14 +93,9 @@ export default function Learning() {
           </View>
         ) : enrolledCourses.length === 0 ? (
           <View style={styles.emptyState}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryLight]}
-              style={styles.emptyIcon}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+            <View style={[styles.emptyIcon, { backgroundColor: COLORS.primary }]}>
               <Ionicons name="book" size={48} color="#FFFFFF" />
-            </LinearGradient>
+            </View>
             <Text style={styles.emptyTitle}>ยังไม่มีคอร์สที่เรียน</Text>
             <Text style={styles.emptyText}>
               เริ่มต้นเรียนรู้โดยเลือกคอร์สจากหน้าสำรวจ
@@ -142,17 +124,12 @@ export default function Learning() {
                   onPress={() => router.push(`/course-detail?id=${course._id}`)}
                   activeOpacity={0.9}
                 >
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryLight]}
-                    style={styles.courseThumbnail}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
+                  <View style={[styles.courseThumbnail, { backgroundColor: COLORS.primary }]}>
                     <Ionicons name="school" size={32} color="#FFFFFF" />
                     <View style={styles.progressBadge}>
                       <Text style={styles.progressBadgeText}>{percentage}%</Text>
                     </View>
-                  </LinearGradient>
+                  </View>
 
                   <View style={styles.courseContent}>
                     <Text style={styles.courseTitle} numberOfLines={2}>

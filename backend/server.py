@@ -75,15 +75,34 @@ api_router = APIRouter(prefix="/api")
 
 
 # ── Helpers ───────────────────────────────────────────────────
+def _decode_html(val: str) -> str:
+    import html
+    return html.unescape(val) if isinstance(val, str) else val
+
+
 def with_id(row: Optional[dict]) -> Optional[dict]:
-    """Copy UUID 'id' to '_id' so the frontend keeps working unchanged."""
+    """Copy UUID 'id' to '_id' and decode HTML entities in text fields."""
     if row:
         row["_id"] = row.get("id", "")
+        for field in ("title", "description", "name", "content", "article_content", "excerpt"):
+            if field in row:
+                row[field] = _decode_html(row[field])
     return row
 
 
 def rows_with_id(rows: List[dict]) -> List[dict]:
     return [with_id(r) for r in rows]
+
+
+def _one(res) -> Optional[dict]:
+    """Safely extract the first row from a Supabase .limit(1).execute() result.
+
+    Replaces the unsafe .maybe_single().execute() pattern which returns None
+    (not an object with .data) when no row exists, causing AttributeError.
+    """
+    if res and res.data and len(res.data) > 0:
+        return res.data[0]
+    return None
 
 
 # ==================== MODELS ====================
@@ -303,11 +322,12 @@ async def root():
 
 @api_router.get("/admin/settings")
 async def get_admin_settings():
-    res = await supabase.table("admin_settings").select("*").eq("id", 1).maybe_single().execute()
-    if not res.data:
+    res = await supabase.table("admin_settings").select("*").eq("id", 1).limit(1).execute()
+    data = _one(res)
+    if not data:
         ins = await supabase.table("admin_settings").insert({"id": 1, "ai_provider": "openai"}).execute()
         return ins.data[0] if ins.data else AdminSettings().dict()
-    row = dict(res.data)
+    row = dict(data)
     row.pop("id", None)
     return row
 
@@ -318,8 +338,9 @@ async def update_admin_settings(settings: AdminSettingsUpdate):
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
     await supabase.table("admin_settings").update(update_data).eq("id", 1).execute()
-    res = await supabase.table("admin_settings").select("*").eq("id", 1).maybe_single().execute()
-    row = dict(res.data or {})
+    res = await supabase.table("admin_settings").select("*").eq("id", 1).limit(1).execute()
+    data = _one(res)
+    row = dict(data or {})
     row.pop("id", None)
     return row
 
@@ -448,8 +469,11 @@ async def setup_password(body: SetupPasswordRequest):
         raise HTTPException(status_code=404, detail="ไม่พบบัญชีที่ใช้อีเมลนี้")
 
     user = rows[0]
-    # Only allow if no password is set yet
-    if user.get("password_hash"):
+    existing_hash = user.get("password_hash") or ""
+    # Block only if a real (non-WordPress-migrated) password has been set.
+    # WP-migrated hashes start with "$wp$" — those users haven't chosen their own
+    # password yet, so we allow them to use the first-login flow.
+    if existing_hash and not existing_hash.startswith("$wp$"):
         raise HTTPException(status_code=400, detail="บัญชีนี้มีรหัสผ่านแล้ว กรุณาใช้หน้าลืมรหัสผ่าน")
 
     if len(body.new_password) < 8:
@@ -467,8 +491,9 @@ async def setup_password(body: SetupPasswordRequest):
 
 @api_router.post("/users")
 async def create_user(user: UserCreate):
-    existing = await supabase.table("users").select("id").eq("email", user.email).maybe_single().execute()
-    if existing.data:
+    existing = await supabase.table("users").select("id").eq("email", user.email).limit(1).execute()
+    existing_data = _one(existing)
+    if existing_data:
         raise HTTPException(status_code=400, detail="User already exists")
     res = await supabase.table("users").insert({
         "username": user.username,
@@ -480,10 +505,24 @@ async def create_user(user: UserCreate):
 
 @api_router.get("/users/{user_id}")
 async def get_user(user_id: str):
-    res = await supabase.table("users").select("*").eq("id", user_id).maybe_single().execute()
-    if not res.data:
+    res = await supabase.table("users").select("*").eq("id", user_id).limit(1).execute()
+    data = _one(res)
+    if not data:
         raise HTTPException(status_code=404, detail="User not found")
-    return await _build_user_response(res.data)
+    return await _build_user_response(data)
+
+
+@api_router.patch("/users/{user_id}")
+async def update_user_profile(user_id: str, body: dict):
+    allowed = {k: v for k, v in body.items() if k in ("username", "display_name")}
+    if not allowed:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    await supabase.table("users").update(allowed).eq("id", user_id).execute()
+    res = await supabase.table("users").select("*").eq("id", user_id).limit(1).execute()
+    data = _one(res)
+    if not data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return await _build_user_response(data)
 
 
 @api_router.get("/users")
@@ -522,10 +561,11 @@ async def list_courses(career_path: Optional[str] = None, published_only: bool =
 
 @api_router.get("/courses/{course_id}")
 async def get_course(course_id: str):
-    res = await supabase.table("courses").select("*").eq("id", course_id).maybe_single().execute()
-    if not res.data:
+    res = await supabase.table("courses").select("*").eq("id", course_id).limit(1).execute()
+    data = _one(res)
+    if not data:
         raise HTTPException(status_code=404, detail="Course not found")
-    return with_id(res.data)
+    return with_id(data)
 
 
 @api_router.put("/courses/{course_id}")
@@ -579,10 +619,11 @@ async def list_modules_by_course(course_id: str):
 
 @api_router.get("/modules/{module_id}")
 async def get_module(module_id: str):
-    res = await supabase.table("modules").select("*").eq("id", module_id).maybe_single().execute()
-    if not res.data:
+    res = await supabase.table("modules").select("*").eq("id", module_id).limit(1).execute()
+    data = _one(res)
+    if not data:
         raise HTTPException(status_code=404, detail="Module not found")
-    row = dict(res.data)
+    row = dict(data)
     row["order"] = row.get("order_index", 0)
     row["lessons"] = []
     return with_id(row)
@@ -609,12 +650,14 @@ async def create_lesson(lesson: LessonCreate):
     row["order"] = row.get("order_index", lesson.order)
 
     # Increment course total_lessons
-    mod_res = await supabase.table("modules").select("course_id").eq("id", lesson.module_id).maybe_single().execute()
-    if mod_res.data:
-        cid = mod_res.data["course_id"]
-        course_res = await supabase.table("courses").select("total_lessons").eq("id", cid).maybe_single().execute()
-        if course_res.data:
-            new_total = (course_res.data.get("total_lessons") or 0) + 1
+    mod_res = await supabase.table("modules").select("course_id").eq("id", lesson.module_id).limit(1).execute()
+    mod_data = _one(mod_res)
+    if mod_data:
+        cid = mod_data["course_id"]
+        course_res = await supabase.table("courses").select("total_lessons").eq("id", cid).limit(1).execute()
+        course_data = _one(course_res)
+        if course_data:
+            new_total = (course_data.get("total_lessons") or 0) + 1
             await supabase.table("courses").update({"total_lessons": new_total}).eq("id", cid).execute()
 
     return with_id(row)
@@ -631,10 +674,11 @@ async def list_lessons_by_module(module_id: str):
 
 @api_router.get("/lessons/{lesson_id}")
 async def get_lesson(lesson_id: str):
-    res = await supabase.table("lessons").select("*").eq("id", lesson_id).maybe_single().execute()
-    if not res.data:
+    res = await supabase.table("lessons").select("*").eq("id", lesson_id).limit(1).execute()
+    data = _one(res)
+    if not data:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    row = dict(res.data)
+    row = dict(data)
     row["order"] = row.get("order_index", 0)
     return with_id(row)
 
@@ -683,17 +727,19 @@ async def create_quiz(quiz: QuizCreate):
 
 @api_router.get("/quizzes/lesson/{lesson_id}")
 async def get_lesson_quiz(lesson_id: str):
-    res = await supabase.table("quizzes").select("*").eq("lesson_id", lesson_id).maybe_single().execute()
-    return with_id(res.data) if res.data else None
+    res = await supabase.table("quizzes").select("*").eq("lesson_id", lesson_id).limit(1).execute()
+    data = _one(res)
+    return with_id(data) if data else None
 
 
 @api_router.get("/quizzes/course/{course_id}/final")
 async def get_final_exam(course_id: str):
     res = await supabase.table("quizzes").select("*") \
-        .eq("course_id", course_id).eq("quiz_type", "final_exam").maybe_single().execute()
-    if not res.data:
+        .eq("course_id", course_id).eq("quiz_type", "final_exam").limit(1).execute()
+    data = _one(res)
+    if not data:
         raise HTTPException(status_code=404, detail="Final exam not found")
-    return with_id(res.data)
+    return with_id(data)
 
 
 @api_router.put("/quizzes/{quiz_id}/questions")
@@ -707,15 +753,17 @@ async def update_quiz_questions(quiz_id: str, questions: List[QuizQuestion]):
 
 @api_router.post("/quizzes/generate")
 async def generate_quiz_from_material(material_id: str, num_questions: int = 10):
-    mat_res = await supabase.table("learning_materials").select("*").eq("id", material_id).maybe_single().execute()
-    if not mat_res.data:
+    mat_res = await supabase.table("learning_materials").select("*").eq("id", material_id).limit(1).execute()
+    mat_data = _one(mat_res)
+    if not mat_data:
         raise HTTPException(status_code=404, detail="Material not found")
-    material = mat_res.data
+    material = mat_data
 
-    settings_res = await supabase.table("admin_settings").select("*").eq("id", 1).maybe_single().execute()
-    if not settings_res.data:
+    settings_res = await supabase.table("admin_settings").select("*").eq("id", 1).limit(1).execute()
+    settings_data = _one(settings_res)
+    if not settings_data:
         return {"message": "Please configure AI provider in admin settings", "questions": []}
-    settings = settings_res.data
+    settings = settings_data
 
     ai_provider = settings.get("ai_provider", "openai")
     content = material.get("content", "")
@@ -724,9 +772,10 @@ async def generate_quiz_from_material(material_id: str, num_questions: int = 10)
 
     career_path = ""
     if course_id:
-        c_res = await supabase.table("courses").select("career_path").eq("id", course_id).maybe_single().execute()
-        if c_res.data:
-            career_path = c_res.data.get("career_path", "")
+        c_res = await supabase.table("courses").select("career_path").eq("id", course_id).limit(1).execute()
+        c_data = _one(c_res)
+        if c_data:
+            career_path = c_data.get("career_path", "")
 
     try:
         questions = await generate_quiz_with_ai(content, num_questions, ai_provider, settings, career_path)
@@ -832,10 +881,10 @@ async def generate_quiz_with_ai(content: str, num_questions: int, ai_provider: s
 
 @api_router.post("/quizzes/submit")
 async def submit_quiz(submission: QuizSubmission):
-    quiz_res = await supabase.table("quizzes").select("*").eq("id", submission.quiz_id).maybe_single().execute()
-    if not quiz_res.data:
+    quiz_res = await supabase.table("quizzes").select("*").eq("id", submission.quiz_id).limit(1).execute()
+    quiz = _one(quiz_res)
+    if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
-    quiz = quiz_res.data
 
     questions = quiz.get("questions") or []
     correct_count = sum(
@@ -857,13 +906,59 @@ async def submit_quiz(submission: QuizSubmission):
 
     # Award certificate on passed final exam
     if passed and quiz.get("quiz_type") == "final_exam":
-        user_res = await supabase.table("users").select("certificates").eq("id", submission.user_id).maybe_single().execute()
-        if user_res.data:
-            certs: List[str] = list(user_res.data.get("certificates") or [])
+        user_res = await supabase.table("users").select("certificates,display_name,username").eq("id", submission.user_id).limit(1).execute()
+        user_data = _one(user_res)
+        if user_data:
+            certs: List[str] = list(user_data.get("certificates") or [])
             cid = str(quiz.get("course_id", ""))
             if cid and cid not in certs:
                 certs.append(cid)
                 await supabase.table("users").update({"certificates": certs}).eq("id", submission.user_id).execute()
+            # Issue proper certificate record (idempotent)
+            if cid:
+                try:
+                    existing_cert = await supabase.table("certificates") \
+                        .select("id") \
+                        .eq("user_id", submission.user_id) \
+                        .eq("course_id", cid) \
+                        .limit(1).execute()
+                    if not _one(existing_cert):
+                        course_res = await supabase.table("courses") \
+                            .select("title,career_path") \
+                            .eq("id", cid) \
+                            .limit(1).execute()
+                        course_data = _one(course_res)
+                        if course_data:
+                            now = datetime.utcnow()
+                            display_name = (
+                                user_data.get("display_name")
+                                or user_data.get("username")
+                                or "ผู้เรียน"
+                            )
+                            await supabase.table("certificates").insert({
+                                "user_id": submission.user_id,
+                                "cert_type": "course",
+                                "course_id": cid,
+                                "career_path": course_data.get("career_path"),
+                                "course_title": course_data.get("title"),
+                                "user_display_name": display_name,
+                                "issue_month": now.month,
+                                "issue_year": now.year,
+                                "verification_code": _gen_cert_code("MDY"),
+                            }).execute()
+                except Exception as e:
+                    logger.warning(f"Could not auto-issue certificate: {e}")
+
+    # Award XP for the quiz attempt
+    if submission.user_id and submission.user_id != "demo_user":
+        try:
+            xp_amount = correct_count * XP_PER_QUIZ_CORRECT
+            if score == 100:
+                xp_amount += XP_PER_PERFECT_QUIZ
+            xp_reason = "course" if quiz.get("quiz_type") == "final_exam" and passed else "quiz"
+            await add_xp(supabase, submission.user_id, xp_amount, xp_reason)
+        except Exception as e:
+            logger.warning(f"Could not award quiz XP: {e}")
 
     return {
         "score": score,
@@ -878,15 +973,19 @@ async def submit_quiz(submission: QuizSubmission):
 @api_router.post("/progress/lesson-complete")
 async def mark_lesson_complete(user_id: str, lesson_id: str, course_id: str):
     prog_res = await supabase.table("user_progress").select("*") \
-        .eq("user_id", user_id).eq("course_id", course_id).maybe_single().execute()
+        .eq("user_id", user_id).eq("course_id", course_id).limit(1).execute()
+    prog_data = _one(prog_res)
 
-    if prog_res.data:
-        completed: List[str] = list(prog_res.data.get("completed_lessons") or [])
+    xp_result = None
+    if prog_data:
+        completed: List[str] = list(prog_data.get("completed_lessons") or [])
         if lesson_id not in completed:
             completed.append(lesson_id)
             await supabase.table("user_progress") \
                 .update({"completed_lessons": completed}) \
                 .eq("user_id", user_id).eq("course_id", course_id).execute()
+            # Award XP for a newly completed lesson
+            xp_result = await add_xp(supabase, user_id, XP_PER_LESSON, "lesson")
     else:
         await supabase.table("user_progress").insert({
             "user_id": user_id,
@@ -894,22 +993,26 @@ async def mark_lesson_complete(user_id: str, lesson_id: str, course_id: str):
             "completed_lessons": [lesson_id],
             "quiz_scores": {},
         }).execute()
+        # Award XP for a newly completed lesson
+        xp_result = await add_xp(supabase, user_id, XP_PER_LESSON, "lesson")
 
-    return {"message": "Lesson marked as complete"}
+    return {"message": "Lesson marked as complete", "xp": xp_result}
 
 
 @api_router.get("/progress/{user_id}/course/{course_id}")
 async def get_user_progress(user_id: str, course_id: str):
-    user_res = await supabase.table("users").select("id").eq("id", user_id).maybe_single().execute()
-    if not user_res.data:
+    user_res = await supabase.table("users").select("id").eq("id", user_id).limit(1).execute()
+    user_data = _one(user_res)
+    if not user_data:
         raise HTTPException(status_code=404, detail="User not found")
 
     prog_res = await supabase.table("user_progress").select("*") \
-        .eq("user_id", user_id).eq("course_id", course_id).maybe_single().execute()
-    progress = prog_res.data or {}
+        .eq("user_id", user_id).eq("course_id", course_id).limit(1).execute()
+    progress = _one(prog_res) or {}
 
-    course_res = await supabase.table("courses").select("total_lessons").eq("id", course_id).maybe_single().execute()
-    total_lessons = (course_res.data or {}).get("total_lessons", 0)
+    course_res = await supabase.table("courses").select("total_lessons").eq("id", course_id).limit(1).execute()
+    course_data = _one(course_res)
+    total_lessons = (course_data or {}).get("total_lessons", 0)
 
     completed_count = len(progress.get("completed_lessons") or [])
     completion_pct = int((completed_count / total_lessons) * 100) if total_lessons > 0 else 0
@@ -926,18 +1029,18 @@ async def get_user_progress(user_id: str, course_id: str):
 
 @api_router.post("/audio/generate/{lesson_id}")
 async def generate_lesson_audio(lesson_id: str):
-    lesson_res = await supabase.table("lessons").select("*").eq("id", lesson_id).maybe_single().execute()
-    if not lesson_res.data:
+    lesson_res = await supabase.table("lessons").select("*").eq("id", lesson_id).limit(1).execute()
+    lesson = _one(lesson_res)
+    if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    lesson = lesson_res.data
 
     if lesson["content_type"] != "article":
         raise HTTPException(status_code=400, detail="Only articles can be converted to audio")
     if not lesson.get("article_content"):
         raise HTTPException(status_code=400, detail="No article content found")
 
-    settings_res = await supabase.table("admin_settings").select("*").eq("id", 1).maybe_single().execute()
-    settings = settings_res.data or {}
+    settings_res = await supabase.table("admin_settings").select("*").eq("id", 1).limit(1).execute()
+    settings = _one(settings_res) or {}
     if not settings.get("elevenlabs_key"):
         return {"success": False, "message": "Please configure ElevenLabs API key in admin settings"}
 
@@ -1007,17 +1110,13 @@ async def get_all_badges():
 
 @api_router.put("/gamification/daily-goal/{user_id}")
 async def set_daily_goal(user_id: str, goal: int):
-    existing = await supabase.table("user_stats").select("id").eq("user_id", user_id).maybe_single().execute()
-    if existing.data:
+    existing = await supabase.table("user_stats").select("id").eq("user_id", user_id).limit(1).execute()
+    existing_data = _one(existing)
+    if existing_data:
         await supabase.table("user_stats").update({"daily_goal": goal}).eq("user_id", user_id).execute()
     else:
         await supabase.table("user_stats").insert({"user_id": user_id, "daily_goal": goal}).execute()
     return {"success": True, "daily_goal": goal}
-
-
-# ==================== AI QUIZ ENDPOINTS ====================
-
-from services.ai_service import generate_quiz_questions, generate_lesson_summary
 
 
 # ==================== LEARNING SESSION ENDPOINTS ====================
@@ -1061,50 +1160,240 @@ async def get_progress(course_id: str, user_id: str = "demo_user"):
     return await get_course_progress(supabase, user_id, course_id)
 
 
-@api_router.post("/ai/generate-quiz/{lesson_id}")
-async def generate_quiz_for_lesson(lesson_id: str, num_questions: int = 5, difficulty: str = "medium"):
-    lesson_res = await supabase.table("lessons").select("*").eq("id", lesson_id).maybe_single().execute()
-    if not lesson_res.data:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    lesson = lesson_res.data
-    content = lesson.get("article_content") or lesson.get("description", "")
-    if not content:
-        raise HTTPException(status_code=400, detail="Lesson has no content to generate quiz from")
+# ==================== PRACTICE CONTENT (DUOLINGO) ENDPOINTS ====================
 
-    questions = await generate_quiz_questions(
-        content=content,
-        lesson_title=lesson.get("title", ""),
-        num_questions=num_questions,
-        difficulty=difficulty,
-    )
-    if not questions:
-        raise HTTPException(status_code=500, detail="Failed to generate quiz questions")
+class PracticeProgressRequest(BaseModel):
+    module_id: str
+    score: int           # percentage 0-100
+    correct: int
+    total: int
+    user_id: str = "demo_user"
 
-    quiz_doc = {
-        "lesson_id": lesson_id,
-        "title": f"แบบทดสอบ: {lesson.get('title', '')}",
-        "questions": questions,
-        "difficulty": difficulty,
-        "is_ai_generated": True,
+
+@api_router.get("/practice/course/{course_id}")
+async def get_practice_modules(course_id: str, user_id: str = "demo_user"):
+    """All practice modules for a course, with the user's progress on each."""
+    mods_res = await supabase.table("practice_modules") \
+        .select("id,module_key,module_order,title,question_count,mastery_threshold") \
+        .eq("course_id", course_id) \
+        .order("module_order") \
+        .execute()
+    modules = mods_res.data or []
+
+    # Fetch user progress for all modules in one query
+    if modules and user_id:
+        mod_ids = [m["id"] for m in modules]
+        prog_res = await supabase.table("practice_progress") \
+            .select("module_id,completed,best_score,attempts") \
+            .eq("user_id", user_id) \
+            .in_("module_id", mod_ids) \
+            .execute()
+        prog_map = {p["module_id"]: p for p in (prog_res.data or [])}
+        for m in modules:
+            p = prog_map.get(m["id"], {})
+            m["user_completed"] = p.get("completed", False)
+            m["user_best_score"] = p.get("best_score", 0)
+            m["user_attempts"]   = p.get("attempts", 0)
+
+    return modules
+
+
+@api_router.get("/practice/module/{module_id}")
+async def get_practice_module(module_id: str):
+    """Single module with full questions array."""
+    res = await supabase.table("practice_modules") \
+        .select("*") \
+        .eq("id", module_id) \
+        .limit(1).execute()
+    data = _one(res)
+    if not data:
+        raise HTTPException(status_code=404, detail="Practice module not found")
+    return data
+
+
+@api_router.post("/practice/progress")
+async def save_practice_progress(body: PracticeProgressRequest):
+    """Upsert user progress for a module; award XP if newly completed."""
+    threshold = 70
+    # Get current best
+    existing = await supabase.table("practice_progress") \
+        .select("id,best_score,attempts,completed") \
+        .eq("user_id", body.user_id) \
+        .eq("module_id", body.module_id) \
+        .limit(1).execute()
+    existing_data = _one(existing)
+
+    passed = body.score >= threshold
+    new_best = max(body.score, existing_data.get("best_score", 0) if existing_data else 0)
+    was_completed = existing_data.get("completed", False) if existing_data else False
+    newly_completed = passed and not was_completed
+
+    row = {
+        "user_id": body.user_id,
+        "module_id": body.module_id,
+        "completed": was_completed or passed,
+        "best_score": new_best,
+        "attempts": (existing_data.get("attempts", 0) if existing_data else 0) + 1,
+        "last_attempt_at": "now()",
     }
-    await supabase.table("generated_quizzes").upsert(quiz_doc, on_conflict="lesson_id").execute()
-    return quiz_doc
+    await supabase.table("practice_progress") \
+        .upsert(row, on_conflict="user_id,module_id") \
+        .execute()
+
+    # Award XP if module newly completed
+    xp_awarded = 0
+    if newly_completed and body.user_id != "demo_user":
+        xp_awarded = 50  # flat 50 XP per completed module
+        try:
+            await add_xp(supabase, body.user_id, xp_awarded, f"practice_module_{body.module_id}")
+        except Exception:
+            pass
+
+    return {"passed": passed, "best_score": new_best, "newly_completed": newly_completed, "xp_awarded": xp_awarded}
 
 
-@api_router.get("/ai/quiz/{lesson_id}")
-async def get_ai_quiz(lesson_id: str):
-    res = await supabase.table("generated_quizzes").select("*").eq("lesson_id", lesson_id).maybe_single().execute()
-    return with_id(res.data) if res.data else None
+# ==================== CERTIFICATES ====================
+
+import secrets
+import string
 
 
-@api_router.post("/ai/summarize-lesson/{lesson_id}")
-async def summarize_lesson(lesson_id: str):
-    lesson_res = await supabase.table("lessons").select("*").eq("id", lesson_id).maybe_single().execute()
-    if not lesson_res.data:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    content = lesson_res.data.get("article_content") or lesson_res.data.get("description", "")
-    summary = await generate_lesson_summary(content)
-    return {"summary": summary}
+def _gen_cert_code(prefix: str = "MDY") -> str:
+    """Generate a human-readable verification code like MDY-202603-AB1C2D"""
+    chars = string.ascii_uppercase + string.digits
+    suffix = "".join(secrets.choice(chars) for _ in range(6))
+    year = datetime.utcnow().year
+    month = datetime.utcnow().month
+    return f"{prefix}-{year}{month:02d}-{suffix}"
+
+
+class CertificateIssueRequest(BaseModel):
+    user_id: str
+    cert_type: str          # 'course' or 'career'
+    course_id: Optional[str] = None
+    career_path: Optional[str] = None
+
+
+@api_router.get("/certificates/user/{user_id}")
+async def get_user_certificates(user_id: str):
+    """Return all certificates for a user, newest first."""
+    res = await supabase.table("certificates") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .order("issued_at", desc=True) \
+        .execute()
+    return res.data or []
+
+
+@api_router.get("/certificates/verify/{code}")
+async def verify_certificate(code: str):
+    """Public endpoint — verify a certificate by its verification code."""
+    res = await supabase.table("certificates") \
+        .select("id,cert_type,course_title,career_path,career_courses,user_display_name,issued_at,issue_year,issue_month,verification_code") \
+        .eq("verification_code", code) \
+        .limit(1).execute()
+    data = _one(res)
+    if not data:
+        raise HTTPException(status_code=404, detail="ไม่พบใบประกาศนียบัตร")
+    return data
+
+
+@api_router.post("/certificates/issue")
+async def issue_certificate(body: CertificateIssueRequest):
+    """Issue a certificate for a course or career path completion."""
+    # Validate cert_type
+    if body.cert_type not in ("course", "career"):
+        raise HTTPException(status_code=400, detail="cert_type must be 'course' or 'career'")
+
+    # Get user display name
+    user_res = await supabase.table("users") \
+        .select("display_name,username") \
+        .eq("id", body.user_id) \
+        .limit(1).execute()
+    user_data = _one(user_res)
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    display_name = (
+        user_data.get("display_name")
+        or user_data.get("username")
+        or "ผู้เรียน"
+    )
+
+    now = datetime.utcnow()
+
+    # ── Course certificate ──────────────────────────────────
+    if body.cert_type == "course":
+        if not body.course_id:
+            raise HTTPException(status_code=400, detail="course_id required for course cert")
+
+        course_res = await supabase.table("courses") \
+            .select("title,career_path") \
+            .eq("id", body.course_id) \
+            .limit(1).execute()
+        course_data = _one(course_res)
+        if not course_data:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        # Idempotent — return existing cert if already issued
+        existing = await supabase.table("certificates") \
+            .select("id,verification_code,issued_at,user_display_name,cert_type,course_title,career_path,issue_year,issue_month,career_courses") \
+            .eq("user_id", body.user_id) \
+            .eq("course_id", body.course_id) \
+            .limit(1).execute()
+        existing_data = _one(existing)
+        if existing_data:
+            return existing_data
+
+        code = _gen_cert_code("MDY")
+        ins = await supabase.table("certificates").insert({
+            "user_id": body.user_id,
+            "cert_type": "course",
+            "course_id": body.course_id,
+            "career_path": course_data.get("career_path"),
+            "course_title": course_data.get("title"),
+            "user_display_name": display_name,
+            "issue_month": now.month,
+            "issue_year": now.year,
+            "verification_code": code,
+        }).execute()
+        return ins.data[0] if ins.data else {}
+
+    # ── Career certificate ──────────────────────────────────
+    if not body.career_path:
+        raise HTTPException(status_code=400, detail="career_path required for career cert")
+
+    # Collect all published courses in this career path
+    courses_res = await supabase.table("courses") \
+        .select("id,title") \
+        .eq("career_path", body.career_path) \
+        .eq("is_published", True) \
+        .execute()
+    career_courses = [c["title"] for c in (courses_res.data or [])]
+
+    # Idempotent
+    existing = await supabase.table("certificates") \
+        .select("id,verification_code,issued_at,user_display_name,cert_type,course_title,career_path,issue_year,issue_month,career_courses") \
+        .eq("user_id", body.user_id) \
+        .eq("career_path", body.career_path) \
+        .eq("cert_type", "career") \
+        .limit(1).execute()
+    existing_data = _one(existing)
+    if existing_data:
+        return existing_data
+
+    code = _gen_cert_code("MDY")
+    ins = await supabase.table("certificates").insert({
+        "user_id": body.user_id,
+        "cert_type": "career",
+        "career_path": body.career_path,
+        "career_courses": career_courses,
+        "course_title": body.career_path,
+        "user_display_name": display_name,
+        "issue_month": now.month,
+        "issue_year": now.year,
+        "verification_code": code,
+    }).execute()
+    return ins.data[0] if ins.data else {}
 
 
 # ── Register router & middleware ──────────────────────────────

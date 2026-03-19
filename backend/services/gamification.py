@@ -75,9 +75,11 @@ def get_level_progress(xp: int) -> Dict[str, Any]:
 
 
 async def get_or_create_user_stats(supabase: AsyncClient, user_id: str) -> Dict[str, Any]:
-    res = await supabase.table("user_stats").select("*").eq("user_id", user_id).maybe_single().execute()
-    if res.data:
-        return res.data
+    # Use limit(1) instead of maybe_single() — the async client returns None (not an
+    # object with .data) from maybe_single() when no row exists, causing AttributeError.
+    res = await supabase.table("user_stats").select("*").eq("user_id", user_id).limit(1).execute()
+    if res and res.data and len(res.data) > 0:
+        return res.data[0]
 
     # Create default stats row
     new_stats = {

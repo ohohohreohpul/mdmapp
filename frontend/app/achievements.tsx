@@ -1,40 +1,101 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUser } from '../contexts/UserContext';
 import { COLORS } from '../constants/theme';
+import axios from 'axios';
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+// All possible badges from the backend — with their icon mapping
+const BADGE_ICON_MAP: Record<string, { icon: string; color: string }> = {
+  first_lesson: { icon: 'flag',            color: '#6366F1' },
+  streak_3:     { icon: 'flame',           color: '#F59E0B' },
+  streak_7:     { icon: 'barbell',         color: '#EF4444' },
+  streak_30:    { icon: 'crown',           color: '#7C3AED' },
+  perfect_quiz: { icon: 'star',            color: '#F59E0B' },
+  first_course: { icon: 'school',          color: '#10B981' },
+  xp_1000:      { icon: 'flash',           color: '#F59E0B' },
+  level_5:      { icon: 'trophy',          color: '#10B981' },
+  level_10:     { icon: 'diamond',         color: '#06B6D4' },
+};
+
+interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  earned?: boolean;
+  earned_at?: string;
+}
+
+interface Dashboard {
+  xp_total: number;
+  level_info: { level: number; xp_for_next: number | null; xp_in_level: number; xp_needed: number; progress_percent: number };
+  current_streak: number;
+  longest_streak: number;
+  badges: Badge[];
+}
 
 export default function Achievements() {
   const router = useRouter();
+  const { user } = useUser();
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [allBadges, setAllBadges]   = useState<Badge[]>([]);
+  const [loading, setLoading]       = useState(true);
 
-  const achievements = [
-    { id: '1', icon: 'flame', title: '7 วัน Streak', description: 'เรียนต่อเนื่อง 7 วัน', unlocked: true, color: '#F59E0B' },
-    { id: '2', icon: 'school', title: 'นักเรียนใหม่', description: 'เริ่มเรียนคอร์สแรก', unlocked: true, color: '#6366F1' },
-    { id: '3', icon: 'checkmark-done', title: 'เรียนจบแล้ว', description: 'เรียนจบคอร์สแรก', unlocked: true, color: '#10B981' },
-    { id: '4', icon: 'ribbon', title: 'นักสะสม', description: 'ได้รับใบประกาศ 5 ใบ', unlocked: false, color: COLORS.primary },
-    { id: '5', icon: 'star', title: 'ดาวเด่น', description: 'สอบได้คะแนนเต็ม', unlocked: false, color: '#F59E0B' },
-    { id: '6', icon: 'trophy', title: 'แชมป์', description: 'เรียนจบทุกคอร์ส', unlocked: false, color: '#10B981' },
-  ];
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [badgesRes, dashRes] = await Promise.all([
+          axios.get(`${API_URL}/api/gamification/badges`),
+          user?._id
+            ? axios.get(`${API_URL}/api/gamification/dashboard/${user._id}`)
+            : Promise.resolve({ data: null }),
+        ]);
+        if (!active) return;
+        setAllBadges(badgesRes.data || []);
+        setDashboard(dashRes.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [user?._id]));
 
-  const stats = {
-    totalXP: 1250,
-    level: 5,
-    nextLevelXP: 2000,
-    streak: 3,
-  };
+  const earnedIds = new Set((dashboard?.badges || []).map((b: any) => b.id));
+
+  // Merge: all badges with earned flag
+  const badges = allBadges.map(b => ({
+    ...b,
+    earned: earnedIds.has(b.id),
+    iconInfo: BADGE_ICON_MAP[b.id] || { icon: 'ribbon', color: COLORS.primary },
+  }));
+
+  const li = dashboard?.level_info;
 
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home')}
+            style={styles.backButton}
+          >
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>ความสำเร็จ</Text>
@@ -42,66 +103,95 @@ export default function Achievements() {
         </View>
       </SafeAreaView>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Level Card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelInfo}>
-            <Text style={styles.levelLabel}>Level</Text>
-            <Text style={styles.levelNumber}>{stats.level}</Text>
-          </View>
-          <View style={styles.xpInfo}>
-            <Text style={styles.xpText}>{stats.totalXP} / {stats.nextLevelXP} XP</Text>
-            <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: `${(stats.totalXP / stats.nextLevelXP) * 100}%` }]} />
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Level Card */}
+          <View style={styles.levelCard}>
+            <View style={styles.levelInfo}>
+              <Text style={styles.levelLabel}>Level</Text>
+              <Text style={styles.levelNumber}>{li?.level ?? 1}</Text>
             </View>
-          </View>
-        </View>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="flame" size={28} color="#F59E0B" />
-            <Text style={styles.statNumber}>{stats.streak}</Text>
-            <Text style={styles.statLabel}>Streak</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="trophy" size={28} color="#10B981" />
-            <Text style={styles.statNumber}>{achievements.filter(a => a.unlocked).length}</Text>
-            <Text style={styles.statLabel}>Badges</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={28} color="#6366F1" />
-            <Text style={styles.statNumber}>{stats.totalXP}</Text>
-            <Text style={styles.statLabel}>XP</Text>
-          </View>
-        </View>
-
-        {/* Badges */}
-        <Text style={styles.sectionTitle}>Badges</Text>
-        <View style={styles.badgesGrid}>
-          {achievements.map((badge) => (
-            <View 
-              key={badge.id} 
-              style={[styles.badgeCard, !badge.unlocked && styles.badgeLocked]}
-            >
-              <View style={[styles.badgeIcon, { backgroundColor: badge.unlocked ? badge.color : '#E5E5E5' }]}>
-                <Ionicons name={badge.icon as any} size={28} color="#FFF" />
-              </View>
-              <Text style={[styles.badgeTitle, !badge.unlocked && styles.badgeTitleLocked]}>
-                {badge.title}
-              </Text>
-              <Text style={styles.badgeDescription}>{badge.description}</Text>
-              {!badge.unlocked && (
-                <View style={styles.lockIcon}>
-                  <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
-                </View>
+            <View style={styles.xpInfo}>
+              {li?.xp_for_next ? (
+                <>
+                  <Text style={styles.xpText}>
+                    {li.xp_in_level} / {li.xp_needed} XP ไปถึง Lv.{(li.level ?? 1) + 1}
+                  </Text>
+                  <View style={styles.xpBar}>
+                    <View style={[styles.xpFill, { width: `${li.progress_percent}%` as any }]} />
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.xpText}>สูงสุดแล้ว! 🎉  {dashboard?.xp_total ?? 0} XP รวม</Text>
               )}
             </View>
-          ))}
-        </View>
+          </View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Ionicons name="flame" size={28} color="#F59E0B" />
+              <Text style={styles.statNumber}>{dashboard?.current_streak ?? 0}</Text>
+              <Text style={styles.statLabel}>Streak</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="trophy" size={28} color="#10B981" />
+              <Text style={styles.statNumber}>{earnedIds.size}</Text>
+              <Text style={styles.statLabel}>Badges</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="star" size={28} color="#6366F1" />
+              <Text style={styles.statNumber}>{dashboard?.xp_total ?? 0}</Text>
+              <Text style={styles.statLabel}>XP</Text>
+            </View>
+          </View>
+
+          {/* Badges */}
+          <Text style={styles.sectionTitle}>
+            Badges ({earnedIds.size}/{badges.length})
+          </Text>
+          <View style={styles.badgesGrid}>
+            {badges.map(badge => (
+              <View
+                key={badge.id}
+                style={[styles.badgeCard, !badge.earned && styles.badgeLocked]}
+              >
+                <View style={[
+                  styles.badgeIcon,
+                  { backgroundColor: badge.earned ? badge.iconInfo.color : '#E5E5E5' },
+                ]}>
+                  <Ionicons name={badge.iconInfo.icon as any} size={28} color="#FFF" />
+                </View>
+                <Text style={[styles.badgeTitle, !badge.earned && styles.badgeTitleLocked]}>
+                  {badge.name}
+                </Text>
+                <Text style={styles.badgeDescription}>{badge.description}</Text>
+                {!badge.earned && (
+                  <View style={styles.lockIcon}>
+                    <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+
+          {/* Longest streak note */}
+          {(dashboard?.longest_streak ?? 0) > 0 && (
+            <View style={styles.recordRow}>
+              <Ionicons name="flame" size={16} color="#F59E0B" />
+              <Text style={styles.recordText}>
+                Streak ยาวที่สุด: {dashboard?.longest_streak} วัน
+              </Text>
+            </View>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -132,6 +222,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1F2937',
+  },
+  loadingBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
@@ -170,6 +265,7 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 4,
+    overflow: 'hidden',
   },
   xpFill: {
     height: '100%',
@@ -223,7 +319,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   badgeLocked: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   badgeIcon: {
     width: 56,
@@ -252,5 +348,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
+  },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    justifyContent: 'center',
+  },
+  recordText: {
+    fontSize: 13,
+    color: '#6B7280',
   },
 });
