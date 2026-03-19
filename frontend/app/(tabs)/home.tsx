@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,
     paddingBottom: SPACING.xl + 8,
     backgroundColor: '#ef5ea8',
     borderBottomLeftRadius: 32,

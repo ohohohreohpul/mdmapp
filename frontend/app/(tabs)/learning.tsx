@@ -53,7 +53,7 @@ export default function Learning() {
       <View style={styles.container}>
         <SafeAreaView edges={['top']} style={styles.headerSafe}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>เรียนของฉัน</Text>
+            <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
           </View>
         </SafeAreaView>
         <View style={styles.emptyState}>
@@ -79,7 +79,7 @@ export default function Learning() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>เรียนของฉัน</Text>
+          <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
         </View>
       </SafeAreaView>
 
@@ -146,7 +146,10 @@ export default function Learning() {
                       </Text>
                     </View>
 
-                    <TouchableOpacity style={styles.continueButton}>
+                    <TouchableOpacity
+                      style={styles.continueButton}
+                      onPress={() => router.push(`/course-detail?id=${course._id}`)}
+                    >
                       <Text style={styles.continueText}>เรียนต่อ</Text>
                       <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
                     </TouchableOpacity>
@@ -173,7 +176,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.surface,

@@ -127,20 +127,6 @@ export default function Profile() {
       >
         {/* Learning Section */}
         <Text style={styles.sectionTitle}>การเรียนรู้</Text>
-        
-        <TouchableOpacity 
-          style={styles.menuCard}
-          onPress={() => router.push('/my-courses')}
-        >
-          <View style={[styles.menuIcon, { backgroundColor: '#6366F1' }]}>
-            <Ionicons name="book" size={22} color="#FFF" />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>คอร์สของฉัน</Text>
-            <Text style={styles.menuSubtitle}>ดูคอร์สที่กำลังเรียน</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#CCC" />
-        </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.menuCard}
@@ -306,7 +292,7 @@ const styles = StyleSheet.create({
   },
   avatarRow: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 28,
     marginBottom: 12,
   },
   avatar: {

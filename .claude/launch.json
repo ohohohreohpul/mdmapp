@@ -5,6 +5,7 @@
       "name": "backend",
       "runtimeExecutable": "uvicorn",
       "runtimeArgs": ["server:app", "--reload", "--port", "8001"],
+      "cwd": "/Users/jirananpanlanatiyarak/Downloads/mdmapp/backend",
       "port": 8001
     },
     {

@@ -8,6 +8,7 @@ interface UserContextType {
   user: any;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ mustResetPassword: boolean }>;
+  loginWithData: (userData: any) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (userId: string, newPassword: string, currentPassword?: string) => Promise<void>;
@@ -65,6 +66,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
     return { mustResetPassword: !!userData.must_reset_password };
+  };
+
+  /** Directly set user from already-fetched data (e.g. setup-password response). */
+  const loginWithData = async (userData: any): Promise<void> => {
+    setUser(userData);
+    await AsyncStorage.setItem('user', JSON.stringify(userData));
   };
 
   /** Register a new account. */
@@ -127,7 +134,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <UserContext.Provider
-      value={{ user, loading, login, register, logout, changePassword, updateProfile, updateProgress, getUserProgress }}
+      value={{ user, loading, login, loginWithData, register, logout, changePassword, updateProfile, updateProgress, getUserProgress }}
     >
       {children}
     </UserContext.Provider>

@@ -33,11 +33,13 @@ export default function CourseDetail() {
   const [practiceModules, setPracticeModules] = useState<any[]>([]);
   const hasFetchedRef = useRef(false);
 
-  // Reload every time this screen is focused — catches returning from duolingo/lesson/quiz.
-  // After the first load, refresh silently (no spinner) so returning from quiz feels instant.
+  // Load once on first focus. On return from lesson/quiz, user.progress is already updated
+  // in context (via updateProgress), so React re-renders automatically — no need to refetch.
   useFocusEffect(useCallback(() => {
-    loadCourseData(!hasFetchedRef.current);
-    hasFetchedRef.current = true;
+    if (!hasFetchedRef.current) {
+      loadCourseData(true);
+      hasFetchedRef.current = true;
+    }
   }, [courseId, user?._id]));
 
   const loadCourseData = async (showSpinner = true) => {
@@ -180,8 +182,8 @@ export default function CourseDetail() {
             </View>
           </SafeAreaView>
 
-          {/* Title bar at bottom of image */}
-          <View style={styles.heroContent}>
+          {/* Title bar at bottom of image — pointerEvents none so it never blocks the back button */}
+          <View style={styles.heroContent} pointerEvents="none">
             <View style={styles.courseBadge}>
               <Text style={styles.courseBadgeText}>{course.career_path}</Text>
             </View>
@@ -500,15 +502,14 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 20,      // always above heroContent
   },
   heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.lg,   // extra top padding so button never clips on any device
     paddingBottom: SPACING.md,
-    // ensure buttons always stay above title content
-    zIndex: 10,
   },
   backButton: {
     width: 44,

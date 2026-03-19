@@ -26,7 +26,7 @@ type Screen = 'login' | 'register' | 'reset-password' | 'first-login';
 export default function Auth() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { login, register, changePassword, user } = useUser();
+  const { login, loginWithData, register, changePassword, user } = useUser();
 
   const [screen, setScreen] = useState<Screen>('login');
   const [email, setEmail] = useState('');
@@ -114,15 +114,13 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      // Set the password in the DB
-      await axios.post(`${API_URL}/api/auth/setup-password`, {
+      // Set the password and get back the full user object in one shot
+      const res = await axios.post(`${API_URL}/api/auth/setup-password`, {
         email: email.trim(),
         new_password: newPassword,
       });
-      // Log in with the new password to store the session in context
-      await login(email.trim(), newPassword);
-      // Navigate directly — don't use Alert.onPress because setUser()
-      // re-renders the component and can dismiss the alert before the user taps
+      // Store user from the setup-password response directly — no second login call needed
+      await loginWithData(res.data);
       router.replace('/(tabs)/home');
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';

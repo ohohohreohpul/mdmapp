@@ -42,7 +42,12 @@
       "Bash(python3 import_practice_content.py ~/Downloads/ux-research-ready.json)",
       "Bash(python3 import_practice_content.py ~/Downloads/ux-ideation-ready.json)",
       "Bash(python3 -:*)",
-      "Bash(curl -s http://localhost:8000/api/)"
+      "Bash(curl -s http://localhost:8000/api/)",
+      "Bash(lsof -ti:8001)",
+      "Bash(xargs kill:*)",
+      "Bash(ls /Users/jirananpanlanatiyarak/Downloads/mdmapp/backend/*.py /Users/jirananpanlanatiyarak/Downloads/mdmapp/backend/scripts/)",
+      "Bash(ls /Users/jirananpanlanatiyarak/Downloads/mdmapp/*.py /Users/jirananpanlanatiyarak/Downloads/mdmapp/scripts/)",
+      "Bash(ls /Users/jirananpanlanatiyarak/Downloads/*.py /Users/jirananpanlanatiyarak/Downloads/mdmapp/backend/import*)"
     ]
   }
 }

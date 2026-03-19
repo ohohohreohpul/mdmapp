@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { useUser } from '../contexts/UserContext';
 
@@ -171,11 +172,13 @@ export default function Quiz() {
     const passed = results.passed;
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={{ width: 40 }} />
-          <Text style={styles.headerTitle}>ผลการทดสอบ</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <SafeAreaView edges={['top']} style={styles.headerSafe}>
+          <View style={styles.header}>
+            <View style={{ width: 40 }} />
+            <Text style={styles.headerTitle}>ผลการทดสอบ</Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </SafeAreaView>
 
         <ScrollView style={styles.content} contentContainerStyle={styles.resultsContainer}>
           <View style={[styles.scoreCard, passed ? styles.passedCard : styles.failedCard]}>
@@ -234,19 +237,21 @@ export default function Quiz() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{quiz.title}</Text>
-        {timeLeft !== null && (
-          <View style={[styles.timerBadge, timeLeft < 60 && styles.timerWarning]}>
-            <Ionicons name="time" size={16} color="#FFFFFF" />
-            <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-          </View>
-        )}
-        {timeLeft === null && <View style={{ width: 40 }} />}
-      </View>
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{quiz.title}</Text>
+          {timeLeft !== null && (
+            <View style={[styles.timerBadge, timeLeft < 60 && styles.timerWarning]}>
+              <Ionicons name="time" size={16} color="#FFFFFF" />
+              <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+            </View>
+          )}
+          {timeLeft === null && <View style={{ width: 40 }} />}
+        </View>
+      </SafeAreaView>
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
@@ -377,9 +382,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  headerSafe: {
+    backgroundColor: '#FFFFFF',
+  },
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 56,
+    paddingTop: 8,
     paddingBottom: 16,
     paddingHorizontal: 16,
     flexDirection: 'row',
