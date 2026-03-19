@@ -12,6 +12,16 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+        {/* PWA manifest */}
+        <link rel="manifest" href="/manifest.json" />
+        {/* iOS PWA — hides Safari chrome when launched from home screen */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Mydemy" />
+        {/* Android theme color */}
+        <meta name="theme-color" content="#FFFFFF" />
+        {/* iOS home screen icon */}
+        <link rel="apple-touch-icon" href="/assets/images/icon.png" />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and
