@@ -11,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../contexts/UserContext';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 import axios from 'axios';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL || 'https://app.mydemy.co';
@@ -129,6 +133,80 @@ function CertCard({ cert, onView }: { cert: any; onView: () => void }) {
   );
 }
 
+// ─── Certificate HTML for PDF generation ─────────────────────────────────────
+function buildCertHtml(cert: any, appUrl: string) {
+  const isCareer = cert.cert_type === 'career';
+  const title = isCareer ? cert.career_path : cert.course_title;
+  const coursesList = isCareer && cert.career_courses?.length
+    ? cert.career_courses.map((c: string) => `<li>${c}</li>`).join('')
+    : '';
+  const stripColor = isCareer ? '#F59E0B' : '#E91E8C';
+  const bg = isCareer ? '#111827' : '#ffffff';
+  const textColor = isCareer ? '#F9FAFB' : '#1F2937';
+  const subColor = isCareer ? 'rgba(255,255,255,0.55)' : '#6B7280';
+  const titleColor = isCareer ? '#F59E0B' : '#E91E8C';
+  const dividerColor = isCareer ? '#374151' : '#F3F4F6';
+  const codeBoxBg = isCareer ? 'rgba(245,158,11,0.15)' : '#FDF2F8';
+  const codeColor = isCareer ? '#FFD700' : '#E91E8C';
+  const verifyUrl = `${appUrl}/verify/${cert.verification_code}`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sarabun', sans-serif; background: #F7F8FA; display: flex; justify-content: center; padding: 32px 16px; }
+  .cert {
+    background: ${bg};
+    border-radius: 20px;
+    overflow: hidden;
+    width: 600px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  }
+  .strip { height: 8px; background: ${stripColor}; }
+  .body { padding: 32px; }
+  .logo { font-size: 22px; font-weight: 900; color: ${isCareer ? '#fff' : '#E91E8C'}; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .type { font-size: 11px; font-weight: 800; color: ${stripColor}; letter-spacing: 3px; margin-top: 20px; }
+  .divider { height: 1px; background: ${dividerColor}; margin: 16px 0; }
+  .presented { font-size: 13px; color: ${subColor}; margin-bottom: 4px; }
+  .name { font-size: 32px; font-weight: 900; color: ${textColor}; letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 4px; }
+  .completed { font-size: 13px; color: ${subColor}; margin-top: 16px; margin-bottom: 4px; }
+  .title { font-size: 20px; font-weight: 700; color: ${titleColor}; line-height: 1.4; }
+  .courses { margin-top: 16px; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; border: 1px solid rgba(255,255,255,0.1); }
+  .courses h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+  .courses li { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 22px; margin-left: 12px; }
+  .date { font-size: 13px; color: ${subColor}; margin-bottom: 12px; }
+  .code-box { display: inline-flex; align-items: center; gap: 6px; background: ${codeBoxBg}; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; }
+  .code { font-size: 13px; font-weight: 700; color: ${codeColor}; font-family: monospace; }
+  .verify { font-size: 10px; color: ${subColor}; }
+  .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid ${dividerColor}; font-size: 10px; color: ${subColor}; text-align: center; }
+</style>
+</head>
+<body>
+<div class="cert">
+  <div class="strip"></div>
+  <div class="body">
+    <div class="logo">mydemy</div>
+    <div class="type">${isCareer ? 'CAREER CERTIFICATION' : 'CERTIFICATE OF COMPLETION'}</div>
+    <div class="divider"></div>
+    <div class="presented">${isCareer ? 'มอบให้แก่' : 'ขอมอบเกียรติบัตรนี้แก่'}</div>
+    <div class="name">${cert.user_display_name}</div>
+    <div class="completed">${isCareer ? 'สำเร็จหลักสูตร' : 'เพื่อแสดงว่าสำเร็จการศึกษาคอร์ส'}</div>
+    <div class="title">${title}</div>
+    ${coursesList ? `<div class="courses"><h4>📚 คอร์สที่เรียนสำเร็จ</h4><ul>${coursesList}</ul></div>` : ''}
+    <div class="divider"></div>
+    <div class="date">ออกให้ ณ วันที่ ${formatThaiDate(cert)}</div>
+    <div class="code-box"><span class="code">✓ ${cert.verification_code}</span></div>
+    <div class="verify">ตรวจสอบความถูกต้องที่ ${verifyUrl}</div>
+    <div class="footer">© Mydemy — ใบประกาศนียบัตรนี้ออกโดยระบบอัตโนมัติและสามารถตรวจสอบได้ออนไลน์</div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 // ─── Full Certificate Modal ───────────────────────────────────────────────────
 function CertModal({
   cert,
@@ -138,29 +216,75 @@ function CertModal({
   onClose: () => void;
 }) {
   const isCareer = cert.cert_type === 'career';
+  const [exporting, setExporting] = useState(false);
+  const verifyUrl = `${APP_URL}/verify/${cert.verification_code}`;
+  const certTitle = isCareer ? cert.career_path : cert.course_title;
 
   const handleLinkedIn = async () => {
-    const url = getLinkedInUrl(cert);
+    try { await Linking.openURL(getLinkedInUrl(cert)); }
+    catch { Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถเปิด LinkedIn ได้'); }
+  };
+
+  // Social share with rich default message
+  const handleShare = async () => {
+    const message =
+      `🎓 ฉันเพิ่งได้รับ${isCareer ? 'ใบรับรองอาชีพ' : 'ใบประกาศนียบัตร'}จาก Mydemy!\n\n` +
+      `📜 "${certTitle}"\n\n` +
+      `พัฒนาทักษะ UX Design, Figma และ Digital Skills เพื่ออาชีพในฝัน 🚀\n\n` +
+      `ตรวจสอบใบประกาศ: ${verifyUrl}\n` +
+      `เรียนกับ Mydemy: https://app.mydemy.co`;
     try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถเปิด LinkedIn ได้');
+      await Share.share({ message, url: verifyUrl });
+    } catch { /* ignore cancel */ }
+  };
+
+  // Generate PDF and share/save
+  const handleExportPDF = async () => {
+    if (Platform.OS === 'web') {
+      // Web: open print dialog
+      const html = buildCertHtml(cert, APP_URL);
+      const win = window.open('', '_blank');
+      if (win) { win.document.write(html); win.document.close(); win.print(); }
+      return;
+    }
+    setExporting(true);
+    try {
+      const { uri } = await Print.printToFileAsync({
+        html: buildCertHtml(cert, APP_URL),
+        base64: false,
+      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Certificate — ${certTitle}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('บันทึกสำเร็จ', `PDF ถูกบันทึกที่:\n${uri}`);
+      }
+    } catch (e) {
+      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถสร้าง PDF ได้');
+    } finally {
+      setExporting(false);
     }
   };
 
-  const handleShare = async () => {
-    const verifyUrl = `${APP_URL}/verify/${cert.verification_code}`;
-    try {
-      await Share.share({
-        message:
-          `🎓 ฉันได้รับ${isCareer ? 'ใบรับรองอาชีพ' : 'ใบประกาศนียบัตร'}จาก Mydemy!\n` +
-          `"${isCareer ? cert.career_path : cert.course_title}"\n\n` +
-          `ตรวจสอบที่: ${verifyUrl}`,
-        url: verifyUrl,
-      });
-    } catch {
-      /* ignore cancel */
-    }
+  // Send via email with verification link
+  const handleEmail = async () => {
+    const subject = encodeURIComponent(`ใบประกาศนียบัตร Mydemy — ${certTitle}`);
+    const body = encodeURIComponent(
+      `สวัสดี,\n\nฉันต้องการแชร์ใบประกาศนียบัตรจาก Mydemy\n\n` +
+      `คอร์ส: ${certTitle}\n` +
+      `ผู้เรียน: ${cert.user_display_name}\n` +
+      `วันที่ออก: ${formatThaiDate(cert)}\n\n` +
+      `ตรวจสอบใบประกาศออนไลน์ได้ที่:\n${verifyUrl}\n\n` +
+      `หมายเลขยืนยัน: ${cert.verification_code}\n\n` +
+      `ขอบคุณ,\nMydemy — https://app.mydemy.co`
+    );
+    const mailto = `mailto:?subject=${subject}&body=${body}`;
+    try { await Linking.openURL(mailto); }
+    catch { Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถเปิดแอปอีเมลได้'); }
   };
 
   return (
@@ -181,54 +305,27 @@ function CertModal({
 
           {/* ── The Certificate itself ── */}
           <View style={[modal.cert, isCareer && modal.certDark]}>
-            {/* Top colour strip */}
             <View style={[modal.strip, isCareer && modal.stripGold]} />
-
-            {/* Logo */}
             {isCareer ? (
               <View style={modal.logoPillDark}>
-                <Image
-                  source={require('../assets/images/logo-wordmark.png')}
-                  style={modal.logoImgDark}
-                  resizeMode="contain"
-                />
+                <Image source={require('../assets/images/logo-wordmark.png')} style={modal.logoImgDark} resizeMode="contain" />
               </View>
             ) : (
-              <Image
-                source={require('../assets/images/logo-wordmark.png')}
-                style={modal.logoImg}
-                resizeMode="contain"
-              />
+              <Image source={require('../assets/images/logo-wordmark.png')} style={modal.logoImg} resizeMode="contain" />
             )}
-
-            {/* Certificate type */}
             <Text style={[modal.certTypeLabel, isCareer && modal.certTypeLabelDark]}>
               {isCareer ? 'CAREER CERTIFICATION' : 'CERTIFICATE OF COMPLETION'}
             </Text>
-
             <View style={[modal.divider, isCareer && modal.dividerDark]} />
-
-            {/* Presented to */}
             <Text style={[modal.presentedTo, isCareer && modal.presentedToDark]}>
               {isCareer ? 'มอบให้แก่' : 'ขอมอบเกียรติบัตรนี้แก่'}
             </Text>
-
-            {/* Recipient name */}
-            <Text style={[modal.recipientName, isCareer && modal.recipientNameDark]}>
-              {cert.user_display_name}
-            </Text>
-
-            {/* Course / path label */}
+            <Text style={[modal.recipientName, isCareer && modal.recipientNameDark]}>{cert.user_display_name}</Text>
             <Text style={[modal.completedLabel, isCareer && modal.completedLabelDark]}>
               {isCareer ? 'สำเร็จหลักสูตร' : 'เพื่อแสดงว่าสำเร็จการศึกษาคอร์ส'}
             </Text>
-
-            <Text style={[modal.mainTitle, isCareer && modal.mainTitleDark]}>
-              {isCareer ? cert.career_path : cert.course_title}
-            </Text>
-
-            {/* Career cert — list of included courses */}
-            {isCareer && cert.career_courses && cert.career_courses.length > 0 && (
+            <Text style={[modal.mainTitle, isCareer && modal.mainTitleDark]}>{certTitle}</Text>
+            {isCareer && cert.career_courses?.length > 0 && (
               <View style={modal.coursesList}>
                 <Text style={modal.coursesListHeader}>📚 คอร์สที่เรียนสำเร็จ</Text>
                 {cert.career_courses.map((c: string, i: number) => (
@@ -236,33 +333,18 @@ function CertModal({
                 ))}
               </View>
             )}
-
             <View style={[modal.divider, isCareer && modal.dividerDark]} />
-
-            {/* Date */}
-            <Text style={[modal.issuedDate, isCareer && modal.issuedDateDark]}>
-              ออกให้ ณ วันที่ {formatThaiDate(cert)}
-            </Text>
-
-            {/* Verification code */}
+            <Text style={[modal.issuedDate, isCareer && modal.issuedDateDark]}>ออกให้ ณ วันที่ {formatThaiDate(cert)}</Text>
             <View style={[modal.codeBox, isCareer && modal.codeBoxDark]}>
-              <Ionicons
-                name="shield-checkmark"
-                size={16}
-                color={isCareer ? '#FFD700' : COLORS.primary}
-              />
-              <Text style={[modal.codeText, isCareer && modal.codeTextDark]}>
-                {cert.verification_code}
-              </Text>
+              <Ionicons name="shield-checkmark" size={16} color={isCareer ? '#FFD700' : COLORS.primary} />
+              <Text style={[modal.codeText, isCareer && modal.codeTextDark]}>{cert.verification_code}</Text>
             </View>
-            <Text style={[modal.verifyHint, isCareer && modal.verifyHintDark]}>
-              ตรวจสอบความถูกต้องที่ app.mydemy.co/verify
-            </Text>
+            <Text style={[modal.verifyHint, isCareer && modal.verifyHintDark]}>ตรวจสอบความถูกต้องที่ app.mydemy.co/verify</Text>
           </View>
 
           {/* ── Action buttons ── */}
           <View style={modal.actions}>
-            {/* LinkedIn Add to Profile */}
+            {/* LinkedIn */}
             <TouchableOpacity style={modal.linkedinBtn} onPress={handleLinkedIn}>
               <Image
                 source={{ uri: 'https://download.linkedin.com/desktop/add2profile/buttons/en_US.png' }}
@@ -271,11 +353,25 @@ function CertModal({
               />
             </TouchableOpacity>
 
-            {/* Share */}
-            <TouchableOpacity style={modal.shareFullBtn} onPress={handleShare}>
-              <Ionicons name="share-social-outline" size={20} color="#fff" />
-              <Text style={modal.shareFullText}>แชร์ใบประกาศ</Text>
-            </TouchableOpacity>
+            {/* Row: Share + PDF */}
+            <View style={modal.actionRow}>
+              <TouchableOpacity style={[modal.actionBtn, { backgroundColor: COLORS.primary }]} onPress={handleShare}>
+                <Ionicons name="share-social-outline" size={19} color="#fff" />
+                <Text style={modal.actionBtnText}>แชร์</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[modal.actionBtn, { backgroundColor: '#1F2937' }]} onPress={handleExportPDF} disabled={exporting}>
+                {exporting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Ionicons name="document-outline" size={19} color="#fff" />}
+                <Text style={modal.actionBtnText}>บันทึก PDF</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[modal.actionBtn, { backgroundColor: '#0891B2' }]} onPress={handleEmail}>
+                <Ionicons name="mail-outline" size={19} color="#fff" />
+                <Text style={modal.actionBtnText}>ส่งอีเมล</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Verification info */}
@@ -750,6 +846,20 @@ const modal = StyleSheet.create({
     gap: 8,
   },
   shareFullText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  actionRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: RADIUS.md,
+  },
+  actionBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   // ── Verify info ───────────────────────────────────────────
   verifyBox: {
