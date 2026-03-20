@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -234,6 +235,22 @@ export default function Profile() {
           </TouchableOpacity>
         )}
 
+        {/* Ko-fi support */}
+        <TouchableOpacity
+          style={styles.kofiCard}
+          onPress={() => Linking.openURL('https://ko-fi.com/J3J11WBY0S')}
+          activeOpacity={0.82}
+        >
+          <Text style={styles.kofiEmoji}>☕</Text>
+          <View style={styles.kofiBody}>
+            <Text style={styles.kofiTitle}>ช่วยซัพพอร์ต mydemy</Text>
+            <Text style={styles.kofiSub}>ซื้อกาแฟให้ทีมพัฒนาสักแก้ว 🩷</Text>
+          </View>
+          <View style={styles.kofiBadge}>
+            <Text style={styles.kofiBadgeText}>Ko-fi</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={22} color="#EF4444" />
@@ -416,6 +433,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     marginTop: 2,
+  },
+  kofiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F9',
+    borderWidth: 1.5,
+    borderColor: '#FBCFE8',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 24,
+    gap: 12,
+  },
+  kofiEmoji: {
+    fontSize: 32,
+  },
+  kofiBody: {
+    flex: 1,
+  },
+  kofiTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#9D174D',
+  },
+  kofiSub: {
+    fontSize: 12,
+    color: '#BE185D',
+    marginTop: 2,
+  },
+  kofiBadge: {
+    backgroundColor: '#ef5ea8',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  kofiBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: 0.3,
   },
   logoutButton: {
     flexDirection: 'row',

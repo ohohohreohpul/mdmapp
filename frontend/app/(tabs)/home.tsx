@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   Image,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -811,6 +812,15 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Ko-fi subtle support nudge */}
+        <TouchableOpacity
+          style={styles.kofiNudge}
+          onPress={() => Linking.openURL('https://ko-fi.com/J3J11WBY0S')}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.kofiNudgeText}>☕ ชอบ mydemy? ช่วยซัพพอร์ตทีมสักแก้วกาแฟ →</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 120 }} />
       </ScrollView>
     </SafeAreaView>
@@ -1253,5 +1263,24 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 4,
+  },
+
+  // Ko-fi nudge
+  kofiNudge: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF0F7',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FBCFE8',
+    alignItems: 'center',
+  },
+  kofiNudgeText: {
+    fontSize: 13,
+    color: '#BE185D',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
