@@ -7,12 +7,13 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 interface UserContextType {
   user: any;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ mustResetPassword: boolean }>;
+  login: (email: string, password: string) => Promise<{ mustResetPassword: boolean; hasResumeSetup: boolean }>;
   loginWithData: (userData: any) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (userId: string, newPassword: string, currentPassword?: string) => Promise<void>;
   updateProfile: (userId: string, fields: { username?: string; display_name?: string }) => Promise<void>;
+  markResumeSetup: (userId: string) => Promise<void>;
   updateProgress: (courseId: string, lessonId: string) => Promise<void>;
   getUserProgress: (courseId: string) => any;
 }
@@ -58,14 +59,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Login with email + password.
-   * Returns { mustResetPassword } so the caller can redirect to change-password screen.
+   * Returns { mustResetPassword, hasResumeSetup } so the caller can redirect appropriately.
    */
-  const login = async (email: string, password: string): Promise<{ mustResetPassword: boolean }> => {
+  const login = async (email: string, password: string): Promise<{ mustResetPassword: boolean; hasResumeSetup: boolean }> => {
     const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
     const userData = response.data;
     setUser(userData);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
-    return { mustResetPassword: !!userData.must_reset_password };
+    return {
+      mustResetPassword: !!userData.must_reset_password,
+      hasResumeSetup: !!userData.has_resume_setup,
+    };
   };
 
   /** Directly set user from already-fetched data (e.g. setup-password response). */
@@ -115,6 +119,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  /** Mark resume setup complete — called after upload, create, or skip. */
+  const markResumeSetup = async (userId: string): Promise<void> => {
+    try {
+      await axios.post(`${API_URL}/api/resume/skip`, { user_id: userId });
+    } catch (_) {}
+    const updated = { ...user, has_resume_setup: true };
+    setUser(updated);
+    await AsyncStorage.setItem('user', JSON.stringify(updated));
+  };
+
   const updateProgress = async (courseId: string, lessonId: string) => {
     if (!user) return;
     try {
@@ -134,7 +148,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <UserContext.Provider
-      value={{ user, loading, login, loginWithData, register, logout, changePassword, updateProfile, updateProgress, getUserProgress }}
+      value={{ user, loading, login, loginWithData, register, logout, changePassword, updateProfile, markResumeSetup, updateProgress, getUserProgress }}
     >
       {children}
     </UserContext.Provider>

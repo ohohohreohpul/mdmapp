@@ -170,6 +170,23 @@ export default function Profile() {
           <Ionicons name="chevron-forward" size={20} color="#CCC" />
         </TouchableOpacity>
 
+        {/* Career Section */}
+        <Text style={styles.sectionTitle}>อาชีพ</Text>
+
+        <TouchableOpacity
+          style={styles.menuCard}
+          onPress={() => router.push('/resume' as any)}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#3B82F6' }]}>
+            <Ionicons name="document-text" size={22} color="#FFF" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Resume & Career</Text>
+            <Text style={styles.menuSubtitle}>จัดการ Resume และ Cover Letter</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#CCC" />
+        </TouchableOpacity>
+
         {/* Settings Section */}
         <Text style={styles.sectionTitle}>การตั้งค่า</Text>
 

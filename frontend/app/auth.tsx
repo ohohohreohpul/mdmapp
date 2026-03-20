@@ -26,7 +26,7 @@ type Screen = 'login' | 'register' | 'reset-password' | 'first-login';
 export default function Auth() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { login, loginWithData, register, changePassword, user } = useUser();
+  const { login, loginWithData, register, changePassword, markResumeSetup, user } = useUser();
 
   const [screen, setScreen] = useState<Screen>('login');
   const [email, setEmail] = useState('');
@@ -46,9 +46,11 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      const { mustResetPassword } = await login(email.trim(), password);
+      const { mustResetPassword, hasResumeSetup } = await login(email.trim(), password);
       if (mustResetPassword) {
         setScreen('reset-password');
+      } else if (!hasResumeSetup) {
+        router.replace('/resume-setup' as any);
       } else {
         router.replace('/(tabs)/home');
       }
@@ -85,7 +87,7 @@ export default function Auth() {
     setLoading(true);
     try {
       await register(username, email.trim(), password);
-      router.replace('/(tabs)/home');
+      router.replace('/resume-setup' as any);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('สมัครสมาชิกไม่สำเร็จ', msg);
@@ -121,7 +123,7 @@ export default function Auth() {
       });
       // Store user from the setup-password response directly — no second login call needed
       await loginWithData(res.data);
-      router.replace('/(tabs)/home');
+      router.replace(res.data?.has_resume_setup ? '/(tabs)/home' : '/resume-setup' as any);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('ข้อผิดพลาด', msg);
@@ -153,7 +155,7 @@ export default function Auth() {
       await changePassword(user._id, newPassword);
       // Navigate directly — Alert.onPress can be swallowed by a re-render triggered
       // by changePassword's setUser() call
-      router.replace('/(tabs)/home');
+      router.replace(user?.has_resume_setup ? '/(tabs)/home' : '/resume-setup' as any);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด';
       Alert.alert('ข้อผิดพลาด', msg);

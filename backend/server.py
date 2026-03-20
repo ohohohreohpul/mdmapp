@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from supabase import acreate_client, AsyncClient
@@ -10,6 +10,16 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json
+import io
+import re
+import asyncio
+import uuid as uuid_lib
+
+try:
+    import pdfplumber as _pdfplumber
+    _PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    _PDFPLUMBER_AVAILABLE = False
 
 # Password hashing — uses bcrypt package directly (compatible with bcrypt 4.x)
 try:
@@ -514,7 +524,7 @@ async def get_user(user_id: str):
 
 @api_router.patch("/users/{user_id}")
 async def update_user_profile(user_id: str, body: dict):
-    allowed = {k: v for k, v in body.items() if k in ("username", "display_name")}
+    allowed = {k: v for k, v in body.items() if k in ("username", "display_name", "has_resume_setup")}
     if not allowed:
         raise HTTPException(status_code=400, detail="No valid fields to update")
     await supabase.table("users").update(allowed).eq("id", user_id).execute()
@@ -1424,6 +1434,295 @@ async def issue_certificate(body: CertificateIssueRequest):
         "verification_code": code,
     }).execute()
     return ins.data[0] if ins.data else {}
+
+
+# ==================== RESUME & COVER LETTER ====================
+
+# ── Pydantic models ────────────────────────────────────────────
+
+class WorkExperienceEntry(BaseModel):
+    company: str
+    role: str
+    start_date: str
+    end_date: str
+    bullets: List[str] = []
+
+class EducationEntry(BaseModel):
+    institution: str
+    degree: str
+    field: str
+    graduation_year: str
+
+class ResumeCreateBody(BaseModel):
+    user_id: str
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
+    skills: List[str] = []
+    work_experience: List[WorkExperienceEntry] = []
+    education: List[EducationEntry] = []
+
+class CoverLetterCreate(BaseModel):
+    user_id: str
+    title: str
+    company_name: Optional[str] = None
+    position: Optional[str] = None
+    content: str
+
+class CoverLetterUpdate(BaseModel):
+    title: Optional[str] = None
+    company_name: Optional[str] = None
+    position: Optional[str] = None
+    content: Optional[str] = None
+
+# ── PDF parsing helpers ────────────────────────────────────────
+
+_SKILL_KEYWORDS = [
+    "python","sql","excel","figma","sketch","react","javascript","html","css",
+    "tableau","power bi","google analytics","node","agile","scrum","ux research",
+    "data analysis","project management","digital marketing","seo",
+    "content marketing","copywriting","leadership","presentation","photoshop",
+    "illustrator","notion","jira","confluence","trello","canva",
+]
+
+_SECTION_HEADERS = [
+    "experience","work experience","education","skills","summary","objective",
+    "projects","certifications","ประสบการณ์","การศึกษา","ทักษะ","สรุป","โครงการ",
+]
+
+def _parse_pdf_sync(file_bytes: bytes):
+    """Returns (parsed_text, skills, ats_score, parse_status) — runs sync."""
+    if not _PDFPLUMBER_AVAILABLE:
+        return ("", [], 0, "failed")
+    try:
+        with _pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            pages_text = [p.extract_text() or "" for p in pdf.pages]
+            page_count = len(pdf.pages)
+        full_text = "\n".join(pages_text).strip()
+    except Exception:
+        return ("", [], 0, "failed")
+
+    if not full_text or len(full_text) < 100:
+        return (full_text, [], 5, "failed")
+
+    text_lower = full_text.lower()
+    found_skills = [kw for kw in _SKILL_KEYWORDS if kw in text_lower]
+
+    score = 0
+    char_count = len(full_text)
+    if char_count >= 500:   score += 40
+    elif char_count >= 200: score += 20
+    elif char_count >= 100: score += 10
+    headers_found = sum(1 for h in _SECTION_HEADERS if h in text_lower)
+    score += min(headers_found * 5, 30)
+    score += min(len(found_skills) * 3, 15)
+    if re.search(r'[\w.+-]+@[\w-]+\.\w+', full_text): score += 5
+    if re.search(r'[\d\s\-\+\(\)]{8,}', full_text):   score += 5
+    if 1 <= page_count <= 3: score += 5
+    return (full_text, found_skills, min(score, 100), "success")
+
+async def _parse_pdf(file_bytes: bytes):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _parse_pdf_sync, file_bytes)
+
+def _score_template_resume(data: ResumeCreateBody) -> tuple:
+    """Returns (ats_score, skills_list)."""
+    score = 40  # baseline — always machine-readable
+    if data.email:  score += 5
+    if data.phone:  score += 5
+    if len(data.skills) >= 3: score += 15
+    elif data.skills:         score += 7
+    if len(data.work_experience) >= 2: score += 20
+    elif data.work_experience:         score += 10
+    if data.education: score += 10
+    if data.linkedin:  score += 5
+    return (min(score, 100), data.skills)
+
+async def _get_fresh_signed_url(file_path: str) -> str:
+    """Generate a 1-hour signed URL from a Supabase Storage path."""
+    try:
+        result = await supabase.storage.from_("resumes").create_signed_url(file_path, 3600)
+        # supabase-py 2.x returns a dict or object
+        if isinstance(result, dict):
+            return result.get("signedURL") or result.get("signed_url") or ""
+        return getattr(result, "signed_url", "") or getattr(result, "signedURL", "") or ""
+    except Exception:
+        return ""
+
+# ── Resume endpoints ───────────────────────────────────────────
+
+@api_router.post("/resume/upload")
+async def upload_resume(
+    user_id: str = Form(...),
+    file: UploadFile = File(...),
+):
+    if file.content_type not in ("application/pdf", "application/octet-stream"):
+        raise HTTPException(400, "ไฟล์ต้องเป็น PDF เท่านั้น")
+    file_bytes = await file.read()
+    if len(file_bytes) > 2 * 1024 * 1024:
+        raise HTTPException(400, "ไฟล์ต้องมีขนาดไม่เกิน 2MB")
+
+    resume_id = str(uuid_lib.uuid4())
+    storage_path = f"{user_id}/{resume_id}.pdf"
+
+    # Upload to Supabase Storage
+    try:
+        await supabase.storage.from_("resumes").upload(storage_path, file_bytes, {"content-type": "application/pdf"})
+    except Exception as e:
+        raise HTTPException(500, f"อัปโหลดไม่สำเร็จ: {str(e)}")
+
+    # Parse & score
+    parsed_text, skills, ats_score, parse_status = await _parse_pdf(file_bytes)
+
+    # Insert into DB
+    now_iso = datetime.utcnow().isoformat()
+    row = {
+        "id": resume_id,
+        "user_id": user_id,
+        "resume_type": "uploaded",
+        "file_path": storage_path,
+        "file_name": file.filename or "resume.pdf",
+        "file_size": len(file_bytes),
+        "ats_score": ats_score,
+        "parsed_skills": skills,
+        "parsed_text": parsed_text[:5000] if parsed_text else None,
+        "parse_status": parse_status,
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    ins = await supabase.table("user_resumes").insert(row).execute()
+
+    # Mark user setup complete
+    await supabase.table("users").update({"has_resume_setup": True}).eq("id", user_id).execute()
+
+    result = ins.data[0] if ins.data else row
+    result["_id"] = result.get("id")
+    result["file_url"] = await _get_fresh_signed_url(storage_path)
+    return result
+
+
+@api_router.post("/resume/create")
+async def create_resume(body: ResumeCreateBody):
+    ats_score, skills = _score_template_resume(body)
+    resume_id = str(uuid_lib.uuid4())
+    now_iso = datetime.utcnow().isoformat()
+
+    resume_data = {
+        "full_name": body.full_name,
+        "email": body.email,
+        "phone": body.phone,
+        "linkedin": body.linkedin,
+        "skills": body.skills,
+        "work_experience": [e.model_dump() for e in body.work_experience],
+        "education": [e.model_dump() for e in body.education],
+    }
+
+    row = {
+        "id": resume_id,
+        "user_id": body.user_id,
+        "resume_type": "created",
+        "resume_data": resume_data,
+        "ats_score": ats_score,
+        "parsed_skills": skills,
+        "parse_status": "success",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    ins = await supabase.table("user_resumes").insert(row).execute()
+    await supabase.table("users").update({"has_resume_setup": True}).eq("id", body.user_id).execute()
+
+    result = ins.data[0] if ins.data else row
+    result["_id"] = result.get("id")
+    return result
+
+
+@api_router.get("/resume/{user_id}")
+async def get_resume(user_id: str):
+    res = await supabase.table("user_resumes") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .limit(1).execute()
+    data = _one(res)
+    if not data:
+        return None
+    data["_id"] = data.get("id")
+    if data.get("file_path"):
+        data["file_url"] = await _get_fresh_signed_url(data["file_path"])
+    return data
+
+
+@api_router.delete("/resume/{resume_id}")
+async def delete_resume(resume_id: str):
+    res = await supabase.table("user_resumes").select("file_path").eq("id", resume_id).limit(1).execute()
+    data = _one(res)
+    if data and data.get("file_path"):
+        try:
+            await supabase.storage.from_("resumes").remove([data["file_path"]])
+        except Exception:
+            pass
+    await supabase.table("user_resumes").delete().eq("id", resume_id).execute()
+    return {"deleted": True}
+
+
+@api_router.post("/resume/skip")
+async def skip_resume_setup(body: dict):
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(400, "user_id required")
+    await supabase.table("users").update({"has_resume_setup": True}).eq("id", user_id).execute()
+    return {"skipped": True}
+
+
+# ── Cover letter endpoints ─────────────────────────────────────
+
+@api_router.get("/cover-letters/{user_id}")
+async def list_cover_letters(user_id: str):
+    res = await supabase.table("user_cover_letters") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True).execute()
+    rows = res.data or []
+    for r in rows:
+        r["_id"] = r.get("id")
+    return rows
+
+
+@api_router.post("/cover-letters")
+async def create_cover_letter(body: CoverLetterCreate):
+    now_iso = datetime.utcnow().isoformat()
+    row = {
+        "user_id": body.user_id,
+        "title": body.title,
+        "company_name": body.company_name,
+        "position": body.position,
+        "content": body.content,
+        "created_at": now_iso,
+        "updated_at": now_iso,
+    }
+    ins = await supabase.table("user_cover_letters").insert(row).execute()
+    result = ins.data[0] if ins.data else row
+    result["_id"] = result.get("id")
+    return result
+
+
+@api_router.put("/cover-letters/{letter_id}")
+async def update_cover_letter(letter_id: str, body: CoverLetterUpdate):
+    update_data = {k: v for k, v in body.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    await supabase.table("user_cover_letters").update(update_data).eq("id", letter_id).execute()
+    res = await supabase.table("user_cover_letters").select("*").eq("id", letter_id).limit(1).execute()
+    data = _one(res)
+    if data:
+        data["_id"] = data.get("id")
+    return data or {}
+
+
+@api_router.delete("/cover-letters/{letter_id}")
+async def delete_cover_letter(letter_id: str):
+    await supabase.table("user_cover_letters").delete().eq("id", letter_id).execute()
+    return {"deleted": True}
 
 
 # ── Register router & middleware ──────────────────────────────
