@@ -8,6 +8,7 @@ import {
   RefreshControl,
   useWindowDimensions,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, RADIUS, CAREER_PATHS } from '../../constants/theme';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
@@ -398,6 +400,11 @@ export default function HomeScreen() {
   const [announcements, setAnnouncements] = useState<Announcement[]>(MOCK_ANNOUNCEMENTS);
   const [articles, setArticles] = useState<Article[]>(MOCK_ARTICLES);
   const [loading, setLoading] = useState(true);
+  const [checkedInToday, setCheckedInToday] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [checkInXp, setCheckInXp] = useState(0);
+
+  const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`;
 
   // Grid — 2 columns, no overflow
   const gridPadding = SPACING.lg * 2;
@@ -417,6 +424,12 @@ export default function HomeScreen() {
           setDashboard(dashRes.data);
         } catch (_) {}
       }
+
+      // Check if already checked in today (local cache)
+      try {
+        const done = await AsyncStorage.getItem(todayKey);
+        setCheckedInToday(done === 'true');
+      } catch (_) {}
 
       // Future: load real announcements & articles
       // try {
@@ -441,6 +454,27 @@ export default function HomeScreen() {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
+  };
+
+  const handleCheckIn = async () => {
+    if (!user || checkingIn || checkedInToday) return;
+    setCheckingIn(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
+      if (!res.data.already_checked_in) {
+        setCheckInXp(res.data.xp_awarded);
+        setCheckedInToday(true);
+        await AsyncStorage.setItem(todayKey, 'true');
+        fetchData(); // refresh streak + XP chips
+      } else {
+        setCheckedInToday(true);
+        await AsyncStorage.setItem(todayKey, 'true');
+      }
+    } catch (_) {
+      // silently fail — check-in is a bonus, not critical
+    } finally {
+      setCheckingIn(false);
+    }
   };
 
   const getPathColor = (path: string) => CAREER_PATHS.find(p => p.id === path)?.color || COLORS.primary;
@@ -538,6 +572,45 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* ─────────────────────── DAILY CHECK-IN ─────────────────────── */}
+        {user && (
+          <View style={styles.checkInCard}>
+            <View style={styles.checkInLeft}>
+              <Text style={styles.checkInIcon}>{checkedInToday ? '✅' : '🔥'}</Text>
+              <View style={styles.checkInText}>
+                <Text style={styles.checkInTitle}>
+                  {checkedInToday ? 'เช็คอินแล้ววันนี้' : 'เช็คอินวันนี้'}
+                  {checkedInToday && checkInXp > 0 ? `  +${checkInXp} XP` : ''}
+                </Text>
+                <Text style={styles.checkInSub}>
+                  {checkedInToday
+                    ? 'มาอีกครั้งพรุ่งนี้เพื่อรักษา streak!'
+                    : 'รับ 20 XP เพื่อรักษา streak ของคุณ'}
+                </Text>
+              </View>
+            </View>
+            {!checkedInToday && (
+              <TouchableOpacity
+                style={[styles.checkInBtn, checkingIn && styles.checkInBtnDisabled]}
+                onPress={handleCheckIn}
+                disabled={checkingIn}
+                activeOpacity={0.8}
+              >
+                {checkingIn ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.checkInBtnText}>เช็คอิน</Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {checkedInToday && (
+              <View style={styles.checkInDone}>
+                <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ─────────────────────── ANNOUNCEMENTS ─────────────────────── */}
         {announcements.length > 0 && (
@@ -900,6 +973,62 @@ const styles = StyleSheet.create({
   dayDotOn: { backgroundColor: COLORS.success },
   dayDotOff: { backgroundColor: '#F3F4F6' },
   dayLabel: { fontSize: 10, color: COLORS.textSecondary },
+
+  // ── Daily Check-in card ───────────────────────────────────────────────────
+  checkInCard: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    backgroundColor: '#fce7f3',
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    padding: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  checkInLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  checkInIcon: {
+    fontSize: 26,
+  },
+  checkInText: {
+    flex: 1,
+  },
+  checkInTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  checkInSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
+  },
+  checkInBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: RADIUS.md,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  checkInBtnDisabled: {
+    opacity: 0.6,
+  },
+  checkInBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  checkInDone: {
+    padding: 4,
+  },
 
   // ── Sections ──────────────────────────────────────────────────────────────
   section: {

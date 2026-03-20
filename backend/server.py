@@ -1119,6 +1119,36 @@ async def set_daily_goal(user_id: str, goal: int):
     return {"success": True, "daily_goal": goal}
 
 
+@api_router.post("/gamification/daily-checkin")
+async def daily_checkin(body: dict):
+    user_id = body.get("user_id")
+    if not user_id or user_id == "demo_user":
+        raise HTTPException(status_code=400, detail="Invalid user")
+
+    stats = await get_or_create_user_stats(supabase, user_id)
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+    last = stats.get("last_activity_date")
+    # Normalise — Supabase may return a date object or a string
+    if last and not isinstance(last, str):
+        last = str(last)[:10]
+
+    if last == today:
+        return {
+            "already_checked_in": True,
+            "xp_awarded": 0,
+            "streak": stats.get("current_streak", 0),
+        }
+
+    result = await add_xp(supabase, user_id, 20, "daily_checkin")
+    return {
+        "already_checked_in": False,
+        "xp_awarded": 20,
+        "streak": result["streak"],
+        "new_badges": result.get("new_badges", []),
+    }
+
+
 # ==================== LEARNING SESSION ENDPOINTS ====================
 
 from services.learning_session_service import (
