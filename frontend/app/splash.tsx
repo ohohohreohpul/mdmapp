@@ -1,105 +1,262 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS } from '../constants/theme';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function Splash() {
   const router = useRouter();
 
+  // Animations
+  const logoScale = useRef(new Animated.Value(0.7)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const taglineY = useRef(new Animated.Value(12)).current;
+  const ringScale = useRef(new Animated.Value(0.85)).current;
+  const ringOpacity = useRef(new Animated.Value(0.6)).current;
+
   useEffect(() => {
-    const checkUserAndNavigate = async () => {
+    // Entrance animation
+    Animated.sequence([
+      // Logo fades + scales in
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 14,
+          stiffness: 120,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 480,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+      ]),
+      // Tagline slides up after logo appears
+      Animated.parallel([
+        Animated.timing(taglineOpacity, {
+          toValue: 1,
+          duration: 380,
+          useNativeDriver: true,
+        }),
+        Animated.timing(taglineY, {
+          toValue: 0,
+          duration: 380,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.quad),
+        }),
+      ]),
+    ]).start();
+
+    // Breathing ring loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(ringScale, {
+            toValue: 1.15,
+            duration: 1400,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sine),
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(ringScale, {
+            toValue: 0.85,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0.6,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    ).start();
+
+    // Navigate after 2.2s
+    const timer = setTimeout(async () => {
       try {
-        // Check if user has completed onboarding before
-        const hasOnboarded = await AsyncStorage.getItem('hasOnboarded');
         const userData = await AsyncStorage.getItem('user');
-        
-        // Wait a bit for splash animation
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        if (hasOnboarded === 'true' || userData) {
-          // User has onboarded before, go directly to main app
+        if (userData) {
           router.replace('/(tabs)/home');
         } else {
-          // First time user, show onboarding
-          router.replace('/onboarding');
+          router.replace('/auth');
         }
-      } catch (error) {
-        console.error('Error checking user status:', error);
-        router.replace('/onboarding');
+      } catch {
+        router.replace('/auth');
       }
-    };
+    }, 2200);
 
-    checkUserAndNavigate();
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../assets/images/logo-wordmark.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
+      {/* Soft radial glow behind logo */}
+      <View style={styles.glow} />
 
-      {/* Tagline */}
-      <Text style={styles.tagline}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</Text>
+      {/* Breathing ring */}
+      <Animated.View
+        style={[
+          styles.ring,
+          { transform: [{ scale: ringScale }], opacity: ringOpacity },
+        ]}
+      />
 
-      {/* Loading dots */}
-      <View style={styles.loadingContainer}>
-        <View style={[styles.dot, styles.dot1]} />
-        <View style={[styles.dot, styles.dot2]} />
-        <View style={[styles.dot, styles.dot3]} />
-      </View>
+      {/* Logo + tagline */}
+      <Animated.View
+        style={[
+          styles.logoWrap,
+          { transform: [{ scale: logoScale }], opacity: logoOpacity },
+        ]}
+      >
+        {/* White circle badge */}
+        <View style={styles.logoBadge}>
+          <Text style={styles.logoLetter}>M</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.textWrap,
+          { opacity: taglineOpacity, transform: [{ translateY: taglineY }] },
+        ]}
+      >
+        <Text style={styles.brandName}>Mydemy</Text>
+        <Text style={styles.tagline}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</Text>
+      </Animated.View>
+
+      {/* Bottom pulse bar */}
+      <Animated.View style={[styles.bottomBar, { opacity: taglineOpacity }]}>
+        <View style={styles.barTrack}>
+          <ProgressBar />
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
+// Animated progress bar that fills from 0→100% over 2s
+function ProgressBar() {
+  const barWidth = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(barWidth, {
+      toValue: 1,
+      duration: 2000,
+      delay: 400,
+      useNativeDriver: false,
+      easing: Easing.out(Easing.quad),
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.barFill,
+        {
+          width: barWidth.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0%', '100%'],
+          }),
+        },
+      ]}
+    />
+  );
+}
+
+const PINK = '#ef5ea8';
+const PINK_DARK = '#d94d94';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: PINK,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Soft radial highlight
+  glow: {
+    position: 'absolute',
+    width: width * 1.2,
+    height: width * 1.2,
+    borderRadius: width * 0.6,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    top: height * 0.5 - width * 0.6,
+  },
+  ring: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoBadge: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  logoContainer: {
+  logoLetter: {
+    fontSize: 54,
+    fontWeight: '800',
+    color: PINK,
+    letterSpacing: -2,
+    lineHeight: 60,
+  },
+  textWrap: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  logo: {
-    width: width * 0.6,
-    height: width * 0.25,
-  },
-  tagline: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    marginTop: 48,
     gap: 8,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.primaryLight,
+  brandName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  dot1: {
-    opacity: 1,
-    backgroundColor: COLORS.primary,
+  tagline: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '400',
+    textAlign: 'center',
   },
-  dot2: {
-    opacity: 0.7,
+  bottomBar: {
+    position: 'absolute',
+    bottom: 56,
+    left: 48,
+    right: 48,
+    alignItems: 'center',
   },
-  dot3: {
-    opacity: 0.4,
+  barTrack: {
+    width: '100%',
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
   },
 });
