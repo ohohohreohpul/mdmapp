@@ -118,7 +118,7 @@ export default function Admin() {
       description: 'ดูรายชื่อและสถานะผู้เรียนทั้งหมด',
       color: '#F59E0B',
       bgColor: '#FEF3C7',
-      onPress: () => Alert.alert('เร็ว ๆ นี้', 'หน้าจัดการผู้ใช้งานกำลังพัฒนา'),
+      onPress: () => router.push('/admin/users' as any),
     },
     {
       id: 'settings',
