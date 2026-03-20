@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
+import { View, Text, Image, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -118,9 +118,13 @@ export default function Splash() {
           { transform: [{ scale: logoScale }], opacity: logoOpacity },
         ]}
       >
-        {/* White circle badge */}
+        {/* White circle badge with favicon */}
         <View style={styles.logoBadge}>
-          <Text style={styles.logoLetter}>M</Text>
+          <Image
+            source={require('../assets/images/favicon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
       </Animated.View>
 
@@ -217,12 +221,9 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12,
   },
-  logoLetter: {
-    fontSize: 54,
-    fontWeight: '800',
-    color: PINK,
-    letterSpacing: -2,
-    lineHeight: 60,
+  logoImage: {
+    width: 70,
+    height: 70,
   },
   textWrap: {
     alignItems: 'center',

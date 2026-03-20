@@ -89,24 +89,23 @@ export default function ResumePreview() {
       const fileName = `resume_${Date.now()}.pdf`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
-      // Download PDF directly using FileSystem
-      const downloadResult = await FileSystem.downloadAsync(
+      const result = await FileSystem.downloadAsync(
         `${API_URL}/api/resume/${user._id}/export-pdf`,
-        filePath
+        filePath,
+        { headers: { Accept: 'application/pdf' } }
       );
 
-      // Share the downloaded file
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Export Resume',
-        });
-      } else {
-        Alert.alert('Success', 'Resume PDF downloaded');
+      if (result.status !== 200) {
+        throw new Error(`Server returned ${result.status}`);
       }
+
+      await Sharing.shareAsync(result.uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'บันทึก Resume',
+        UTI: 'com.adobe.pdf',
+      });
     } catch (e: any) {
-      console.error('PDF Export Error:', e);
-      Alert.alert('Export Failed', e?.message || 'Could not export resume. Make sure you have internet connection.');
+      Alert.alert('Export ไม่สำเร็จ', e?.message || 'ลองใหม่อีกครั้ง');
     } finally {
       setExporting(false);
     }
