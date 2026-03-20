@@ -326,6 +326,8 @@ const styles = StyleSheet.create({
   mascot: {
     width: 130,
     height: 130,
+    borderRadius: 36,
+    overflow: 'hidden',
   },
 
   // Brand
