@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,6 +71,7 @@ export default function ResumePreview() {
   const { user } = useUser();
   const [resume, setResume] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (!user?._id) return;
@@ -77,6 +81,38 @@ export default function ResumePreview() {
       .catch(() => setResume(null))
       .finally(() => setLoading(false));
   }, [user?._id]));
+
+  const handleExportPDF = async () => {
+    if (!resume || !user?._id) return;
+    setExporting(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/resume/${user._id}/export-pdf`, {
+        responseType: 'arraybuffer',
+      });
+
+      const fileName = `resume_${Date.now()}.pdf`;
+      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(
+        filePath,
+        Buffer.from(response.data).toString('base64'),
+        { encoding: FileSystem.EncodingType.Base64 }
+      );
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Export Resume',
+        });
+      } else {
+        Alert.alert('Success', 'PDF generated successfully');
+      }
+    } catch (e: any) {
+      Alert.alert('Export Failed', e?.response?.data?.detail || 'Could not export resume');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -123,11 +159,17 @@ export default function ResumePreview() {
             <Ionicons name="chevron-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Resume</Text>
-          {resume.ats_score != null ? (
-            <AtsBadge score={resume.ats_score} />
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
+          <TouchableOpacity
+            style={s.exportBtn}
+            onPress={handleExportPDF}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Ionicons name="download-outline" size={20} color={COLORS.primary} />
+            )}
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
@@ -159,7 +201,7 @@ export default function ResumePreview() {
                 }}
               >
                 <Ionicons name="logo-linkedin" size={13} color="#0A66C2" />
-                <Text style={[s.contactText, { color: '#0A66C2' }]}>{data.linkedin}</Text>
+                <Text style={[s.contactText, { color: '#0A66C2' }]} numberOfLines={1}>LinkedIn</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -297,6 +339,10 @@ const s = StyleSheet.create({
   backBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center',
+  },
+  exportBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    justifyContent: 'center', alignItems: 'center',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
 

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from supabase import acreate_client, AsyncClient
@@ -20,6 +21,17 @@ try:
     _PDFPLUMBER_AVAILABLE = True
 except ImportError:
     _PDFPLUMBER_AVAILABLE = False
+
+try:
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    _REPORTLAB_AVAILABLE = True
+except ImportError:
+    _REPORTLAB_AVAILABLE = False
 
 # Password hashing — uses bcrypt package directly (compatible with bcrypt 4.x)
 try:
@@ -1567,6 +1579,117 @@ async def _get_fresh_signed_url(file_path: str) -> str:
     except Exception:
         return ""
 
+def _generate_resume_pdf(resume_data: dict) -> bytes:
+    """Generate a PDF from resume template data using reportlab."""
+    if not _REPORTLAB_AVAILABLE:
+        raise HTTPException(500, "PDF generation not available")
+
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+
+    story = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle', parent=styles['Heading1'],
+        fontSize=20, textColor=colors.HexColor('#111827'),
+        spaceAfter=6, alignment=TA_CENTER, fontName='Helvetica-Bold'
+    )
+
+    # Name
+    name = resume_data.get('full_name', 'Resume')
+    story.append(Paragraph(name, title_style))
+
+    # Contact info
+    contact_parts = []
+    if resume_data.get('email'):
+        contact_parts.append(resume_data['email'])
+    if resume_data.get('phone'):
+        contact_parts.append(resume_data['phone'])
+    if resume_data.get('linkedin'):
+        contact_parts.append(resume_data['linkedin'])
+
+    if contact_parts:
+        contact_text = ' • '.join(contact_parts)
+        contact_style = ParagraphStyle('Contact', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
+        story.append(Paragraph(contact_text, contact_style))
+
+    story.append(Spacer(1, 0.2*inch))
+
+    # Skills
+    skills = resume_data.get('skills', [])
+    if skills:
+        heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#374151'), spaceBefore=6, spaceAfter=6)
+        story.append(Paragraph('SKILLS', heading_style))
+        skills_text = ', '.join(skills)
+        story.append(Paragraph(skills_text, styles['Normal']))
+        story.append(Spacer(1, 0.15*inch))
+
+    # Work Experience
+    work_exp = resume_data.get('work_experience', [])
+    if work_exp:
+        story.append(Paragraph('WORK EXPERIENCE', heading_style))
+        for job in work_exp:
+            job_title = job.get('role', '')
+            company = job.get('company', '')
+            dates = ' – '.join(filter(None, [job.get('start_date'), job.get('end_date')]))
+
+            job_text = f"<b>{job_title}</b> • {company}"
+            if dates:
+                job_text += f" ({dates})"
+            story.append(Paragraph(job_text, styles['Normal']))
+
+            bullets = job.get('bullets', [])
+            if isinstance(bullets, list):
+                for bullet in bullets:
+                    story.append(Paragraph(f"• {bullet}", styles['Normal']))
+            story.append(Spacer(1, 0.08*inch))
+
+    # Education
+    education = resume_data.get('education', [])
+    if education:
+        story.append(Paragraph('EDUCATION', heading_style))
+        for edu in education:
+            degree = edu.get('degree', '')
+            field = edu.get('field', '')
+            institution = edu.get('institution', '')
+            year = edu.get('graduation_year', '')
+
+            edu_text = f"<b>{degree}"
+            if field:
+                edu_text += f", {field}"
+            edu_text += f"</b> • {institution}"
+            if year:
+                edu_text += f" ({year})"
+            story.append(Paragraph(edu_text, styles['Normal']))
+        story.append(Spacer(1, 0.08*inch))
+
+    # Languages
+    languages = resume_data.get('languages', [])
+    if languages:
+        story.append(Paragraph('LANGUAGES', heading_style))
+        for lang in languages:
+            lang_text = f"<b>{lang.get('language', '')}</b> – {lang.get('level', '')}"
+            story.append(Paragraph(lang_text, styles['Normal']))
+        story.append(Spacer(1, 0.08*inch))
+
+    # Certifications
+    certifications = resume_data.get('certifications', [])
+    if certifications:
+        story.append(Paragraph('CERTIFICATIONS', heading_style))
+        for cert in certifications:
+            cert_text = f"<b>{cert.get('name', '')}</b>"
+            issuer = cert.get('issuer', '')
+            year = cert.get('year', '')
+            if issuer or year:
+                cert_text += f" • {issuer}"
+                if year:
+                    cert_text += f" ({year})"
+            story.append(Paragraph(cert_text, styles['Normal']))
+
+    doc.build(story)
+    pdf_buffer.seek(0)
+    return pdf_buffer.getvalue()
+
 # ── Resume endpoints ───────────────────────────────────────────
 
 @api_router.post("/resume/upload")
@@ -1713,6 +1836,29 @@ async def update_created_resume(resume_id: str, body: ResumeCreateBody):
         raise HTTPException(status_code=404, detail="Resume not found")
     data["_id"] = data.get("id")
     return data
+
+
+@api_router.get("/resume/{user_id}/export-pdf")
+async def export_resume_pdf(user_id: str):
+    """Export resume as PDF."""
+    res = await supabase.table("user_resumes") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .eq("resume_type", "created") \
+        .order("created_at", desc=True) \
+        .limit(1).execute()
+    data = _one(res)
+    if not data or not data.get("resume_data"):
+        raise HTTPException(404, "Resume not found")
+
+    resume_data = data["resume_data"]
+    pdf_bytes = _generate_resume_pdf(resume_data)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="resume.pdf"'},
+    )
 
 
 @api_router.post("/resume/skip")
