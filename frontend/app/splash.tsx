@@ -207,6 +207,8 @@ const styles = StyleSheet.create({
   mascotImage: {
     width: 220,
     height: 220,
+    borderRadius: 48,
+    overflow: 'hidden',
   },
   textWrap: {
     alignItems: 'center',
