@@ -486,15 +486,22 @@ export default function CourseModules() {
 
               {lessonContentType === 'video' && (
                 <>
-                  <Text style={styles.inputLabel}>URL วิดีโอ</Text>
+                  <Text style={styles.inputLabel}>Bunny.net Embed URL</Text>
                   <TextInput
-                    style={styles.input}
-                    placeholder="https://..."
+                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                    placeholder={'วาง src URL จาก Bunny.net\nเช่น: https://iframe.mediadelivery.net/embed/123456/video-id'}
                     value={lessonVideoUrl}
-                    onChangeText={setLessonVideoUrl}
+                    onChangeText={(text) => {
+                      // Auto-extract src from full iframe code if pasted
+                      const srcMatch = text.match(/src="([^"]+)"/);
+                      setLessonVideoUrl(srcMatch ? srcMatch[1] : text);
+                    }}
                     autoCapitalize="none"
-                    keyboardType="url"
+                    multiline
                   />
+                  <Text style={styles.helperText}>
+                    💡 Bunny.net → Video Library → เลือกวิดีโอ → Embed → คัดลอก src="…" (หรือวาง iframe ทั้งหมด จะแกะ URL ให้อัตโนมัติ)
+                  </Text>
                 </>
               )}
 
@@ -734,6 +741,12 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
+  helperText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 6,
+    lineHeight: 18,
+  },
   typeRow: {
     flexDirection: 'row',
     gap: SPACING.sm,

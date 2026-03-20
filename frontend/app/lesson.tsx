@@ -12,7 +12,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Video, ResizeMode } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import RenderHtml from 'react-native-render-html';
 import { useUser } from '../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../constants/theme';
@@ -32,7 +32,6 @@ export default function LessonView() {
   const [lesson, setLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [videoStatus, setVideoStatus] = useState<any>({});
   const [isCompleted, setIsCompleted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -156,16 +155,18 @@ export default function LessonView() {
       </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Video Content */}
+        {/* Video Content — rendered via WebView for Bunny.net embed support */}
         {lesson.content_type === 'video' && (
           <View style={styles.videoContainer}>
             {lesson.video_url ? (
-              <Video
+              <WebView
                 source={{ uri: lesson.video_url }}
                 style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
+                allowsFullscreenVideo
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
               />
             ) : (
               <View style={styles.placeholderContainer}>

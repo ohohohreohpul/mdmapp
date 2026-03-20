@@ -112,13 +112,13 @@ export default function Admin() {
       onPress: () => router.push('/admin/materials' as any),
     },
     {
-      id: 'quiz',
-      emoji: '🤖',
-      title: 'สร้างแบบทดสอบ',
-      description: 'สร้าง Quiz อัตโนมัติด้วย AI',
+      id: 'users',
+      emoji: '👥',
+      title: 'ผู้ใช้งาน',
+      description: 'ดูรายชื่อและสถานะผู้เรียนทั้งหมด',
       color: '#F59E0B',
       bgColor: '#FEF3C7',
-      onPress: () => router.push('/admin/quiz-generator' as any),
+      onPress: () => Alert.alert('เร็ว ๆ นี้', 'หน้าจัดการผู้ใช้งานกำลังพัฒนา'),
     },
     {
       id: 'settings',
