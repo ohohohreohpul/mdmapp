@@ -169,7 +169,7 @@ export default function ResumeSetup() {
         name: c.course_title || c.cert_type || 'Mydemy Certificate',
         issuer: 'Mydemy',
         year: c.issue_year ? String(c.issue_year) : new Date(c.issued_at).getFullYear().toString(),
-        url: c.verification_code ? `${API_URL}/api/certificates/verify/${c.verification_code}` : '',
+        url: c.verification_code ? `https://app.mydemy.co/verify/${c.verification_code}` : '',
         is_mydemy: true,
       }));
       // Merge — skip duplicates

@@ -109,7 +109,7 @@ function CoverLetterModal({ visible, initial, onClose, onSave, saving }: CLModal
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={mod.header}>
@@ -210,6 +210,10 @@ export default function ResumeScreen() {
   const [editingCL, setEditingCL] = useState<CoverLetter | null>(null);
   const [savingCL, setSavingCL] = useState(false);
 
+  // Delete confirmation state
+  const [deletingResume, setDeletingResume] = useState(false);
+  const [deletingCLId, setDeletingCLId] = useState<string | null>(null);
+
   // Tooltip state
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -238,24 +242,26 @@ export default function ResumeScreen() {
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-  const handleDeleteResume = () => {
+  const handleDeleteResume = async () => {
     if (!resume) return;
     const rid = resume._id || (resume as any).id;
-    Alert.alert('ลบ Resume', 'คุณต้องการลบ Resume นี้ใช่ไหม?', [
-      { text: 'ยกเลิก', style: 'cancel' },
-      {
-        text: 'ลบ',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await axios.delete(`${API_URL}/api/resume/${rid}`);
-            setResume(null);
-          } catch (e: any) {
-            Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
-          }
-        },
-      },
-    ]);
+
+    if (!deletingResume) {
+      // First tap: show confirm state
+      setDeletingResume(true);
+      setTimeout(() => setDeletingResume(false), 3000);
+      return;
+    }
+
+    // Second tap: actually delete
+    try {
+      await axios.delete(`${API_URL}/api/resume/${rid}`);
+      setResume(null);
+      setDeletingResume(false);
+    } catch (e: any) {
+      Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
+      setDeletingResume(false);
+    }
   };
 
   const handleCopyCL = async (cl: CoverLetter) => {
@@ -270,23 +276,25 @@ export default function ResumeScreen() {
     }
   };
 
-  const handleDeleteCL = (cl: CoverLetter) => {
+  const handleDeleteCL = async (cl: CoverLetter) => {
     const clId = cl._id || (cl as any).id;
-    Alert.alert('ลบ Cover Letter', `ต้องการลบ "${cl.title}" ใช่ไหม?`, [
-      { text: 'ยกเลิก', style: 'cancel' },
-      {
-        text: 'ลบ',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await axios.delete(`${API_URL}/api/cover-letters/${clId}`);
-            setCoverLetters(prev => prev.filter(c => (c._id || (c as any).id) !== clId));
-          } catch (e: any) {
-            Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
-          }
-        },
-      },
-    ]);
+
+    if (deletingCLId !== clId) {
+      // First tap: show confirm state
+      setDeletingCLId(clId);
+      setTimeout(() => setDeletingCLId(null), 3000);
+      return;
+    }
+
+    // Second tap: actually delete
+    try {
+      await axios.delete(`${API_URL}/api/cover-letters/${clId}`);
+      setCoverLetters(prev => prev.filter(c => (c._id || (c as any).id) !== clId));
+      setDeletingCLId(null);
+    } catch (e: any) {
+      Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
+      setDeletingCLId(null);
+    }
   };
 
   const handleSaveCL = async (data: { title: string; company_name: string; position: string; content: string }) => {
@@ -423,8 +431,12 @@ export default function ResumeScreen() {
                     <Ionicons name="refresh" size={16} color="#3B82F6" />
                     <Text style={s.actionBtnOutlineText}>อัปโหลดใหม่</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.actionBtnDanger} onPress={handleDeleteResume}>
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                  <TouchableOpacity style={[s.actionBtnDanger, deletingResume && { backgroundColor: '#FECACA' }]} onPress={handleDeleteResume}>
+                    {deletingResume ? (
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>ยืนยัน?</Text>
+                    ) : (
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -460,8 +472,12 @@ export default function ResumeScreen() {
                     <Ionicons name="pencil" size={16} color={COLORS.primary} />
                     <Text style={s.actionBtnOutlineText}>แก้ไข</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.actionBtnDanger} onPress={handleDeleteResume}>
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                  <TouchableOpacity style={[s.actionBtnDanger, deletingResume && { backgroundColor: '#FECACA' }]} onPress={handleDeleteResume}>
+                    {deletingResume ? (
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>ยืนยัน?</Text>
+                    ) : (
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -529,8 +545,15 @@ export default function ResumeScreen() {
                 <TouchableOpacity style={s.clBtn} onPress={() => { setEditingCL(cl); setClModalVisible(true); }}>
                   <Ionicons name="pencil-outline" size={18} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.clBtn} onPress={() => handleDeleteCL(cl)}>
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                <TouchableOpacity
+                  style={[s.clBtn, deletingCLId === (cl._id || (cl as any).id) && { backgroundColor: '#FECACA' }]}
+                  onPress={() => handleDeleteCL(cl)}
+                >
+                  {deletingCLId === (cl._id || (cl as any).id) ? (
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#DC2626' }}>ยืนยัน?</Text>
+                  ) : (
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
