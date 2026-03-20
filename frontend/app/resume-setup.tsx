@@ -22,10 +22,16 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 type Step = 'choice' | 'upload' | 'create' | 'done';
 
 interface WorkEntry { company: string; role: string; start_date: string; end_date: string; bullets: string; }
-interface EduEntry { institution: string; degree: string; field: string; graduation_year: string; }
+interface EduEntry  { institution: string; degree: string; field: string; graduation_year: string; }
+interface LangEntry { language: string; level: string; }
+interface CertEntry { name: string; issuer: string; year: string; url: string; is_mydemy: boolean; }
 
 const EMPTY_WORK: WorkEntry = { company: '', role: '', start_date: '', end_date: '', bullets: '' };
-const EMPTY_EDU: EduEntry = { institution: '', degree: '', field: '', graduation_year: '' };
+const EMPTY_EDU:  EduEntry  = { institution: '', degree: '', field: '', graduation_year: '' };
+const EMPTY_LANG: LangEntry = { language: '', level: '' };
+const EMPTY_CERT: CertEntry = { name: '', issuer: '', year: '', url: '', is_mydemy: false };
+
+const LEVEL_OPTIONS = ['Native', 'Fluent / C1-C2', 'Upper-Intermediate / B2', 'Intermediate / B1', 'Basic / A1-A2'];
 
 export default function ResumeSetup() {
   const router = useRouter();
@@ -48,6 +54,9 @@ export default function ResumeSetup() {
   const [skillsText, setSkillsText] = useState('');
   const [workEntries, setWorkEntries] = useState<WorkEntry[]>([{ ...EMPTY_WORK }]);
   const [eduEntries, setEduEntries] = useState<EduEntry[]>([{ ...EMPTY_EDU }]);
+  const [langEntries, setLangEntries] = useState<LangEntry[]>([]);
+  const [certEntries, setCertEntries] = useState<CertEntry[]>([]);
+  const [importingCerts, setImportingCerts] = useState(false);
 
   // ── Skip ──────────────────────────────────────────────────────
   const handleSkip = async () => {
@@ -99,6 +108,35 @@ export default function ResumeSetup() {
     }
   };
 
+  // ── Import Mydemy certificates ───────────────────────────────
+  const handleImportMydemy = async () => {
+    if (!user?._id) return;
+    setImportingCerts(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/certificates/user/${user._id}`);
+      const certs: any[] = res.data || [];
+      if (!certs.length) {
+        Alert.alert('ยังไม่มีใบประกาศ', 'คุณยังไม่มีใบประกาศนียบัตรจาก Mydemy');
+        return;
+      }
+      const newCerts: CertEntry[] = certs.map(c => ({
+        name: c.course_title || c.cert_type || 'Mydemy Certificate',
+        issuer: 'Mydemy',
+        year: c.issue_year ? String(c.issue_year) : new Date(c.issued_at).getFullYear().toString(),
+        url: '',
+        is_mydemy: true,
+      }));
+      // Merge — skip duplicates
+      const existing = certEntries.filter(e => !e.is_mydemy);
+      setCertEntries([...existing, ...newCerts]);
+      Alert.alert('นำเข้าสำเร็จ', `เพิ่ม ${newCerts.length} ใบประกาศจาก Mydemy`);
+    } catch {
+      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดใบประกาศได้');
+    } finally {
+      setImportingCerts(false);
+    }
+  };
+
   // ── Create resume ────────────────────────────────────────────
   const handleCreate = async () => {
     if (!user?._id) return;
@@ -113,13 +151,13 @@ export default function ResumeSetup() {
           start_date: e.start_date, end_date: e.end_date,
           bullets: e.bullets.split('\n').filter(Boolean),
         }));
-      const education = eduEntries
-        .filter(e => e.institution)
-        .map(e => ({ ...e }));
+      const education = eduEntries.filter(e => e.institution).map(e => ({ ...e }));
+      const languages = langEntries.filter(e => e.language).map(e => ({ language: e.language, level: e.level }));
+      const certifications = certEntries.filter(e => e.name).map(e => ({ ...e }));
 
       const res = await axios.post(`${API_URL}/api/resume/create`, {
         user_id: user._id, full_name: fullName, email, phone, linkedin, skills,
-        work_experience, education,
+        work_experience, education, languages, certifications,
       });
       setResult(res.data);
       setStep('done');
@@ -229,7 +267,8 @@ export default function ResumeSetup() {
 
   // ═══════════════════════════════ CREATE ═══════════════════════
   if (step === 'create') {
-    const dots = [1, 2, 3].map(n => (
+    const TOTAL_STEPS = 4;
+    const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
       <View key={n} style={[styles.dot, formStep >= n && styles.dotActive]} />
     ));
 
@@ -242,7 +281,9 @@ export default function ResumeSetup() {
           >
             <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>สร้าง Resume</Text>
+          <Text style={styles.headerTitle}>
+            สร้าง Resume ({formStep}/{TOTAL_STEPS})
+          </Text>
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
             <Text style={styles.skipText}>ข้าม</Text>
           </TouchableOpacity>
@@ -251,6 +292,7 @@ export default function ResumeSetup() {
 
         <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
 
+          {/* ── Step 1: Personal Info ── */}
           {formStep === 1 && (
             <>
               <Text style={styles.formSectionTitle}>ข้อมูลส่วนตัว</Text>
@@ -282,12 +324,20 @@ export default function ResumeSetup() {
             </>
           )}
 
+          {/* ── Step 2: Work Experience ── */}
           {formStep === 2 && (
             <>
               <Text style={styles.formSectionTitle}>ประสบการณ์ทำงาน</Text>
               {workEntries.map((entry, i) => (
                 <View key={i} style={styles.entryCard}>
-                  <Text style={styles.entryNum}>ที่ {i + 1}</Text>
+                  <View style={styles.entryHeader}>
+                    <Text style={styles.entryNum}>ที่ {i + 1}</Text>
+                    {workEntries.length > 1 && (
+                      <TouchableOpacity onPress={() => setWorkEntries(workEntries.filter((_, idx) => idx !== i))}>
+                        <Ionicons name="close-circle" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   {[
                     { label: 'บริษัท', key: 'company', ph: 'บริษัท ABC จำกัด' },
                     { label: 'ตำแหน่ง', key: 'role', ph: 'UX Designer' },
@@ -313,7 +363,7 @@ export default function ResumeSetup() {
                   </View>
                 </View>
               ))}
-              {workEntries.length < 3 && (
+              {workEntries.length < 5 && (
                 <TouchableOpacity style={styles.addEntryBtn}
                   onPress={() => setWorkEntries([...workEntries, { ...EMPTY_WORK }])}>
                   <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
@@ -323,15 +373,23 @@ export default function ResumeSetup() {
             </>
           )}
 
+          {/* ── Step 3: Education ── */}
           {formStep === 3 && (
             <>
               <Text style={styles.formSectionTitle}>การศึกษา</Text>
               {eduEntries.map((entry, i) => (
                 <View key={i} style={styles.entryCard}>
-                  <Text style={styles.entryNum}>ที่ {i + 1}</Text>
+                  <View style={styles.entryHeader}>
+                    <Text style={styles.entryNum}>ที่ {i + 1}</Text>
+                    {eduEntries.length > 1 && (
+                      <TouchableOpacity onPress={() => setEduEntries(eduEntries.filter((_, idx) => idx !== i))}>
+                        <Ionicons name="close-circle" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   {[
                     { label: 'สถาบัน', key: 'institution', ph: 'มหาวิทยาลัยเกษตรศาสตร์' },
-                    { label: 'ปริญญา', key: 'degree', ph: 'Bachelor\'s' },
+                    { label: 'ปริญญา', key: 'degree', ph: "Bachelor's" },
                     { label: 'สาขา', key: 'field', ph: 'Computer Science' },
                     { label: 'ปีจบ', key: 'graduation_year', ph: '2020' },
                   ].map(f => (
@@ -346,7 +404,7 @@ export default function ResumeSetup() {
                   ))}
                 </View>
               ))}
-              {eduEntries.length < 2 && (
+              {eduEntries.length < 3 && (
                 <TouchableOpacity style={styles.addEntryBtn}
                   onPress={() => setEduEntries([...eduEntries, { ...EMPTY_EDU }])}>
                   <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
@@ -356,7 +414,127 @@ export default function ResumeSetup() {
             </>
           )}
 
-          {formStep < 3 ? (
+          {/* ── Step 4: Languages + Certifications ── */}
+          {formStep === 4 && (
+            <>
+              {/* Languages */}
+              <Text style={styles.formSectionTitle}>ภาษา</Text>
+              <Text style={styles.formSectionHint}>เช่น ภาษาไทย (Native), English (TOEIC 850)</Text>
+
+              {langEntries.map((entry, i) => (
+                <View key={i} style={styles.entryCard}>
+                  <View style={styles.entryHeader}>
+                    <Text style={styles.entryNum}>ภาษาที่ {i + 1}</Text>
+                    <TouchableOpacity onPress={() => setLangEntries(langEntries.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="close-circle" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>ภาษา</Text>
+                    <TextInput style={styles.input}
+                      value={entry.language}
+                      onChangeText={v => { const arr = [...langEntries]; arr[i].language = v; setLangEntries(arr); }}
+                      placeholder="ภาษาไทย / English / Japanese"
+                      placeholderTextColor={COLORS.textTertiary} />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>ระดับ / คะแนน</Text>
+                    <TextInput style={styles.input}
+                      value={entry.level}
+                      onChangeText={v => { const arr = [...langEntries]; arr[i].level = v; setLangEntries(arr); }}
+                      placeholder="Native / Fluent / TOEIC 850 / IELTS 7.0"
+                      placeholderTextColor={COLORS.textTertiary} />
+                  </View>
+                  {/* Quick level chips */}
+                  <View style={styles.chipRow}>
+                    {LEVEL_OPTIONS.map(lvl => (
+                      <TouchableOpacity key={lvl}
+                        style={[styles.levelChip, entry.level === lvl && styles.levelChipActive]}
+                        onPress={() => { const arr = [...langEntries]; arr[i].level = lvl; setLangEntries(arr); }}
+                      >
+                        <Text style={[styles.levelChipText, entry.level === lvl && styles.levelChipTextActive]}>
+                          {lvl}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addEntryBtn}
+                onPress={() => setLangEntries([...langEntries, { ...EMPTY_LANG }])}>
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.addEntryText}>เพิ่มภาษา</Text>
+              </TouchableOpacity>
+
+              {/* Certifications */}
+              <View style={styles.certHeader}>
+                <Text style={[styles.formSectionTitle, { marginBottom: 0 }]}>ใบประกาศนียบัตร</Text>
+                <TouchableOpacity
+                  style={styles.mydemyBtn}
+                  onPress={handleImportMydemy}
+                  disabled={importingCerts}
+                >
+                  {importingCerts
+                    ? <ActivityIndicator size="small" color={COLORS.primary} />
+                    : <>
+                        <Ionicons name="ribbon" size={14} color={COLORS.primary} />
+                        <Text style={styles.mydemyBtnText}>นำเข้าจาก Mydemy</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.formSectionHint}>ใส่ใบ cert ที่มีทั้งจาก Mydemy และภายนอก</Text>
+
+              {certEntries.map((entry, i) => (
+                <View key={i} style={[styles.entryCard, entry.is_mydemy && styles.mydemyCard]}>
+                  <View style={styles.entryHeader}>
+                    {entry.is_mydemy && (
+                      <View style={styles.mydemyBadge}>
+                        <Ionicons name="ribbon" size={12} color={COLORS.primary} />
+                        <Text style={styles.mydemyBadgeText}>Mydemy</Text>
+                      </View>
+                    )}
+                    <Text style={styles.entryNum}>{entry.is_mydemy ? '' : `ที่ ${i + 1}`}</Text>
+                    <TouchableOpacity onPress={() => setCertEntries(certEntries.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="close-circle" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                  {[
+                    { label: 'ชื่อใบประกาศ', key: 'name', ph: 'Google UX Design Certificate' },
+                    { label: 'ออกโดย', key: 'issuer', ph: 'Google / Coursera / Mydemy' },
+                    { label: 'ปีที่ได้รับ', key: 'year', ph: '2024' },
+                    { label: 'URL (ถ้ามี)', key: 'url', ph: 'https://...' },
+                  ].map(f => (
+                    <View key={f.key} style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>{f.label}</Text>
+                      <TextInput
+                        style={[styles.input, entry.is_mydemy && f.key !== 'url' ? styles.inputReadonly : null]}
+                        value={(entry as any)[f.key]}
+                        onChangeText={v => {
+                          // Only allow editing url for Mydemy certs (name/issuer/year are locked)
+                          if (entry.is_mydemy && f.key !== 'url') return;
+                          const arr = [...certEntries]; (arr[i] as any)[f.key] = v; setCertEntries(arr);
+                        }}
+                        placeholder={f.ph}
+                        placeholderTextColor={COLORS.textTertiary}
+                        editable={!(entry.is_mydemy && f.key !== 'url')}
+                      />
+                    </View>
+                  ))}
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addEntryBtn}
+                onPress={() => setCertEntries([...certEntries, { ...EMPTY_CERT }])}>
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.addEntryText}>เพิ่มใบประกาศ</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Navigation buttons */}
+          {formStep < TOTAL_STEPS ? (
             <TouchableOpacity style={styles.primaryBtn} onPress={() => setFormStep(f => f + 1)}>
               <Text style={styles.primaryBtnText}>ต่อไป</Text>
               <Ionicons name="arrow-forward" size={18} color="#FFF" />
@@ -458,12 +636,17 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB' },
   dotActive: { backgroundColor: COLORS.primary, width: 24 },
   formContent: { padding: SPACING.lg, gap: SPACING.sm, paddingBottom: 60 },
-  formSectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: SPACING.sm },
+  formSectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 2 },
+  formSectionHint: { fontSize: 13, color: COLORS.textTertiary, marginBottom: SPACING.md },
   entryCard: {
     backgroundColor: '#F9FAFB', borderRadius: RADIUS.md, padding: SPACING.md,
     borderWidth: 1, borderColor: '#E5E7EB', marginBottom: SPACING.sm,
   },
-  entryNum: { fontSize: 12, fontWeight: '600', color: COLORS.textTertiary, marginBottom: SPACING.sm },
+  mydemyCard: {
+    borderColor: COLORS.primary, backgroundColor: '#fdf2f8',
+  },
+  entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+  entryNum: { fontSize: 12, fontWeight: '600', color: COLORS.textTertiary },
   inputGroup: { marginBottom: 12 },
   inputLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 6 },
   input: {
@@ -471,15 +654,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: COLORS.textPrimary,
     backgroundColor: '#FFF',
   },
+  inputReadonly: {
+    backgroundColor: '#F3F4F6', color: '#6B7280',
+  },
   textArea: { height: 80, textAlignVertical: 'top', paddingTop: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   chip: { backgroundColor: '#fce7f3', borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 4 },
   chipText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
+  levelChip: {
+    backgroundColor: '#F3F4F6', borderRadius: RADIUS.full,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  levelChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  levelChipText: { fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
+  levelChipTextActive: { color: '#FFF' },
   addEntryBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingVertical: 12, justifyContent: 'center',
   },
   addEntryText: { fontSize: 14, color: COLORS.primary, fontWeight: '600' },
+  certHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: SPACING.lg, marginBottom: 2,
+  },
+  mydemyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#fce7f3', borderRadius: RADIUS.full,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: '#f9a8d4',
+  },
+  mydemyBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  mydemyBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#fce7f3', borderRadius: RADIUS.full,
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  mydemyBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
   // Buttons
   primaryBtn: {
     backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 16,

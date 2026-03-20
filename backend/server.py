@@ -1453,6 +1453,18 @@ class EducationEntry(BaseModel):
     field: str
     graduation_year: str
 
+class LanguageEntry(BaseModel):
+    language: str
+    level: str          # e.g. "Native", "Fluent", "TOEIC 850"
+    score: Optional[str] = None
+
+class CertificationEntry(BaseModel):
+    name: str
+    issuer: str
+    year: Optional[str] = None
+    url: Optional[str] = None
+    is_mydemy: bool = False
+
 class ResumeCreateBody(BaseModel):
     user_id: str
     full_name: str
@@ -1462,6 +1474,8 @@ class ResumeCreateBody(BaseModel):
     skills: List[str] = []
     work_experience: List[WorkExperienceEntry] = []
     education: List[EducationEntry] = []
+    languages: List[LanguageEntry] = []
+    certifications: List[CertificationEntry] = []
 
 class CoverLetterCreate(BaseModel):
     user_id: str
@@ -1488,7 +1502,8 @@ _SKILL_KEYWORDS = [
 
 _SECTION_HEADERS = [
     "experience","work experience","education","skills","summary","objective",
-    "projects","certifications","ประสบการณ์","การศึกษา","ทักษะ","สรุป","โครงการ",
+    "projects","certifications","languages","achievements","awards",
+    "ประสบการณ์","การศึกษา","ทักษะ","สรุป","โครงการ","ภาษา","ใบประกาศ",
 ]
 
 def _parse_pdf_sync(file_bytes: bytes):
@@ -1537,6 +1552,8 @@ def _score_template_resume(data: ResumeCreateBody) -> tuple:
     elif data.work_experience:         score += 10
     if data.education: score += 10
     if data.linkedin:  score += 5
+    if data.languages: score += 3
+    if data.certifications: score += 5
     return (min(score, 100), data.skills)
 
 async def _get_fresh_signed_url(file_path: str) -> str:

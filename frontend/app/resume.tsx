@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -409,9 +410,15 @@ export default function ResumeScreen() {
                 )}
 
                 <View style={s.actionRow}>
-                  <TouchableOpacity style={s.actionBtnBlue} onPress={() => router.push('/resume-setup' as any)}>
-                    <Ionicons name="refresh" size={16} color="#FFF" />
-                    <Text style={s.actionBtnText}>อัปโหลดใหม่</Text>
+                  {resume.file_url ? (
+                    <TouchableOpacity style={s.actionBtnBlue} onPress={() => Linking.openURL(resume.file_url!)}>
+                      <Ionicons name="eye" size={16} color="#FFF" />
+                      <Text style={s.actionBtnText}>ดู PDF</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={s.actionBtnOutline} onPress={() => router.push('/resume-setup' as any)}>
+                    <Ionicons name="refresh" size={16} color="#3B82F6" />
+                    <Text style={s.actionBtnOutlineText}>อัปโหลดใหม่</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionBtnDanger} onPress={handleDeleteResume}>
                     <Ionicons name="trash-outline" size={16} color="#EF4444" />
@@ -442,9 +449,13 @@ export default function ResumeScreen() {
                 )}
 
                 <View style={s.actionRow}>
-                  <TouchableOpacity style={s.actionBtnPink} onPress={() => router.push('/resume-setup' as any)}>
-                    <Ionicons name="pencil" size={16} color="#FFF" />
-                    <Text style={s.actionBtnText}>แก้ไข</Text>
+                  <TouchableOpacity style={s.actionBtnPink} onPress={() => router.push('/resume-preview' as any)}>
+                    <Ionicons name="eye" size={16} color="#FFF" />
+                    <Text style={s.actionBtnText}>ดู Resume</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.actionBtnOutline} onPress={() => router.push('/resume-setup' as any)}>
+                    <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                    <Text style={s.actionBtnOutlineText}>แก้ไข</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actionBtnDanger} onPress={handleDeleteResume}>
                     <Ionicons name="trash-outline" size={16} color="#EF4444" />
@@ -624,6 +635,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
   },
   actionBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  actionBtnOutline: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 9,
+  },
+  actionBtnOutlineText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
   actionBtnDanger: {
     width: 40, height: 40,
     borderRadius: 10, backgroundColor: '#FEE2E2',
