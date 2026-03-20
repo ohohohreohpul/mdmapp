@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,9 @@ export default function ResumeSetup() {
   const [pickedFile, setPickedFile] = useState<any>(null);
   const [parseFailed, setParseFailed] = useState(false);
 
+  // Existing resume (for edit)
+  const [existingResumeId, setExistingResumeId] = useState<string | null>(null);
+
   // Create form state
   const [formStep, setFormStep] = useState(1);
   const [fullName, setFullName] = useState('');
@@ -57,6 +60,49 @@ export default function ResumeSetup() {
   const [langEntries, setLangEntries] = useState<LangEntry[]>([]);
   const [certEntries, setCertEntries] = useState<CertEntry[]>([]);
   const [importingCerts, setImportingCerts] = useState(false);
+
+  // ── Pre-load existing created resume ──────────────────────────
+  useEffect(() => {
+    if (!user?._id) return;
+    axios.get(`${API_URL}/api/resume/${user._id}`).then(r => {
+      const existing = r.data;
+      if (!existing || existing.resume_type !== 'created') return;
+      const d = existing.resume_data || {};
+      setExistingResumeId(existing._id || existing.id);
+      setStep('create');
+      setFullName(d.full_name || '');
+      setEmail(d.email || user?.email || '');
+      setPhone(d.phone || '');
+      setLinkedin(d.linkedin || '');
+      setSkillsText((d.skills || []).join(', '));
+      setWorkEntries(
+        (d.work_experience || []).length > 0
+          ? d.work_experience.map((w: any) => ({
+              company: w.company || '',
+              role: w.role || '',
+              start_date: w.start_date || '',
+              end_date: w.end_date || '',
+              bullets: Array.isArray(w.bullets) ? w.bullets.join('\n') : (w.bullets || ''),
+            }))
+          : [{ ...EMPTY_WORK }]
+      );
+      setEduEntries(
+        (d.education || []).length > 0
+          ? d.education.map((e: any) => ({
+              institution: e.institution || '',
+              degree: e.degree || '',
+              field: e.field || '',
+              graduation_year: e.graduation_year || '',
+            }))
+          : [{ ...EMPTY_EDU }]
+      );
+      setLangEntries((d.languages || []).map((l: any) => ({ language: l.language || '', level: l.level || '' })));
+      setCertEntries((d.certifications || []).map((c: any) => ({
+        name: c.name || '', issuer: c.issuer || '', year: c.year || '',
+        url: c.url || '', is_mydemy: !!c.is_mydemy,
+      })));
+    }).catch(() => {/* no existing resume, stay at choice */});
+  }, [user?._id]);
 
   // ── Skip ──────────────────────────────────────────────────────
   const handleSkip = async () => {
@@ -123,7 +169,7 @@ export default function ResumeSetup() {
         name: c.course_title || c.cert_type || 'Mydemy Certificate',
         issuer: 'Mydemy',
         year: c.issue_year ? String(c.issue_year) : new Date(c.issued_at).getFullYear().toString(),
-        url: '',
+        url: c.verification_code ? `${API_URL}/api/certificates/verify/${c.verification_code}` : '',
         is_mydemy: true,
       }));
       // Merge — skip duplicates
@@ -137,7 +183,7 @@ export default function ResumeSetup() {
     }
   };
 
-  // ── Create resume ────────────────────────────────────────────
+  // ── Create / Update resume ────────────────────────────────────
   const handleCreate = async () => {
     if (!user?._id) return;
     if (!fullName.trim()) { Alert.alert('', 'กรุณากรอกชื่อ'); return; }
@@ -155,10 +201,18 @@ export default function ResumeSetup() {
       const languages = langEntries.filter(e => e.language).map(e => ({ language: e.language, level: e.level }));
       const certifications = certEntries.filter(e => e.name).map(e => ({ ...e }));
 
-      const res = await axios.post(`${API_URL}/api/resume/create`, {
+      const payload = {
         user_id: user._id, full_name: fullName, email, phone, linkedin, skills,
         work_experience, education, languages, certifications,
-      });
+      };
+
+      let res;
+      if (existingResumeId) {
+        // Update existing resume in-place
+        res = await axios.put(`${API_URL}/api/resume/created/${existingResumeId}`, payload);
+      } else {
+        res = await axios.post(`${API_URL}/api/resume/create`, payload);
+      }
       setResult(res.data);
       setStep('done');
     } catch (e: any) {

@@ -1633,6 +1633,8 @@ async def create_resume(body: ResumeCreateBody):
         "skills": body.skills,
         "work_experience": [e.model_dump() for e in body.work_experience],
         "education": [e.model_dump() for e in body.education],
+        "languages": [e.model_dump() for e in body.languages],
+        "certifications": [e.model_dump() for e in body.certifications],
     }
 
     row = {
@@ -1681,6 +1683,36 @@ async def delete_resume(resume_id: str):
             pass
     await supabase.table("user_resumes").delete().eq("id", resume_id).execute()
     return {"deleted": True}
+
+
+@api_router.put("/resume/created/{resume_id}")
+async def update_created_resume(resume_id: str, body: ResumeCreateBody):
+    """Update an existing template resume in-place."""
+    ats_score, skills = _score_template_resume(body)
+    resume_data = {
+        "full_name": body.full_name,
+        "email": body.email,
+        "phone": body.phone,
+        "linkedin": body.linkedin,
+        "skills": body.skills,
+        "work_experience": [e.model_dump() for e in body.work_experience],
+        "education": [e.model_dump() for e in body.education],
+        "languages": [e.model_dump() for e in body.languages],
+        "certifications": [e.model_dump() for e in body.certifications],
+    }
+    update_data = {
+        "resume_data": resume_data,
+        "ats_score": ats_score,
+        "parsed_skills": skills,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    await supabase.table("user_resumes").update(update_data).eq("id", resume_id).execute()
+    res = await supabase.table("user_resumes").select("*").eq("id", resume_id).limit(1).execute()
+    data = _one(res)
+    if not data:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    data["_id"] = data.get("id")
+    return data
 
 
 @api_router.post("/resume/skip")

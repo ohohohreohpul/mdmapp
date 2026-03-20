@@ -240,6 +240,7 @@ export default function ResumeScreen() {
 
   const handleDeleteResume = () => {
     if (!resume) return;
+    const rid = resume._id || (resume as any).id;
     Alert.alert('ลบ Resume', 'คุณต้องการลบ Resume นี้ใช่ไหม?', [
       { text: 'ยกเลิก', style: 'cancel' },
       {
@@ -247,10 +248,10 @@ export default function ResumeScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await axios.delete(`${API_URL}/api/resume/${resume._id}`);
+            await axios.delete(`${API_URL}/api/resume/${rid}`);
             setResume(null);
-          } catch {
-            Alert.alert('เกิดข้อผิดพลาด', 'ลบไม่สำเร็จ กรุณาลองใหม่');
+          } catch (e: any) {
+            Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
           }
         },
       },
@@ -270,6 +271,7 @@ export default function ResumeScreen() {
   };
 
   const handleDeleteCL = (cl: CoverLetter) => {
+    const clId = cl._id || (cl as any).id;
     Alert.alert('ลบ Cover Letter', `ต้องการลบ "${cl.title}" ใช่ไหม?`, [
       { text: 'ยกเลิก', style: 'cancel' },
       {
@@ -277,10 +279,10 @@ export default function ResumeScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await axios.delete(`${API_URL}/api/cover-letters/${cl._id}`);
-            setCoverLetters(prev => prev.filter(c => c._id !== cl._id));
-          } catch {
-            Alert.alert('เกิดข้อผิดพลาด', 'ลบไม่สำเร็จ กรุณาลองใหม่');
+            await axios.delete(`${API_URL}/api/cover-letters/${clId}`);
+            setCoverLetters(prev => prev.filter(c => (c._id || (c as any).id) !== clId));
+          } catch (e: any) {
+            Alert.alert('เกิดข้อผิดพลาด', e?.response?.data?.detail || 'ลบไม่สำเร็จ กรุณาลองใหม่');
           }
         },
       },
@@ -292,8 +294,9 @@ export default function ResumeScreen() {
     setSavingCL(true);
     try {
       if (editingCL) {
-        const r = await axios.put(`${API_URL}/api/cover-letters/${editingCL._id}`, data);
-        setCoverLetters(prev => prev.map(c => c._id === editingCL._id ? r.data : c));
+        const clId = editingCL._id || (editingCL as any).id;
+        const r = await axios.put(`${API_URL}/api/cover-letters/${clId}`, data);
+        setCoverLetters(prev => prev.map(c => (c._id || (c as any).id) === clId ? { ...r.data, _id: clId } : c));
       } else {
         const r = await axios.post(`${API_URL}/api/cover-letters`, { user_id: user._id, ...data });
         setCoverLetters(prev => [r.data, ...prev]);
@@ -642,7 +645,7 @@ const s = StyleSheet.create({
   },
   actionBtnOutlineText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
   actionBtnDanger: {
-    width: 40, height: 40,
+    width: 44, height: 44,
     borderRadius: 10, backgroundColor: '#FEE2E2',
     justifyContent: 'center', alignItems: 'center',
   },
@@ -696,7 +699,7 @@ const s = StyleSheet.create({
   clDate: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
   clActions: { flexDirection: 'row', gap: 4 },
   clBtn: {
-    width: 36, height: 36, borderRadius: 8,
+    width: 44, height: 44, borderRadius: 8,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center', alignItems: 'center',
   },
