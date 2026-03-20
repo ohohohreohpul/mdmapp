@@ -15,8 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../contexts/UserContext';
 import axios from 'axios';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 export default function Admin() {
@@ -24,10 +25,10 @@ export default function Admin() {
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
   const [loading, setLoading] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
+  const [courseCount, setCourseCount] = useState<number | null>(null);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
 
-  // Form states
+  // Settings form states
   const [aiProvider, setAiProvider] = useState('openai');
   const [openaiKey, setOpenaiKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -42,13 +43,21 @@ export default function Admin() {
       return;
     }
     loadSettings();
+    loadStats();
   }, [isAdmin]);
+
+  const loadStats = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/courses`);
+      setCourseCount(Array.isArray(response.data) ? response.data.length : 0);
+    } catch {
+      setCourseCount(0);
+    }
+  };
 
   const loadSettings = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/admin/settings`);
-      setSettings(response.data);
-      
       setAiProvider(response.data.ai_provider || 'openai');
       setOpenaiKey(response.data.openai_key || '');
       setGeminiKey(response.data.gemini_key || '');
@@ -56,8 +65,8 @@ export default function Admin() {
       setElevenlabsKey(response.data.elevenlabs_key || '');
       setBunnyApiKey(response.data.bunny_api_key || '');
       setBunnyLibraryId(response.data.bunny_library_id || '');
-    } catch (error) {
-      console.error('Error loading settings:', error);
+    } catch {
+      // silently fail — settings may not exist yet
     }
   };
 
@@ -73,143 +82,139 @@ export default function Admin() {
         bunny_api_key: bunnyApiKey || undefined,
         bunny_library_id: bunnyLibraryId || undefined,
       });
-      
       Alert.alert('สำเร็จ', 'บันทึกการตั้งค่าเรียบร้อยแล้ว');
       setShowApiKeysModal(false);
       loadSettings();
-    } catch (error) {
-      console.error('Error saving settings:', error);
+    } catch {
       Alert.alert('ผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้');
     } finally {
       setLoading(false);
     }
   };
 
-  const adminMenuItems = [
+  const menuCards = [
     {
       id: 'courses',
+      emoji: '📚',
       title: 'จัดการคอร์ส',
-      subtitle: 'สร้างและแก้ไขคอร์สเรียน',
-      icon: 'school',
+      description: 'เพิ่ม แก้ไข และจัดการคอร์สทั้งหมด',
       color: '#6366F1',
-      route: '/admin/courses',
+      bgColor: '#EEF2FF',
+      onPress: () => router.push('/admin/courses' as any),
     },
     {
       id: 'materials',
-      title: 'อัพโหลดเนื้อหา',
-      subtitle: 'เพิ่มเนื้อหาสำหรับสร้างแบบทดสอบ',
-      icon: 'cloud-upload',
+      emoji: '📄',
+      title: 'เนื้อหาบทเรียน',
+      description: 'อัพโหลดและจัดการเนื้อหาบทเรียน',
       color: '#10B981',
-      route: '/admin/materials',
+      bgColor: '#D1FAE5',
+      onPress: () => router.push('/admin/materials' as any),
     },
     {
-      id: 'quizzes',
-      title: 'สร้างแบบทดสอบด้วย AI',
-      subtitle: 'ใช้ AI สร้างข้อสอบจากเนื้อหา',
-      icon: 'sparkles',
+      id: 'quiz',
+      emoji: '🤖',
+      title: 'สร้างแบบทดสอบ',
+      description: 'สร้าง Quiz อัตโนมัติด้วย AI',
       color: '#F59E0B',
-      route: '/admin/quiz-generator',
+      bgColor: '#FEF3C7',
+      onPress: () => router.push('/admin/quiz-generator' as any),
     },
     {
-      id: 'users',
-      title: 'จัดการผู้ใช้',
-      subtitle: 'ดูข้อมูลและความคืบหน้าผู้เรียน',
-      icon: 'people',
-      color: '#EC4899',
-      route: '/admin/users',
+      id: 'settings',
+      emoji: '⚙️',
+      title: 'ตั้งค่าระบบ',
+      description: 'AI keys, ElevenLabs และการตั้งค่าอื่น ๆ',
+      color: COLORS.primary,
+      bgColor: '#fce7f3',
+      onPress: () => setShowApiKeysModal(true),
     },
   ];
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Admin Panel</Text>
+          <View style={styles.headerLeft}>
+            <Ionicons name="settings" size={24} color={COLORS.primary} />
+            <Text style={styles.headerTitle}>แผงควบคุม</Text>
           </View>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Settings Overview */}
-        <View style={styles.section}>
-          <View style={styles.settingsCard}>
-            <View style={styles.settingsHeader}>
-              <View>
-                <Text style={styles.settingsTitle}>การตั้งค่าระบบ</Text>
-                <Text style={styles.settingsSubtitle}>
-                  AI Provider: {aiProvider.toUpperCase()}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.configButton}
-                onPress={() => setShowApiKeysModal(true)}
-              >
-                <Ionicons name="settings" size={20} color="#FFFFFF" />
-                <Text style={styles.configButtonText}>ตั้งค่า</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.statusGrid}>
-              <View style={styles.statusItem}>
-                <Ionicons 
-                  name={openaiKey || geminiKey || claudeKey ? "checkmark-circle" : "close-circle"} 
-                  size={24} 
-                  color={openaiKey || geminiKey || claudeKey ? "#10B981" : "#EF4444"} 
-                />
-                <Text style={styles.statusText}>AI API</Text>
-              </View>
-              
-              <View style={styles.statusItem}>
-                <Ionicons 
-                  name={elevenlabsKey ? "checkmark-circle" : "close-circle"} 
-                  size={24} 
-                  color={elevenlabsKey ? "#10B981" : "#EF4444"} 
-                />
-                <Text style={styles.statusText}>ElevenLabs</Text>
-              </View>
-              
-              <View style={styles.statusItem}>
-                <Ionicons 
-                  name={bunnyApiKey ? "checkmark-circle" : "close-circle"} 
-                  size={24} 
-                  color={bunnyApiKey ? "#10B981" : "#EF4444"} 
-                />
-                <Text style={styles.statusText}>Bunny.net</Text>
-              </View>
-            </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {courseCount === null ? '...' : String(courseCount)}
+            </Text>
+            <Text style={styles.statLabel}>คอร์สทั้งหมด</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="sparkles" size={28} color="#F59E0B" />
+            <Text style={[styles.statLabel, { marginTop: 4 }]}>AI พร้อมใช้งาน</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: '#D1FAE5' }]}>
+            <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+            <Text style={[styles.statLabel, { marginTop: 4 }]}>ระบบปกติ</Text>
           </View>
         </View>
 
-        {/* Admin Menu */}
+        {/* Menu Cards */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>เมนูจัดการ</Text>
-          
-          {adminMenuItems.map((item) => (
+          {menuCards.map((card) => (
             <TouchableOpacity
-              key={item.id}
-              style={[styles.menuCard, { borderLeftColor: item.color }]}
-              onPress={() => router.push(item.route as any)}
+              key={card.id}
+              style={styles.menuCard}
+              onPress={card.onPress}
               activeOpacity={0.7}
             >
-              <View style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}>
-                <Ionicons name={item.icon as any} size={28} color={item.color} />
+              <View style={[styles.menuIconBox, { backgroundColor: card.bgColor }]}>
+                <Text style={styles.menuEmoji}>{card.emoji}</Text>
               </View>
-              <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+              <View style={styles.menuCardContent}>
+                <Text style={styles.menuCardTitle}>{card.title}</Text>
+                <Text style={styles.menuCardDesc}>{card.description}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
             </TouchableOpacity>
           ))}
+        </View>
+
+        {/* API Status */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>สถานะ API</Text>
+          <View style={styles.statusCard}>
+            <View style={styles.statusRow}>
+              <Ionicons
+                name={openaiKey || geminiKey || claudeKey ? 'checkmark-circle' : 'close-circle'}
+                size={20}
+                color={openaiKey || geminiKey || claudeKey ? COLORS.success : COLORS.error}
+              />
+              <Text style={styles.statusLabel}>AI Provider ({aiProvider.toUpperCase()})</Text>
+            </View>
+            <View style={styles.statusRow}>
+              <Ionicons
+                name={elevenlabsKey ? 'checkmark-circle' : 'close-circle'}
+                size={20}
+                color={elevenlabsKey ? COLORS.success : COLORS.error}
+              />
+              <Text style={styles.statusLabel}>ElevenLabs TTS</Text>
+            </View>
+            <View style={styles.statusRow}>
+              <Ionicons
+                name={bunnyApiKey ? 'checkmark-circle' : 'close-circle'}
+                size={20}
+                color={bunnyApiKey ? COLORS.success : COLORS.error}
+              />
+              <Text style={styles.statusLabel}>Bunny.net CDN</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
 
@@ -225,36 +230,31 @@ export default function Admin() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>ตั้งค่า API Keys</Text>
               <TouchableOpacity onPress={() => setShowApiKeysModal(false)}>
-                <Ionicons name="close" size={28} color="#6B7280" />
+                <Ionicons name="close" size={28} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* AI Provider Selection */}
               <Text style={styles.inputLabel}>AI Provider</Text>
               <View style={styles.providerButtons}>
-                {['openai', 'gemini', 'claude'].map((provider) => (
+                {['openai', 'gemini', 'claude'].map((p) => (
                   <TouchableOpacity
-                    key={provider}
-                    style={[
-                      styles.providerButton,
-                      aiProvider === provider && styles.providerButtonActive,
-                    ]}
-                    onPress={() => setAiProvider(provider)}
+                    key={p}
+                    style={[styles.providerButton, aiProvider === p && styles.providerButtonActive]}
+                    onPress={() => setAiProvider(p)}
                   >
                     <Text
                       style={[
                         styles.providerButtonText,
-                        aiProvider === provider && styles.providerButtonTextActive,
+                        aiProvider === p && styles.providerButtonTextActive,
                       ]}
                     >
-                      {provider.toUpperCase()}
+                      {p.toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {/* OpenAI Key */}
               <Text style={styles.inputLabel}>OpenAI API Key</Text>
               <TextInput
                 style={styles.input}
@@ -265,7 +265,6 @@ export default function Admin() {
                 autoCapitalize="none"
               />
 
-              {/* Gemini Key */}
               <Text style={styles.inputLabel}>Google Gemini API Key</Text>
               <TextInput
                 style={styles.input}
@@ -276,7 +275,6 @@ export default function Admin() {
                 autoCapitalize="none"
               />
 
-              {/* Claude Key */}
               <Text style={styles.inputLabel}>Anthropic Claude API Key</Text>
               <TextInput
                 style={styles.input}
@@ -287,7 +285,6 @@ export default function Admin() {
                 autoCapitalize="none"
               />
 
-              {/* ElevenLabs Key */}
               <Text style={styles.inputLabel}>ElevenLabs API Key</Text>
               <TextInput
                 style={styles.input}
@@ -298,7 +295,6 @@ export default function Admin() {
                 autoCapitalize="none"
               />
 
-              {/* Bunny.net */}
               <Text style={styles.inputLabel}>Bunny.net API Key</Text>
               <TextInput
                 style={styles.input}
@@ -340,218 +336,206 @@ export default function Admin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.surface,
   },
   headerSafe: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 8,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  headerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
+    gap: SPACING.sm,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.full,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
   },
+  statsRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#EEF2FF',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 72,
+    ...SHADOWS.small,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#6366F1',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+  },
   section: {
-    marginTop: 16,
-    paddingHorizontal: 16,
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  settingsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  settingsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  settingsTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  settingsSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  configButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  configButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statusGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  statusItem: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusText: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
   },
   menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...SHADOWS.small,
   },
-  menuIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  menuIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: RADIUS.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.md,
   },
-  menuContent: {
+  menuEmoji: {
+    fontSize: 26,
+  },
+  menuCardContent: {
     flex: 1,
   },
-  menuTitle: {
-    fontSize: 16,
+  menuCardTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    color: COLORS.textPrimary,
+    marginBottom: 3,
   },
-  menuSubtitle: {
+  menuCardDesc: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  statusCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    ...SHADOWS.small,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  statusLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
     maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   modalBody: {
-    padding: 20,
+    padding: SPACING.lg,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,
   },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     padding: 12,
     fontSize: 15,
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   providerButtons: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   providerButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: '#D1D5DB',
     alignItems: 'center',
   },
   providerButtonActive: {
-    borderColor: '#6366F1',
-    backgroundColor: '#EEF2FF',
+    borderColor: COLORS.primary,
+    backgroundColor: '#fce7f3',
   },
   providerButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   providerButtonTextActive: {
-    color: '#6366F1',
+    color: COLORS.primary,
   },
   saveButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
   saveButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: COLORS.textTertiary,
   },
   saveButtonText: {
     color: '#FFFFFF',

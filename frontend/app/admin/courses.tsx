@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 export default function AdminCourses() {
   const router = useRouter();
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -29,7 +31,7 @@ export default function AdminCourses() {
   const [description, setDescription] = useState('');
   const [careerPath, setCareerPath] = useState('UX Design');
 
-  const careerPaths = ['UX Design', 'Data Analysis', 'Digital Marketing', 'Project Management'];
+  const careerPaths = ['UX Design', 'Data Analysis', 'Digital Marketing', 'Project Management', 'Learning Designer', 'General'];
 
   useEffect(() => {
     loadCourses();
@@ -40,8 +42,7 @@ export default function AdminCourses() {
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/courses`);
       setCourses(response.data);
-    } catch (error) {
-      console.error('Error loading courses:', error);
+    } catch {
       Alert.alert('ผิดพลาด', 'ไม่สามารถโหลดคอร์สได้');
     } finally {
       setLoading(false);
@@ -71,7 +72,6 @@ export default function AdminCourses() {
       Alert.alert('ผิดพลาด', 'กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
-
     try {
       if (modalMode === 'create') {
         await axios.post(`${API_URL}/api/courses`, {
@@ -89,8 +89,7 @@ export default function AdminCourses() {
       }
       setShowModal(false);
       loadCourses();
-    } catch (error) {
-      console.error('Error saving course:', error);
+    } catch {
       Alert.alert('ผิดพลาด', 'ไม่สามารถบันทึกคอร์สได้');
     }
   };
@@ -101,62 +100,55 @@ export default function AdminCourses() {
         is_published: !course.is_published,
       });
       loadCourses();
-    } catch (error) {
-      console.error('Error toggling publish:', error);
+    } catch {
       Alert.alert('ผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะได้');
     }
   };
 
-  const deleteCourse = async (courseId: string) => {
-    Alert.alert(
-      'ยืนยันการลบ',
-      'คุณแน่ใจหรือไม่ที่จะลบคอร์สนี้?',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        {
-          text: 'ลบ',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await axios.delete(`${API_URL}/api/courses/${courseId}`);
-              Alert.alert('สำเร็จ', 'ลบคอร์สเรียบร้อยแล้ว');
-              loadCourses();
-            } catch (error) {
-              console.error('Error deleting course:', error);
-              Alert.alert('ผิดพลาด', 'ไม่สามารถลบคอร์สได้');
-            }
-          },
+  const deleteCourse = (courseId: string) => {
+    Alert.alert('ยืนยันการลบ', 'คุณแน่ใจหรือไม่ที่จะลบคอร์สนี้?', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ลบ',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await axios.delete(`${API_URL}/api/courses/${courseId}`);
+            Alert.alert('สำเร็จ', 'ลบคอร์สเรียบร้อยแล้ว');
+            loadCourses();
+          } catch {
+            Alert.alert('ผิดพลาด', 'ไม่สามารถลบคอร์สได้');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>จัดการคอร์ส</Text>
+          <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6366F1" />
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
         ) : courses.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View style={styles.centered}>
             <Ionicons name="school" size={64} color="#D1D5DB" />
             <Text style={styles.emptyText}>ยังไม่มีคอร์ส</Text>
-            <TouchableOpacity style={styles.createButton} onPress={openCreateModal}>
-              <Text style={styles.createButtonText}>สร้างคอร์สแรก</Text>
+            <TouchableOpacity style={styles.createBtn} onPress={openCreateModal}>
+              <Text style={styles.createBtnText}>สร้างคอร์สแรก</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -168,8 +160,8 @@ export default function AdminCourses() {
                   <Text style={styles.courseSubtitle}>{course.career_path}</Text>
                   <View style={styles.courseMeta}>
                     <View style={styles.metaItem}>
-                      <Ionicons name="book" size={14} color="#6B7280" />
-                      <Text style={styles.metaText}>{course.total_lessons} บทเรียน</Text>
+                      <Ionicons name="book" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.metaText}>{course.total_lessons ?? 0} บทเรียน</Text>
                     </View>
                     {course.is_published && (
                       <View style={styles.publishedBadge}>
@@ -183,14 +175,19 @@ export default function AdminCourses() {
               <View style={styles.courseActions}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => router.push(`/admin/course-modules?id=${course._id}`)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/admin/course-modules' as any,
+                      params: { id: course._id, title: course.title },
+                    })
+                  }
                 >
                   <Ionicons name="list" size={20} color="#6366F1" />
                   <Text style={styles.actionText}>โมดูล</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={() => openEditModal(course)}>
-                  <Ionicons name="create" size={20} color="#10B981" />
+                  <Ionicons name="create" size={20} color={COLORS.success} />
                   <Text style={styles.actionText}>แก้ไข</Text>
                 </TouchableOpacity>
 
@@ -198,13 +195,13 @@ export default function AdminCourses() {
                   <Ionicons
                     name={course.is_published ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#F59E0B"
+                    color={COLORS.warning}
                   />
                   <Text style={styles.actionText}>{course.is_published ? 'ซ่อน' : 'เผยแพร่'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={() => deleteCourse(course._id)}>
-                  <Ionicons name="trash" size={20} color="#EF4444" />
+                  <Ionicons name="trash" size={20} color={COLORS.error} />
                   <Text style={styles.actionText}>ลบ</Text>
                 </TouchableOpacity>
               </View>
@@ -213,8 +210,7 @@ export default function AdminCourses() {
         )}
       </ScrollView>
 
-      {/* Create/Edit Modal */}
-      <Modal visible={showModal} animationType="slide" transparent={true}>
+      <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -222,7 +218,7 @@ export default function AdminCourses() {
                 {modalMode === 'create' ? 'สร้างคอร์สใหม่' : 'แก้ไขคอร์ส'}
               </Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={28} color="#6B7280" />
+                <Ionicons name="close" size={28} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -284,15 +280,12 @@ export default function AdminCourses() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  headerSafe: { backgroundColor: COLORS.background },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 56,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -302,115 +295,76 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#6366F1',
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  loadingContainer: {
+  content: { flex: 1, padding: SPACING.md },
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: 80,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 16,
+    color: COLORS.textPrimary,
+    marginTop: SPACING.md,
   },
-  createButton: {
-    marginTop: 24,
+  createBtn: {
+    marginTop: SPACING.lg,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#6366F1',
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.sm,
   },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  createBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   courseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
     borderLeftWidth: 4,
     borderLeftColor: '#6366F1',
+    ...SHADOWS.small,
   },
-  courseHeader: {
-    marginBottom: 12,
-  },
-  courseInfo: {
-    flex: 1,
-  },
+  courseHeader: { marginBottom: SPACING.sm },
+  courseInfo: { flex: 1 },
   courseTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
-  courseSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  courseMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
+  courseSubtitle: { fontSize: 14, color: COLORS.textSecondary, marginBottom: SPACING.sm },
+  courseMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 13, color: COLORS.textSecondary },
   publishedBadge: {
     backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: RADIUS.xs,
   },
-  publishedText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
-  },
+  publishedText: { fontSize: 12, color: COLORS.success, fontWeight: '500' },
   courseActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    paddingTop: SPACING.sm,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
@@ -420,92 +374,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm,
   },
-  actionText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
+  actionText: { fontSize: 13, fontWeight: '500', color: COLORS.textSecondary },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
     maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  modalBody: {
-    padding: 20,
-  },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
+  modalBody: { padding: SPACING.lg },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,
   },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     padding: 12,
     fontSize: 15,
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  pathButtons: {
-    gap: 8,
-  },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  pathButtons: { gap: SPACING.sm },
   pathButton: {
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: '#D1D5DB',
     alignItems: 'center',
   },
-  pathButtonActive: {
-    borderColor: '#6366F1',
-    backgroundColor: '#EEF2FF',
-  },
-  pathButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  pathButtonTextActive: {
-    color: '#6366F1',
-  },
+  pathButtonActive: { borderColor: COLORS.primary, backgroundColor: '#fce7f3' },
+  pathButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  pathButtonTextActive: { color: COLORS.primary },
   saveButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });

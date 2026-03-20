@@ -9,202 +9,295 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+interface Course {
+  _id: string;
+  title: string;
+  career_path?: string;
+}
+
+interface Material {
+  _id: string;
+  title: string;
+  content: string;
+  file_type: string;
+  course_id: string;
+}
+
+const FILE_TYPES = [
+  { key: 'text', label: 'ข้อความ', emoji: '📝' },
+  { key: 'transcript', label: 'Transcript', emoji: '🎙️' },
+  { key: 'pdf_extracted', label: 'PDF Extract', emoji: '📄' },
+];
 
 export default function AdminMaterials() {
   const router = useRouter();
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  // Form states
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [fileType, setFileType] = useState('text');
+  // Upload form
+  const [formCourseId, setFormCourseId] = useState('');
+  const [formTitle, setFormTitle] = useState('');
+  const [formContent, setFormContent] = useState('');
+  const [formFileType, setFormFileType] = useState('text');
 
   useEffect(() => {
-    loadData();
+    loadCourses();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (selectedCourseId) {
+      loadMaterials(selectedCourseId);
+    } else {
+      setMaterials([]);
+    }
+  }, [selectedCourseId]);
+
+  const loadCourses = async () => {
     try {
       setLoading(true);
-      const coursesRes = await axios.get(`${API_URL}/api/courses`);
-      setCourses(coursesRes.data);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      Alert.alert('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้');
+      const res = await axios.get(`${API_URL}/api/courses`);
+      const data: Course[] = res.data || [];
+      setCourses(data);
+      if (data.length > 0) {
+        setSelectedCourseId(data[0]._id);
+      }
+    } catch {
+      Alert.alert('ผิดพลาด', 'ไม่สามารถโหลดคอร์สได้');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadMaterials = async (courseId: string) => {
+    try {
+      setLoadingMaterials(true);
+      const res = await axios.get(`${API_URL}/api/materials/course/${courseId}`);
+      setMaterials(res.data || []);
+    } catch {
+      setMaterials([]);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
   const openUploadModal = () => {
-    setTitle('');
-    setContent('');
-    setSelectedCourse('');
-    setFileType('text');
+    setFormCourseId(selectedCourseId || (courses[0]?._id ?? ''));
+    setFormTitle('');
+    setFormContent('');
+    setFormFileType('text');
     setShowModal(true);
   };
 
   const uploadMaterial = async () => {
-    if (!selectedCourse || !title || !content) {
+    if (!formCourseId || !formTitle.trim() || !formContent.trim()) {
       Alert.alert('ผิดพลาด', 'กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
-
     try {
+      setUploading(true);
       await axios.post(`${API_URL}/api/materials`, {
-        course_id: selectedCourse,
-        title,
-        content,
-        file_type: fileType,
+        course_id: formCourseId,
+        title: formTitle.trim(),
+        content: formContent.trim(),
+        file_type: formFileType,
       });
-
-      Alert.alert('สำเร็จ', 'อัปโหลดเนื้อหาเรียบร้อยแล้ว');
+      Alert.alert('สำเร็จ', 'อัพโหลดเนื้อหาเรียบร้อยแล้ว');
       setShowModal(false);
-      loadData();
-    } catch (error) {
-      console.error('Error uploading material:', error);
-      Alert.alert('ผิดพลาด', 'ไม่สามารถอัปโหลดเนื้อหาได้');
+      if (formCourseId === selectedCourseId) {
+        loadMaterials(selectedCourseId);
+      }
+    } catch {
+      Alert.alert('ผิดพลาด', 'ไม่สามารถอัพโหลดเนื้อหาได้');
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const deleteMaterial = (matId: string) => {
+    Alert.alert('ยืนยันการลบ', 'ลบเนื้อหานี้?', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ลบ',
+        style: 'destructive',
+        onPress: () => {
+          // Remove locally (no delete endpoint)
+          setMaterials((prev) => prev.filter((m) => m._id !== matId));
+        },
+      },
+    ]);
+  };
+
+  const fileTypeBadge = (type: string) => {
+    const ft = FILE_TYPES.find((f) => f.key === type);
+    return ft ? `${ft.emoji} ${ft.label}` : type;
+  };
+
+  const fileTypeBadgeColor = (type: string) => {
+    if (type === 'text') return '#3B82F6';
+    if (type === 'transcript') return '#8B5CF6';
+    return '#F59E0B';
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>อัปโหลดเนื้อหา</Text>
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>เนื้อหาบทเรียน</Text>
+          <TouchableOpacity style={styles.addButton} onPress={openUploadModal}>
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>อัพโหลด</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={openUploadModal}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={48} color="#6366F1" />
-          <Text style={styles.infoTitle}>อัปโหลดเนื้อหาสำหรับสร้าง Quiz</Text>
-          <Text style={styles.infoText}>
-            อัปโหลดเนื้อหาของคอร์ส บทความ หรือสรุปเนื้อหา
-            จากนั้น AI จะสามารถสร้างข้อสอบที่เกี่ยวข้องได้อัตโนมัติ
-          </Text>
-        </View>
-
-        {/* Instructions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>วิธีการใช้งาน</Text>
-          
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>1</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>อัปโหลดเนื้อหา</Text>
-              <Text style={styles.stepText}>
-                กดปุ่ม + ด้านบนขวา เลือกคอร์ส และวางเนื้อหา
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>2</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>ไปสร้าง Quiz</Text>
-              <Text style={styles.stepText}>
-                ไปที่เมนู "สร้างแบบทดสอบด้วย AI" เลือกเนื้อหาที่อัปโหลด
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.stepCard}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>3</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>AI สร้างข้อสอบ</Text>
-              <Text style={styles.stepText}>
-                AI จะวิเคราะห์เนื้อหาและสร้างข้อสอบที่เหมาะสม
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Course Sections */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>เนื้อหาที่อัปโหลด</Text>
-          
-          {loading ? (
-            <ActivityIndicator size="large" color="#6366F1" />
-          ) : courses.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="folder-open" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>สร้างคอร์สก่อนเพื่ออัปโหลดเนื้อหา</Text>
-            </View>
-          ) : (
-            courses.map((course: any) => (
+      {/* Course Filter Pills */}
+      {!loading && courses.length > 0 && (
+        <View style={styles.pillsWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillsContent}
+          >
+            {courses.map((course) => (
               <TouchableOpacity
                 key={course._id}
-                style={styles.courseCard}
-                onPress={() => {
-                  Alert.alert('ข้อมูล', `เนื้อหาสำหรับ: ${course.title}`);
-                }}
+                style={[
+                  styles.pill,
+                  selectedCourseId === course._id && styles.pillActive,
+                ]}
+                onPress={() => setSelectedCourseId(course._id)}
                 activeOpacity={0.7}
               >
-                <View style={styles.courseIcon}>
-                  <Ionicons name="document-text" size={24} color="#6366F1" />
-                </View>
-                <View style={styles.courseInfo}>
-                  <Text style={styles.courseTitle}>{course.title}</Text>
-                  <Text style={styles.coursePath}>{course.career_path}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+                <Text
+                  style={[
+                    styles.pillText,
+                    selectedCourseId === course._id && styles.pillTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {course.title}
+                </Text>
               </TouchableOpacity>
-            ))
-          )}
+            ))}
+          </ScrollView>
         </View>
+      )}
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : courses.length === 0 ? (
+          <View style={styles.centered}>
+            <Ionicons name="school" size={56} color="#D1D5DB" />
+            <Text style={styles.emptyText}>สร้างคอร์สก่อนเพื่ออัพโหลดเนื้อหา</Text>
+          </View>
+        ) : loadingMaterials ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : materials.length === 0 ? (
+          <View style={styles.centered}>
+            <Ionicons name="document-text" size={56} color="#D1D5DB" />
+            <Text style={styles.emptyText}>ยังไม่มีเนื้อหาสำหรับคอร์สนี้</Text>
+            <TouchableOpacity style={styles.uploadBtn} onPress={openUploadModal}>
+              <Ionicons name="cloud-upload" size={18} color="#FFFFFF" />
+              <Text style={styles.uploadBtnText}>อัพโหลดเนื้อหาแรก</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          materials.map((mat) => {
+            const course = courses.find((c) => c._id === mat.course_id);
+            return (
+              <View key={mat._id} style={styles.materialCard}>
+                <View style={styles.materialHeader}>
+                  <View style={styles.materialMeta}>
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        { backgroundColor: fileTypeBadgeColor(mat.file_type) + '20' },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.typeBadgeText,
+                          { color: fileTypeBadgeColor(mat.file_type) },
+                        ]}
+                      >
+                        {fileTypeBadge(mat.file_type)}
+                      </Text>
+                    </View>
+                    {course && (
+                      <Text style={styles.courseName} numberOfLines={1}>
+                        {course.title}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity onPress={() => deleteMaterial(mat._id)} style={styles.deleteBtn}>
+                    <Ionicons name="trash-outline" size={18} color={COLORS.error} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.materialTitle}>{mat.title}</Text>
+
+                {mat.content ? (
+                  <Text style={styles.materialPreview} numberOfLines={3}>
+                    {mat.content.slice(0, 150)}
+                    {mat.content.length > 150 ? '...' : ''}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })
+        )}
+        <View style={{ height: SPACING.xl }} />
       </ScrollView>
 
       {/* Upload Modal */}
-      <Modal visible={showModal} animationType="slide" transparent={true}>
+      <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>อัปโหลดเนื้อหา</Text>
+              <Text style={styles.modalTitle}>อัพโหลดเนื้อหา</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={28} color="#6B7280" />
+                <Ionicons name="close" size={28} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>เลือกคอร์ส</Text>
+              <Text style={styles.inputLabel}>เลือกคอร์ส *</Text>
               <View style={styles.pickerContainer}>
-                {courses.map((course: any) => (
+                {courses.map((course) => (
                   <TouchableOpacity
                     key={course._id}
                     style={[
                       styles.pickerItem,
-                      selectedCourse === course._id && styles.pickerItemActive,
+                      formCourseId === course._id && styles.pickerItemActive,
                     ]}
-                    onPress={() => setSelectedCourse(course._id)}
+                    onPress={() => setFormCourseId(course._id)}
                   >
                     <Text
                       style={[
                         styles.pickerText,
-                        selectedCourse === course._id && styles.pickerTextActive,
+                        formCourseId === course._id && styles.pickerTextActive,
                       ]}
                     >
                       {course.title}
@@ -213,50 +306,61 @@ export default function AdminMaterials() {
                 ))}
               </View>
 
-              <Text style={styles.inputLabel}>ชื่อเรื่อง</Text>
+              <Text style={styles.inputLabel}>ชื่อเรื่อง *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="เช่น: บทที่ 1 - การเริ่มต้นกับ UX Design"
-                value={title}
-                onChangeText={setTitle}
+                placeholder="เช่น: บทที่ 1 – แนะนำ UX Design"
+                value={formTitle}
+                onChangeText={setFormTitle}
               />
 
-              <Text style={styles.inputLabel}>เนื้อหา</Text>
+              <Text style={styles.inputLabel}>เนื้อหา *</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="วางเนื้อหาของบทเรียน หรือสรุปเนื้อหา..."
-                value={content}
-                onChangeText={setContent}
+                value={formContent}
+                onChangeText={setFormContent}
                 multiline
                 numberOfLines={10}
               />
 
               <Text style={styles.inputLabel}>ประเภทไฟล์</Text>
               <View style={styles.typeButtons}>
-                {['text', 'transcript', 'pdf_extracted'].map((type) => (
+                {FILE_TYPES.map((ft) => (
                   <TouchableOpacity
-                    key={type}
+                    key={ft.key}
                     style={[
                       styles.typeButton,
-                      fileType === type && styles.typeButtonActive,
+                      formFileType === ft.key && styles.typeButtonActive,
                     ]}
-                    onPress={() => setFileType(type)}
+                    onPress={() => setFormFileType(ft.key)}
                   >
+                    <Text style={styles.typeEmoji}>{ft.emoji}</Text>
                     <Text
                       style={[
                         styles.typeButtonText,
-                        fileType === type && styles.typeButtonTextActive,
+                        formFileType === ft.key && styles.typeButtonTextActive,
                       ]}
                     >
-                      {type === 'text' ? 'ข้อความ' : type === 'transcript' ? 'ทรานสคริปต์' : 'PDF'}
+                      {ft.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <TouchableOpacity style={styles.uploadButton} onPress={uploadMaterial}>
-                <Ionicons name="cloud-upload" size={20} color="#FFFFFF" />
-                <Text style={styles.uploadButtonText}>อัปโหลดเนื้อหา</Text>
+              <TouchableOpacity
+                style={[styles.uploadButton, uploading && styles.uploadButtonDisabled]}
+                onPress={uploadMaterial}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload" size={20} color="#FFFFFF" />
+                    <Text style={styles.uploadButtonText}>อัพโหลดเนื้อหา</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -267,260 +371,218 @@ export default function AdminMaterials() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  headerSafe: { backgroundColor: COLORS.background },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 56,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.full,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  infoCard: {
-    backgroundColor: '#EEF2FF',
-    margin: 16,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  stepCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  stepNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 8,
+    borderRadius: RADIUS.sm,
+    gap: 4,
   },
-  stepNumberText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  addButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  pillsWrapper: {
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  stepContent: {
-    flex: 1,
+  pillsContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
   },
-  stepTitle: {
-    fontSize: 15,
+  pill: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    maxWidth: 160,
+  },
+  pillActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#fce7f3',
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  pillTextActive: {
+    color: COLORS.primary,
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
   },
-  stepText: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  emptyState: {
+  content: { flex: 1, padding: SPACING.md },
+  centered: {
     alignItems: 'center',
-    paddingVertical: 48,
+    justifyContent: 'center',
+    paddingTop: 80,
   },
   emptyText: {
     fontSize: 16,
-    color: '#6B7280',
-    marginTop: 16,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
     textAlign: 'center',
   },
-  courseCard: {
+  uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 12,
+    borderRadius: RADIUS.sm,
+    marginTop: SPACING.lg,
   },
-  courseIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center',
+  uploadBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  materialCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    ...SHADOWS.small,
+  },
+  materialHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
   },
-  courseInfo: {
+  materialMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
     flex: 1,
   },
-  courseTitle: {
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  courseName: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  materialTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
   },
-  coursePath: {
+  materialPreview: {
     fontSize: 13,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
+    lineHeight: 19,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    maxHeight: '92%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  modalBody: {
-    padding: 20,
-  },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
+  modalBody: { padding: SPACING.lg },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.md,
   },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
     padding: 12,
     fontSize: 15,
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
-  textArea: {
-    minHeight: 150,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    gap: 8,
-  },
+  textArea: { minHeight: 150, textAlignVertical: 'top' },
+  pickerContainer: { gap: SPACING.sm },
   pickerItem: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
     borderColor: '#D1D5DB',
   },
-  pickerItemActive: {
-    borderColor: '#6366F1',
-    backgroundColor: '#EEF2FF',
-  },
-  pickerText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  pickerTextActive: {
-    color: '#6366F1',
-    fontWeight: '600',
-  },
-  typeButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  pickerItemActive: { borderColor: COLORS.primary, backgroundColor: '#fce7f3' },
+  pickerText: { fontSize: 14, color: COLORS.textSecondary },
+  pickerTextActive: { color: COLORS.primary, fontWeight: '600' },
+  typeButtons: { flexDirection: 'row', gap: SPACING.sm },
   typeButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
     alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    gap: 4,
   },
-  typeButtonActive: {
-    borderColor: '#6366F1',
-    backgroundColor: '#EEF2FF',
-  },
-  typeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  typeButtonTextActive: {
-    color: '#6366F1',
-  },
+  typeButtonActive: { borderColor: COLORS.primary, backgroundColor: '#fce7f3' },
+  typeEmoji: { fontSize: 18 },
+  typeButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  typeButtonTextActive: { color: COLORS.primary },
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#6366F1',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 24,
-    marginBottom: 8,
+    borderRadius: RADIUS.md,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
-  uploadButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  uploadButtonDisabled: { backgroundColor: COLORS.textTertiary },
+  uploadButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });

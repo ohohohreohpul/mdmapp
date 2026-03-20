@@ -7,366 +7,671 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+
+interface Course {
+  _id: string;
+  title: string;
+  career_path?: string;
+}
+
+interface Material {
+  _id: string;
+  title: string;
+  content: string;
+  file_type: string;
+}
+
+interface GeneratedQuestion {
+  question: string;
+  choices?: string[];
+  correct_answer?: string;
+}
+
+const QUESTION_COUNTS = [5, 10, 15, 20];
+const QUIZ_TYPES = [
+  { key: 'lesson_quiz', label: 'แบบทดสอบบทเรียน' },
+  { key: 'final_exam', label: 'ข้อสอบปลายภาค' },
+];
 
 export default function QuizGenerator() {
   const router = useRouter();
-  const [courses, setCourses] = useState([]);
-  const [materials, setMaterials] = useState<{[key: string]: any[]}>({});
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+
+  // Generation modal
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [numQuestions, setNumQuestions] = useState(10);
+  const [quizType, setQuizType] = useState<'lesson_quiz' | 'final_exam'>('lesson_quiz');
   const [generating, setGenerating] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
+
+  // Result state
+  const [generatedResult, setGeneratedResult] = useState<{
+    quiz_id?: string;
+    question_count?: number;
+    questions?: GeneratedQuestion[];
+    message?: string;
+  } | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadCourses();
   }, []);
 
-  const loadData = async () => {
+  const loadCourses = async () => {
     try {
       setLoading(true);
-      const coursesRes = await axios.get(`${API_URL}/api/courses`);
-      setCourses(coursesRes.data);
-
-      // Load materials for each course
-      const materialsData: {[key: string]: any[]} = {};
-      for (const course of coursesRes.data) {
-        try {
-          const materialsRes = await axios.get(`${API_URL}/api/materials/course/${course._id}`);
-          materialsData[course._id] = materialsRes.data;
-        } catch (err) {
-          materialsData[course._id] = [];
-        }
-      }
-      setMaterials(materialsData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      Alert.alert('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้');
+      const res = await axios.get(`${API_URL}/api/courses`);
+      setCourses(res.data || []);
+    } catch {
+      Alert.alert('ผิดพลาด', 'ไม่สามารถโหลดคอร์สได้');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateQuiz = async (materialId: string, materialTitle: string) => {
-    Alert.alert(
-      'สร้างแบบทดสอบ',
-      `คุณต้องการใช้ AI สร้างข้อสอบจาก\n"${materialTitle}"\n\nจำนวนข้อสอบที่ต้องการ:`,
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        {
-          text: '5 ข้อ',
-          onPress: () => performGeneration(materialId, 5),
-        },
-        {
-          text: '10 ข้อ',
-          onPress: () => performGeneration(materialId, 10),
-        },
-        {
-          text: '15 ข้อ',
-          onPress: () => performGeneration(materialId, 15),
-        },
-      ]
-    );
-  };
-
-  const performGeneration = async (materialId: string, numQuestions: number) => {
+  const selectCourse = async (course: Course) => {
+    setSelectedCourse(course);
+    setSelectedMaterial(null);
+    setGeneratedResult(null);
+    setLoadingMaterials(true);
     try {
-      setGenerating(true);
-      setSelectedMaterial(materialId);
-
-      const response = await axios.post(
-        `${API_URL}/api/quizzes/generate?material_id=${materialId}&num_questions=${numQuestions}`
-      );
-
-      Alert.alert(
-        'การสร้างข้อสอบ',
-        response.data.message || 'การสร้างข้อสอบด้วย AI จะถูกพัฒนาในเวอร์ชั่นถัดไป'
-      );
-    } catch (error) {
-      console.error('Error generating quiz:', error);
-      Alert.alert('ผิดพลาด', 'ไม่สามารถสร้างข้อสอบได้');
+      const res = await axios.get(`${API_URL}/api/materials/course/${course._id}`);
+      setMaterials(res.data || []);
+    } catch {
+      setMaterials([]);
     } finally {
-      setGenerating(false);
-      setSelectedMaterial(null);
+      setLoadingMaterials(false);
     }
   };
 
+  const openGenerationModal = (material: Material) => {
+    setSelectedMaterial(material);
+    setNumQuestions(10);
+    setQuizType('lesson_quiz');
+    setGeneratedResult(null);
+    setShowGenModal(true);
+  };
+
+  const generateQuiz = async () => {
+    if (!selectedMaterial) return;
+    try {
+      setGenerating(true);
+      setGeneratedResult(null);
+      const res = await axios.post(`${API_URL}/api/quizzes/generate`, {
+        material_id: selectedMaterial._id,
+        num_questions: numQuestions,
+        quiz_type: quizType,
+      });
+      setGeneratedResult(res.data);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail || err?.response?.data?.message || 'ไม่สามารถสร้างแบบทดสอบได้';
+      Alert.alert('ผิดพลาด', msg);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const fileTypeLabel = (type: string) => {
+    if (type === 'text') return '📝 ข้อความ';
+    if (type === 'transcript') return '🎙️ Transcript';
+    return '📄 PDF';
+  };
+
+  const previewText = (content: string) =>
+    content ? content.slice(0, 120) + (content.length > 120 ? '...' : '') : '';
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>AI Quiz Generator</Text>
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>สร้างแบบทดสอบ AI</Text>
+          <View style={{ width: 36 }} />
         </View>
-        <View style={{ width: 40 }} />
-      </View>
+      </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Ionicons name="sparkles" size={48} color="#F59E0B" />
-          <Text style={styles.infoTitle}>สร้างข้อสอบด้วย AI</Text>
-          <Text style={styles.infoText}>
-            เลือกเนื้อหาจากด้านล่าง แล้ว AI จะสร้างข้อสอบ
-            ที่เหมาะสมพร้อมรูปภาพประกอบ (ถ้ามี)
-          </Text>
+        {/* Step 1: Select Course */}
+        <View style={styles.stepSection}>
+          <View style={styles.stepHeader}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>1</Text>
+            </View>
+            <Text style={styles.stepTitle}>เลือกคอร์ส</Text>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.lg }} />
+          ) : courses.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="school" size={40} color="#D1D5DB" />
+              <Text style={styles.emptyText}>สร้างคอร์สและอัพโหลดเนื้อหาก่อน</Text>
+            </View>
+          ) : (
+            courses.map((course) => (
+              <TouchableOpacity
+                key={course._id}
+                style={[
+                  styles.courseCard,
+                  selectedCourse?._id === course._id && styles.courseCardActive,
+                ]}
+                onPress={() => selectCourse(course)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.courseIcon}>
+                  <Ionicons
+                    name="school"
+                    size={22}
+                    color={selectedCourse?._id === course._id ? COLORS.primary : COLORS.textSecondary}
+                  />
+                </View>
+                <View style={styles.courseInfo}>
+                  <Text
+                    style={[
+                      styles.courseName,
+                      selectedCourse?._id === course._id && styles.courseNameActive,
+                    ]}
+                  >
+                    {course.title}
+                  </Text>
+                  {course.career_path ? (
+                    <Text style={styles.careerPath}>{course.career_path}</Text>
+                  ) : null}
+                </View>
+                {selectedCourse?._id === course._id && (
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6366F1" />
-          </View>
-        ) : courses.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="school" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyText}>สร้างคอร์สและอัปโหลดเนื้อหาก่อน</Text>
-          </View>
-        ) : (
-          courses.map((course: any) => {
-            const courseMaterials = materials[course._id] || [];
-            return (
-              <View key={course._id} style={styles.courseSection}>
-                <View style={styles.courseSectionHeader}>
-                  <View style={styles.courseIcon}>
-                    <Ionicons name="school" size={24} color="#6366F1" />
+        {/* Step 2: Select Material */}
+        {selectedCourse && (
+          <View style={styles.stepSection}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepBadge}>
+                <Text style={styles.stepBadgeText}>2</Text>
+              </View>
+              <Text style={styles.stepTitle}>เลือกเนื้อหา</Text>
+            </View>
+
+            {loadingMaterials ? (
+              <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: SPACING.md }} />
+            ) : materials.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="document-text" size={40} color="#D1D5DB" />
+                <Text style={styles.emptyText}>ยังไม่มีเนื้อหาสำหรับคอร์สนี้</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/admin/materials' as any)}
+                  style={styles.linkBtn}
+                >
+                  <Text style={styles.linkBtnText}>ไปอัพโหลดเนื้อหา</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              materials.map((mat) => (
+                <TouchableOpacity
+                  key={mat._id}
+                  style={styles.materialCard}
+                  onPress={() => openGenerationModal(mat)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.materialInfo}>
+                    <Text style={styles.materialTitle}>{mat.title}</Text>
+                    <Text style={styles.fileTypeLbl}>{fileTypeLabel(mat.file_type)}</Text>
+                    {mat.content ? (
+                      <Text style={styles.materialPreview} numberOfLines={2}>
+                        {previewText(mat.content)}
+                      </Text>
+                    ) : null}
                   </View>
-                  <View style={styles.courseHeaderInfo}>
-                    <Text style={styles.courseTitle}>{course.title}</Text>
-                    <Text style={styles.courseSubtitle}>
-                      {courseMaterials.length} เนื้อหา
+                  <View style={styles.generatePill}>
+                    <Ionicons name="sparkles" size={16} color={COLORS.primary} />
+                    <Text style={styles.generatePillText}>สร้าง Quiz</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        <View style={{ height: SPACING.xl }} />
+      </ScrollView>
+
+      {/* Generation Modal */}
+      <Modal visible={showGenModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>สร้าง Quiz ด้วย AI</Text>
+              <TouchableOpacity onPress={() => { setShowGenModal(false); setGeneratedResult(null); }}>
+                <Ionicons name="close" size={28} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {selectedMaterial && (
+                <View style={styles.materialSummaryCard}>
+                  <Ionicons name="document-text" size={20} color={COLORS.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.matSummaryTitle}>{selectedMaterial.title}</Text>
+                    <Text style={styles.matSummaryPreview} numberOfLines={2}>
+                      {previewText(selectedMaterial.content)}
                     </Text>
                   </View>
                 </View>
+              )}
 
-                {courseMaterials.length === 0 ? (
-                  <View style={styles.noMaterialsCard}>
-                    <Ionicons name="document-text" size={32} color="#D1D5DB" />
-                    <Text style={styles.noMaterialsText}>
-                      ยังไม่มีเนื้อหาสำหรับคอร์สนี้
+              {!generatedResult ? (
+                <>
+                  <Text style={styles.inputLabel}>จำนวนข้อ</Text>
+                  <View style={styles.countRow}>
+                    {QUESTION_COUNTS.map((n) => (
+                      <TouchableOpacity
+                        key={n}
+                        style={[styles.countBtn, numQuestions === n && styles.countBtnActive]}
+                        onPress={() => setNumQuestions(n)}
+                      >
+                        <Text
+                          style={[
+                            styles.countBtnText,
+                            numQuestions === n && styles.countBtnTextActive,
+                          ]}
+                        >
+                          {n} ข้อ
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.inputLabel}>ประเภท Quiz</Text>
+                  <View style={styles.quizTypeRow}>
+                    {QUIZ_TYPES.map((qt) => (
+                      <TouchableOpacity
+                        key={qt.key}
+                        style={[
+                          styles.quizTypeBtn,
+                          quizType === qt.key && styles.quizTypeBtnActive,
+                        ]}
+                        onPress={() => setQuizType(qt.key as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.quizTypeBtnText,
+                            quizType === qt.key && styles.quizTypeBtnTextActive,
+                          ]}
+                        >
+                          {qt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.genButton, generating && styles.genButtonDisabled]}
+                    onPress={generateQuiz}
+                    disabled={generating}
+                  >
+                    {generating ? (
+                      <View style={styles.genButtonInner}>
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <Text style={styles.genButtonText}>กำลังสร้าง Quiz...</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.genButtonInner}>
+                        <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                        <Text style={styles.genButtonText}>สร้าง Quiz</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {generating && (
+                    <Text style={styles.generatingNote}>
+                      AI กำลังวิเคราะห์เนื้อหาและสร้างข้อสอบ อาจใช้เวลาสักครู่...
                     </Text>
-                    <Text style={styles.noMaterialsSubtext}>
-                      อัปโหลดเนื้อหาก่อนเพื่อสร้าง Quiz
+                  )}
+                </>
+              ) : (
+                /* Result View */
+                <View>
+                  <View style={styles.resultSuccess}>
+                    <Ionicons name="checkmark-circle" size={40} color={COLORS.success} />
+                    <Text style={styles.resultTitle}>สร้าง Quiz สำเร็จ!</Text>
+                    <Text style={styles.resultCount}>
+                      {generatedResult.question_count ?? (generatedResult.questions?.length ?? 0)} ข้อ
+                      {' '}ถูกบันทึกในระบบแล้ว
                     </Text>
                   </View>
-                ) : (
-                  courseMaterials.map((material: any) => (
-                    <View key={material._id} style={styles.materialCard}>
-                      <View style={styles.materialInfo}>
-                        <Ionicons name="document" size={20} color="#6B7280" />
-                        <View style={styles.materialText}>
-                          <Text style={styles.materialTitle}>{material.title}</Text>
-                          <Text style={styles.materialType}>
-                            {material.file_type === 'text'
-                              ? 'ข้อความ'
-                              : material.file_type === 'transcript'
-                              ? 'ทรานสคริปต์'
-                              : 'PDF'}
-                          </Text>
+
+                  {generatedResult.questions && generatedResult.questions.length > 0 && (
+                    <>
+                      <Text style={styles.previewTitle}>ตัวอย่างข้อสอบ (3 ข้อแรก)</Text>
+                      {generatedResult.questions.slice(0, 3).map((q, idx) => (
+                        <View key={idx} style={styles.questionPreviewCard}>
+                          <Text style={styles.questionNum}>ข้อ {idx + 1}</Text>
+                          <Text style={styles.questionText}>{q.question}</Text>
+                          {q.choices && q.choices.length > 0 && (
+                            <View style={styles.choicesList}>
+                              {q.choices.map((choice, ci) => (
+                                <Text
+                                  key={ci}
+                                  style={[
+                                    styles.choiceText,
+                                    choice === q.correct_answer && styles.correctChoice,
+                                  ]}
+                                >
+                                  {String.fromCharCode(65 + ci)}. {choice}
+                                  {choice === q.correct_answer ? ' ✓' : ''}
+                                </Text>
+                              ))}
+                            </View>
+                          )}
                         </View>
-                      </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.generateButton,
-                          generating && selectedMaterial === material._id && styles.generatingButton,
-                        ]}
-                        onPress={() => generateQuiz(material._id, material.title)}
-                        disabled={generating}
-                      >
-                        {generating && selectedMaterial === material._id ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <>
-                            <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-                            <Text style={styles.generateButtonText}>สร้าง Quiz</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  ))
-                )}
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
+                      ))}
+                    </>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => {
+                      setShowGenModal(false);
+                      setGeneratedResult(null);
+                    }}
+                  >
+                    <Text style={styles.doneButtonText}>เสร็จสิ้น</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: COLORS.surface },
+  headerSafe: { backgroundColor: COLORS.background },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 56,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.full,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  content: {
     flex: 1,
-  },
-  infoCard: {
-    backgroundColor: '#FFFBEB',
-    margin: 16,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FDE68A',
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 12,
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
     textAlign: 'center',
   },
-  infoText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    paddingVertical: 48,
-    alignItems: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  courseSection: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
-  },
-  courseSectionHeader: {
+  content: { flex: 1, padding: SPACING.md },
+  stepSection: { marginBottom: SPACING.lg },
+  stepHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
-  courseIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EEF2FF',
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  courseHeaderInfo: {
-    flex: 1,
-  },
-  courseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  courseSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  noMaterialsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 32,
+  stepBadgeText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  stepTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary },
+  emptyBox: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.xl,
     alignItems: 'center',
+    ...SHADOWS.small,
   },
-  noMaterialsText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 12,
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
     textAlign: 'center',
   },
-  noMaterialsSubtext: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 4,
-    textAlign: 'center',
+  linkBtn: {
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: '#fce7f3',
+    borderRadius: RADIUS.full,
   },
+  linkBtnText: { color: COLORS.primary, fontSize: 14, fontWeight: '600' },
+  courseCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    ...SHADOWS.small,
+  },
+  courseCardActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#fdf2f8',
+  },
+  courseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  courseInfo: { flex: 1 },
+  courseName: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
+  courseNameActive: { color: COLORS.primary },
+  careerPath: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   materialCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    ...SHADOWS.small,
+  },
+  materialInfo: { flex: 1 },
+  materialTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 4 },
+  fileTypeLbl: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 4 },
+  materialPreview: { fontSize: 13, color: COLORS.textTertiary, lineHeight: 18 },
+  generatePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fce7f3',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    marginTop: 2,
+  },
+  generatePillText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    maxHeight: '92%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  materialInfo: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    padding: SPACING.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  materialText: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  materialTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  materialType: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  generateButton: {
+  modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
+  modalBody: { padding: SPACING.lg },
+  materialSummaryCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6,
+    alignItems: 'flex-start',
+    backgroundColor: '#fdf2f8',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: '#fce7f3',
   },
-  generatingButton: {
-    backgroundColor: '#9CA3AF',
-  },
-  generateButtonText: {
-    color: '#FFFFFF',
+  matSummaryTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 3 },
+  matSummaryPreview: { fontSize: 12, color: COLORS.textSecondary },
+  inputLabel: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#374151',
+    marginBottom: SPACING.sm,
+    marginTop: SPACING.sm,
   },
+  countRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
+  countBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+    borderRadius: RADIUS.full,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+  },
+  countBtnActive: { borderColor: COLORS.primary, backgroundColor: '#fce7f3' },
+  countBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  countBtnTextActive: { color: COLORS.primary },
+  quizTypeRow: { gap: SPACING.sm },
+  quizTypeBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+  },
+  quizTypeBtnActive: { borderColor: COLORS.primary, backgroundColor: '#fce7f3' },
+  quizTypeBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  quizTypeBtnTextActive: { color: COLORS.primary },
+  genButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: SPACING.lg,
+  },
+  genButtonDisabled: { backgroundColor: COLORS.textTertiary },
+  genButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  genButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  generatingNote: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.md,
+    lineHeight: 20,
+  },
+  resultSuccess: {
+    alignItems: 'center',
+    padding: SPACING.lg,
+    backgroundColor: '#D1FAE5',
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.lg,
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: SPACING.sm,
+  },
+  resultCount: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  previewTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+  },
+  questionPreviewCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  questionNum: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  questionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+    lineHeight: 20,
+    marginBottom: SPACING.sm,
+  },
+  choicesList: { gap: 4 },
+  choiceText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    paddingLeft: SPACING.sm,
+  },
+  correctChoice: {
+    color: COLORS.success,
+    fontWeight: '600',
+  },
+  doneButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.sm,
+  },
+  doneButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
