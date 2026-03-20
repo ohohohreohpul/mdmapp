@@ -86,29 +86,27 @@ export default function ResumePreview() {
     if (!resume || !user?._id) return;
     setExporting(true);
     try {
-      const response = await axios.get(`${API_URL}/api/resume/${user._id}/export-pdf`, {
-        responseType: 'arraybuffer',
-      });
-
       const fileName = `resume_${Date.now()}.pdf`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
-      await FileSystem.writeAsStringAsync(
-        filePath,
-        Buffer.from(response.data).toString('base64'),
-        { encoding: FileSystem.EncodingType.Base64 }
+      // Download PDF directly using FileSystem
+      const downloadResult = await FileSystem.downloadAsync(
+        `${API_URL}/api/resume/${user._id}/export-pdf`,
+        filePath
       );
 
+      // Share the downloaded file
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(filePath, {
+        await Sharing.shareAsync(downloadResult.uri, {
           mimeType: 'application/pdf',
           dialogTitle: 'Export Resume',
         });
       } else {
-        Alert.alert('Success', 'PDF generated successfully');
+        Alert.alert('Success', 'Resume PDF downloaded');
       }
     } catch (e: any) {
-      Alert.alert('Export Failed', e?.response?.data?.detail || 'Could not export resume');
+      console.error('PDF Export Error:', e);
+      Alert.alert('Export Failed', e?.message || 'Could not export resume. Make sure you have internet connection.');
     } finally {
       setExporting(false);
     }
