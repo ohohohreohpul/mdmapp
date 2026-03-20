@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  Platform,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -86,18 +87,29 @@ export default function ResumePreview() {
     if (!resume || !user?._id) return;
     setExporting(true);
     try {
+      const url = `${API_URL}/api/resume/${user._id}/export-pdf`;
+
+      if (Platform.OS === 'web') {
+        // Web: trigger browser download directly
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resume.pdf';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setExporting(false);
+        return;
+      }
+
+      // Native (iOS/Android): download then share
       const fileName = `resume_${Date.now()}.pdf`;
       const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+      const result = await FileSystem.downloadAsync(url, filePath, {
+        headers: { Accept: 'application/pdf' },
+      });
 
-      const result = await FileSystem.downloadAsync(
-        `${API_URL}/api/resume/${user._id}/export-pdf`,
-        filePath,
-        { headers: { Accept: 'application/pdf' } }
-      );
-
-      if (result.status !== 200) {
-        throw new Error(`Server returned ${result.status}`);
-      }
+      if (result.status !== 200) throw new Error(`Server error ${result.status}`);
 
       await Sharing.shareAsync(result.uri, {
         mimeType: 'application/pdf',

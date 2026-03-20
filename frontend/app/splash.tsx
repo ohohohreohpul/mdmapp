@@ -111,21 +111,18 @@ export default function Splash() {
         ]}
       />
 
-      {/* Logo + tagline */}
+      {/* Mascot + tagline */}
       <Animated.View
         style={[
           styles.logoWrap,
           { transform: [{ scale: logoScale }], opacity: logoOpacity },
         ]}
       >
-        {/* White circle badge with favicon */}
-        <View style={styles.logoBadge}>
-          <Image
-            source={require('../assets/images/favicon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
+        <Image
+          source={require('../assets/images/mascot.png')}
+          style={styles.mascotImage}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       <Animated.View
@@ -134,7 +131,6 @@ export default function Splash() {
           { opacity: taglineOpacity, transform: [{ translateY: taglineY }] },
         ]}
       >
-        <Text style={styles.brandName}>Mydemy</Text>
         <Text style={styles.tagline}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</Text>
       </Animated.View>
 
@@ -206,34 +202,15 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
-  logoBadge: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  logoImage: {
-    width: 70,
-    height: 70,
+  mascotImage: {
+    width: 220,
+    height: 220,
   },
   textWrap: {
     alignItems: 'center',
     gap: 8,
-  },
-  brandName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
   },
   tagline: {
     fontSize: 15,
