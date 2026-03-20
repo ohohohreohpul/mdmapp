@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -217,27 +216,6 @@ export default function Explore() {
           )}
         </View>
 
-        {/* Job Board Card */}
-        <View style={styles.jobBoardCard}>
-          <View style={styles.jobBoardTop}>
-            <View style={styles.jobBoardIconBox}>
-              <Ionicons name="briefcase" size={20} color="#FFF" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.jobBoardTitle}>Job Board</Text>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>เร็ว ๆ นี้</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.jobBoardBody}>
-            หากคุณเป็นบริษัท ติดต่อเราสำหรับ job posting หรือ talent sourcing package
-          </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('mailto:hello@mydemy.co')}>
-            <Text style={styles.jobBoardCta}>📧 ติดต่อเรา</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Bottom Padding */}
         <View style={{ height: 120 }} />
       </ScrollView>
@@ -409,61 +387,5 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: COLORS.textSecondary,
-  },
-  jobBoardCard: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  jobBoardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  jobBoardIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F59E0B',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  jobBoardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  comingSoonBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  comingSoonText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  jobBoardBody: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  jobBoardCta: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primary,
   },
 });

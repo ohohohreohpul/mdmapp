@@ -62,6 +62,21 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'งาน',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+              <Ionicons
+                name={focused ? 'briefcase' : 'briefcase-outline'}
+                size={22}
+                color={focused ? '#FFFFFF' : color}
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="learning"
         options={{
           title: 'เรียน',
