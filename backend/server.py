@@ -15,6 +15,7 @@ import io
 import re
 import asyncio
 import uuid as uuid_lib
+import urllib.request
 
 try:
     import pdfplumber as _pdfplumber
@@ -29,9 +30,78 @@ try:
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     _REPORTLAB_AVAILABLE = True
 except ImportError:
     _REPORTLAB_AVAILABLE = False
+
+# ── Thai font bootstrap ────────────────────────────────────────────────────────
+_THAI_FONT_READY = False
+
+def _ensure_thai_font() -> tuple[str, str]:
+    """
+    Ensure a Thai-capable TTF font is registered with ReportLab.
+    Returns (regular_font_name, bold_font_name).
+
+    Strategy:
+    1. Try common system font paths (Linux / Railway Debian image).
+    2. Fall back to downloading Sarabun from Google Fonts GitHub and caching
+       it in /tmp so it persists across warm restarts.
+    """
+    global _THAI_FONT_READY
+    if _THAI_FONT_READY:
+        return 'Sarabun', 'Sarabun-Bold'
+
+    # Common system paths – Railway uses Debian; fonts-thai-tlwg may be present
+    system_candidates = [
+        (
+            '/usr/share/fonts/truetype/thai/Sarabun-Regular.ttf',
+            '/usr/share/fonts/truetype/thai/Sarabun-Bold.ttf',
+        ),
+        (
+            '/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf',
+        ),
+        (
+            '/usr/share/fonts/truetype/thai/TlwgMono.ttf',
+            '/usr/share/fonts/truetype/thai/TlwgMonoBold.ttf',
+        ),
+    ]
+    for reg_path, bold_path in system_candidates:
+        if os.path.exists(reg_path):
+            pdfmetrics.registerFont(TTFont('Sarabun', reg_path))
+            if os.path.exists(bold_path):
+                pdfmetrics.registerFont(TTFont('Sarabun-Bold', bold_path))
+            else:
+                pdfmetrics.registerFont(TTFont('Sarabun-Bold', reg_path))
+            pdfmetrics.registerFontFamily(
+                'Sarabun', normal='Sarabun', bold='Sarabun-Bold',
+                italic='Sarabun', boldItalic='Sarabun-Bold',
+            )
+            _THAI_FONT_READY = True
+            return 'Sarabun', 'Sarabun-Bold'
+
+    # Download Sarabun from Google Fonts (GitHub mirror) and cache in /tmp
+    cache_dir = '/tmp/mydemy_fonts'
+    os.makedirs(cache_dir, exist_ok=True)
+    reg_local  = os.path.join(cache_dir, 'Sarabun-Regular.ttf')
+    bold_local = os.path.join(cache_dir, 'Sarabun-Bold.ttf')
+
+    base_url = 'https://github.com/google/fonts/raw/main/ofl/sarabun'
+    if not os.path.exists(reg_local):
+        urllib.request.urlretrieve(f'{base_url}/Sarabun-Regular.ttf', reg_local)
+    if not os.path.exists(bold_local):
+        urllib.request.urlretrieve(f'{base_url}/Sarabun-Bold.ttf', bold_local)
+
+    pdfmetrics.registerFont(TTFont('Sarabun',      reg_local))
+    pdfmetrics.registerFont(TTFont('Sarabun-Bold', bold_local))
+    pdfmetrics.registerFontFamily(
+        'Sarabun', normal='Sarabun', bold='Sarabun-Bold',
+        italic='Sarabun', boldItalic='Sarabun-Bold',
+    )
+    _THAI_FONT_READY = True
+    return 'Sarabun', 'Sarabun-Bold'
 
 # Password hashing — uses bcrypt package directly (compatible with bcrypt 4.x)
 try:
@@ -1580,111 +1650,151 @@ async def _get_fresh_signed_url(file_path: str) -> str:
         return ""
 
 def _generate_resume_pdf(resume_data: dict) -> bytes:
-    """Generate a PDF from resume template data using reportlab."""
+    """Generate a PDF from resume template data using reportlab + Sarabun (Thai support)."""
     if not _REPORTLAB_AVAILABLE:
         raise HTTPException(500, "PDF generation not available")
 
-    pdf_buffer = io.BytesIO()
-    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    # Register Thai-capable font (downloads Sarabun on first call if needed)
+    font_reg, font_bold = _ensure_thai_font()
 
-    story = []
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle', parent=styles['Heading1'],
-        fontSize=20, textColor=colors.HexColor('#111827'),
-        spaceAfter=6, alignment=TA_CENTER, fontName='Helvetica-Bold'
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        pdf_buffer, pagesize=A4,
+        topMargin=0.5*inch, bottomMargin=0.5*inch,
+        leftMargin=0.75*inch, rightMargin=0.75*inch,
     )
 
-    # Name
+    # ── Shared styles ────────────────────────────────────────────────────────
+    title_style = ParagraphStyle(
+        'ResumeTitle',
+        fontSize=20, leading=26,
+        textColor=colors.HexColor('#111827'),
+        spaceAfter=4, alignment=TA_CENTER,
+        fontName=font_bold,
+    )
+    contact_style = ParagraphStyle(
+        'ResumeContact',
+        fontSize=10, leading=14,
+        textColor=colors.HexColor('#6B7280'),
+        alignment=TA_CENTER, spaceAfter=4,
+        fontName=font_reg,
+    )
+    heading_style = ParagraphStyle(
+        'ResumeHeading',
+        fontSize=11, leading=16,
+        textColor=colors.HexColor('#374151'),
+        spaceBefore=14, spaceAfter=5,
+        fontName=font_bold,
+        borderPadding=(0, 0, 3, 0),
+    )
+    body_style = ParagraphStyle(
+        'ResumeBody',
+        fontSize=10, leading=15,
+        textColor=colors.HexColor('#1F2937'),
+        fontName=font_reg,
+    )
+    bullet_style = ParagraphStyle(
+        'ResumeBullet',
+        fontSize=10, leading=15,
+        textColor=colors.HexColor('#374151'),
+        fontName=font_reg,
+        leftIndent=12,
+        spaceAfter=2,
+    )
+
+    story = []
+
+    # ── Name ────────────────────────────────────────────────────────────────
     name = resume_data.get('full_name', 'Resume')
     story.append(Paragraph(name, title_style))
 
-    # Contact info
+    # ── Contact info ────────────────────────────────────────────────────────
     contact_parts = []
     if resume_data.get('email'):
         contact_parts.append(resume_data['email'])
     if resume_data.get('phone'):
         contact_parts.append(resume_data['phone'])
     if resume_data.get('linkedin'):
-        contact_parts.append(resume_data['linkedin'])
+        # Shorten long LinkedIn URLs to just "LinkedIn"
+        li = resume_data['linkedin']
+        contact_parts.append('LinkedIn' if len(li) > 40 else li)
 
     if contact_parts:
-        contact_text = ' • '.join(contact_parts)
-        contact_style = ParagraphStyle('Contact', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
-        story.append(Paragraph(contact_text, contact_style))
+        story.append(Paragraph(' • '.join(contact_parts), contact_style))
 
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Spacer(1, 0.18*inch))
 
-    # Skills
+    # ── Section divider helper ───────────────────────────────────────────────
+    def section(title: str):
+        story.append(Paragraph(title.upper(), heading_style))
+        story.append(Spacer(1, 0.02*inch))
+
+    # ── Skills ──────────────────────────────────────────────────────────────
     skills = resume_data.get('skills', [])
     if skills:
-        heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#374151'), spaceBefore=6, spaceAfter=6)
-        story.append(Paragraph('SKILLS', heading_style))
-        skills_text = ', '.join(skills)
-        story.append(Paragraph(skills_text, styles['Normal']))
-        story.append(Spacer(1, 0.15*inch))
+        section('Skills')
+        story.append(Paragraph(', '.join(skills), body_style))
+        story.append(Spacer(1, 0.1*inch))
 
-    # Work Experience
+    # ── Work Experience ─────────────────────────────────────────────────────
     work_exp = resume_data.get('work_experience', [])
     if work_exp:
-        story.append(Paragraph('WORK EXPERIENCE', heading_style))
+        section('Work Experience')
         for job in work_exp:
-            job_title = job.get('role', '')
+            role    = job.get('role', '')
             company = job.get('company', '')
-            dates = ' – '.join(filter(None, [job.get('start_date'), job.get('end_date')]))
-
-            job_text = f"<b>{job_title}</b> • {company}"
+            dates   = ' – '.join(filter(None, [job.get('start_date'), job.get('end_date')]))
+            header  = f"<b>{role}</b> • {company}"
             if dates:
-                job_text += f" ({dates})"
-            story.append(Paragraph(job_text, styles['Normal']))
-
-            bullets = job.get('bullets', [])
-            if isinstance(bullets, list):
-                for bullet in bullets:
-                    story.append(Paragraph(f"• {bullet}", styles['Normal']))
+                header += f"  <font color='#6B7280'>({dates})</font>"
+            story.append(Paragraph(header, body_style))
+            for bullet in (job.get('bullets') or []):
+                story.append(Paragraph(f"• {bullet}", bullet_style))
             story.append(Spacer(1, 0.08*inch))
 
-    # Education
+    # ── Education ───────────────────────────────────────────────────────────
     education = resume_data.get('education', [])
     if education:
-        story.append(Paragraph('EDUCATION', heading_style))
+        section('Education')
         for edu in education:
             degree = edu.get('degree', '')
-            field = edu.get('field', '')
-            institution = edu.get('institution', '')
-            year = edu.get('graduation_year', '')
-
-            edu_text = f"<b>{degree}"
+            field  = edu.get('field', '')
+            inst   = edu.get('institution', '')
+            year   = edu.get('graduation_year', '')
+            line   = f"<b>{degree}"
             if field:
-                edu_text += f", {field}"
-            edu_text += f"</b> • {institution}"
+                line += f", {field}"
+            line += f"</b> • {inst}"
             if year:
-                edu_text += f" ({year})"
-            story.append(Paragraph(edu_text, styles['Normal']))
+                line += f" ({year})"
+            story.append(Paragraph(line, body_style))
         story.append(Spacer(1, 0.08*inch))
 
-    # Languages
+    # ── Languages ───────────────────────────────────────────────────────────
     languages = resume_data.get('languages', [])
     if languages:
-        story.append(Paragraph('LANGUAGES', heading_style))
+        section('Languages')
         for lang in languages:
-            lang_text = f"<b>{lang.get('language', '')}</b> – {lang.get('level', '')}"
-            story.append(Paragraph(lang_text, styles['Normal']))
+            story.append(Paragraph(
+                f"<b>{lang.get('language', '')}</b> – {lang.get('level', '')}",
+                body_style,
+            ))
         story.append(Spacer(1, 0.08*inch))
 
-    # Certifications
+    # ── Certifications ──────────────────────────────────────────────────────
     certifications = resume_data.get('certifications', [])
     if certifications:
-        story.append(Paragraph('CERTIFICATIONS', heading_style))
+        section('Certifications')
         for cert in certifications:
-            cert_text = f"<b>{cert.get('name', '')}</b>"
-            issuer = cert.get('issuer', '')
-            year = cert.get('year', '')
-            if issuer or year:
-                cert_text += f" • {issuer}"
-                if year:
-                    cert_text += f" ({year})"
-            story.append(Paragraph(cert_text, styles['Normal']))
+            cert_name = cert.get('name', '')
+            issuer    = cert.get('issuer', '')
+            year      = cert.get('year', '')
+            line      = f"<b>{cert_name}</b>"
+            if issuer:
+                line += f" • {issuer}"
+            if year:
+                line += f" ({year})"
+            story.append(Paragraph(line, body_style))
 
     doc.build(story)
     pdf_buffer.seek(0)
