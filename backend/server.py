@@ -648,7 +648,20 @@ async def list_courses(career_path: Optional[str] = None, published_only: bool =
     if published_only:
         query = query.eq("is_published", True)
     res = await query.execute()
-    return rows_with_id(res.data or [])
+    courses = rows_with_id(res.data or [])
+
+    # Enrich each course with its practice module count (single extra query)
+    if courses:
+        course_ids = [c["_id"] for c in courses]
+        pm_res = await supabase.table("practice_modules").select("course_id").in_("course_id", course_ids).execute()
+        pm_counts: dict = {}
+        for pm in (pm_res.data or []):
+            cid = pm["course_id"]
+            pm_counts[cid] = pm_counts.get(cid, 0) + 1
+        for c in courses:
+            c["practice_module_count"] = pm_counts.get(c["_id"], 0)
+
+    return courses
 
 
 @api_router.get("/courses/{course_id}")
