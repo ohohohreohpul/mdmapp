@@ -46,7 +46,7 @@ export default function CourseDetail() {
     try {
       if (showSpinner) setLoading(true);
       const [courseRes, modulesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/courses/${courseId}`),
+        axios.get(`${API_URL}/api/courses/${courseId}`, { params: user?._id ? { user_id: user._id } : {} }),
         axios.get(`${API_URL}/api/modules/course/${courseId}`),
       ]);
 
@@ -172,6 +172,8 @@ export default function CourseDetail() {
   // Detect course type: interactive-only = has practice modules but no traditional lessons
   const isInteractive = practiceModules.length > 0 && modules.length === 0;
   const totalInteractiveQuestions = practiceModules.reduce((s, pm) => s + (pm.question_count || 0), 0);
+  const isLocked = course.is_locked === true;
+  const seqOrder = course.sequence_order;
 
   return (
     <View style={styles.container}>
@@ -269,23 +271,39 @@ export default function CourseDetail() {
           </View>
         )}
 
-        {/* Start/Continue Button */}
-        <View style={styles.actionSection}>
-          <TouchableOpacity style={styles.startButton} onPress={startCourse}>
-            <View style={styles.startButtonInner}>
-              <Ionicons
-                name={progress.completed > 0 ? "play" : isInteractive ? "flash" : "rocket"}
-                size={24}
-                color="#FFFFFF"
-              />
-              <Text style={styles.startButtonText}>
-                {progress.completed > 0
-                  ? (isInteractive ? 'ฝึกต่อ' : 'เรียนต่อ')
-                  : (isInteractive ? 'เริ่มฝึกทักษะ' : 'เริ่มเรียน')}
+        {/* Start/Continue Button or Locked Banner */}
+        {isLocked ? (
+          <View style={styles.lockedBanner}>
+            <View style={styles.lockedBannerIcon}>
+              <Ionicons name="lock-closed" size={28} color="#AAAAAA" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lockedBannerTitle}>คอร์สนี้ยังล็อกอยู่</Text>
+              <Text style={styles.lockedBannerSub}>
+                {seqOrder && seqOrder > 1
+                  ? `ต้องผ่านคอร์สที่ ${seqOrder - 1} ในเส้นทางนี้ก่อน`
+                  : 'ต้องผ่านคอร์สก่อนหน้าก่อน'}
               </Text>
             </View>
-          </TouchableOpacity>
-        </View>
+          </View>
+        ) : (
+          <View style={styles.actionSection}>
+            <TouchableOpacity style={styles.startButton} onPress={startCourse}>
+              <View style={styles.startButtonInner}>
+                <Ionicons
+                  name={progress.completed > 0 ? "play" : isInteractive ? "flash" : "rocket"}
+                  size={24}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.startButtonText}>
+                  {progress.completed > 0
+                    ? (isInteractive ? 'ฝึกต่อ' : 'เรียนต่อ')
+                    : (isInteractive ? 'เริ่มฝึกทักษะ' : 'เริ่มเรียน')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* About this course */}
         {course.description ? (
@@ -767,6 +785,36 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
     marginTop: SPACING.sm,
+  },
+  lockedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.lg,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    padding: 20,
+  },
+  lockedBannerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EBEBEB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#888888',
+    marginBottom: 4,
+  },
+  lockedBannerSub: {
+    fontSize: 13,
+    color: '#AAAAAA',
   },
   actionSection: {
     paddingHorizontal: SPACING.xl,

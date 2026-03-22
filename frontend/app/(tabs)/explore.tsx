@@ -53,7 +53,10 @@ export default function Explore() {
         };
         params.career_path = pathNames[selectedPath];
       }
-      
+      if (user?._id) {
+        params.user_id = user._id;
+      }
+
       const response = await axios.get(`${API_URL}/api/courses`, { params });
       setCourses(response.data);
     } catch (error) {
@@ -184,52 +187,85 @@ export default function Explore() {
             const pmCount = course.practice_module_count || 0;
             const lessonCount = course.total_lessons || 0;
             const isInteractive = pmCount > 0 && lessonCount === 0;
+            const isLocked = course.is_locked === true;
+            const isCompleted = course.is_completed === true;
+            const seqOrder = course.sequence_order;
             return (
               <TouchableOpacity
                 key={course._id}
-                style={[styles.courseCard, isInteractive && styles.courseCardInteractive]}
+                style={[
+                  styles.courseCard,
+                  isInteractive && !isLocked && styles.courseCardInteractive,
+                  isLocked && styles.courseCardLocked,
+                  isCompleted && styles.courseCardCompleted,
+                ]}
                 onPress={() => router.push(`/course-detail?id=${course._id}`)}
                 activeOpacity={0.9}
               >
-                <View style={[styles.courseThumbnail, { backgroundColor: isInteractive ? '#f0e6f8' : COLORS.primary }]}>
-                  <Ionicons name={isInteractive ? 'flash' : 'school'} size={28} color={isInteractive ? COLORS.primary : '#FFFFFF'} />
+                <View style={[styles.courseThumbnail, {
+                  backgroundColor: isLocked ? '#E5E5E5' : isInteractive ? '#f0e6f8' : COLORS.primary,
+                }]}>
+                  <Ionicons
+                    name={isLocked ? 'lock-closed' : isInteractive ? 'flash' : 'school'}
+                    size={28}
+                    color={isLocked ? '#AAAAAA' : isInteractive ? COLORS.primary : '#FFFFFF'}
+                  />
                 </View>
 
                 <View style={styles.courseInfo}>
                   <View style={styles.courseTitleRow}>
-                    <Text style={styles.courseTitle} numberOfLines={2}>
+                    {seqOrder && (
+                      <Text style={[styles.seqBadge, isLocked && styles.seqBadgeLocked]}>#{seqOrder}</Text>
+                    )}
+                    <Text style={[styles.courseTitle, isLocked && styles.courseTitleLocked]} numberOfLines={2}>
                       {course.title}
                     </Text>
-                    {isInteractive && (
+                    {isCompleted && (
+                      <View style={styles.completedPill}>
+                        <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      </View>
+                    )}
+                    {isInteractive && !isLocked && (
                       <View style={styles.interactivePill}>
                         <Text style={styles.interactivePillText}>⚡ Interactive</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={styles.courseCareer}>{course.career_path}</Text>
-                  <View style={styles.courseMeta}>
-                    {lessonCount > 0 && (
-                      <View style={styles.metaItem}>
-                        <Ionicons name="book-outline" size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.metaText}>{lessonCount} บทเรียน</Text>
-                      </View>
-                    )}
-                    {pmCount > 0 && (
-                      <View style={styles.metaItem}>
-                        <Ionicons name="flash-outline" size={14} color={COLORS.primary} />
-                        <Text style={[styles.metaText, { color: COLORS.primary }]}>{pmCount} โมดูลฝึกหัด</Text>
-                      </View>
-                    )}
-                    {course.has_final_exam && (
-                      <View style={styles.metaItem}>
-                        <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
-                        <Text style={[styles.metaText, { color: COLORS.success }]}>มีใบประกาศ</Text>
-                      </View>
-                    )}
-                  </View>
+                  <Text style={[styles.courseCareer, isLocked && { color: COLORS.textTertiary }]}>{course.career_path}</Text>
+                  {isLocked ? (
+                    <View style={styles.lockedRow}>
+                      <Ionicons name="lock-closed-outline" size={13} color={COLORS.textTertiary} />
+                      <Text style={styles.lockedText}>ต้องผ่านคอร์สก่อนหน้าก่อน</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.courseMeta}>
+                      {lessonCount > 0 && (
+                        <View style={styles.metaItem}>
+                          <Ionicons name="book-outline" size={14} color={COLORS.textSecondary} />
+                          <Text style={styles.metaText}>{lessonCount} บทเรียน</Text>
+                        </View>
+                      )}
+                      {pmCount > 0 && (
+                        <View style={styles.metaItem}>
+                          <Ionicons name="flash-outline" size={14} color={COLORS.primary} />
+                          <Text style={[styles.metaText, { color: COLORS.primary }]}>{pmCount} โมดูลฝึกหัด</Text>
+                        </View>
+                      )}
+                      {course.has_final_exam && (
+                        <View style={styles.metaItem}>
+                          <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
+                          <Text style={[styles.metaText, { color: COLORS.success }]}>มีใบประกาศ</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
 
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+                <Ionicons
+                  name={isLocked ? 'lock-closed-outline' : 'chevron-forward'}
+                  size={20}
+                  color={isLocked ? '#CCCCCC' : COLORS.textTertiary}
+                />
               </TouchableOpacity>
             );
           })
@@ -375,12 +411,53 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary + '40',
     backgroundColor: '#FFFAFD',
   },
+  courseCardLocked: {
+    borderColor: '#E5E5E5',
+    backgroundColor: '#FAFAFA',
+    opacity: 0.8,
+  },
+  courseCardCompleted: {
+    borderColor: '#10B98140',
+    backgroundColor: '#F0FDF9',
+  },
   courseTitleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
     flexWrap: 'wrap',
     marginBottom: 4,
+  },
+  seqBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  seqBadgeLocked: {
+    color: COLORS.textTertiary,
+    backgroundColor: '#F0F0F0',
+  },
+  completedPill: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  courseTitleLocked: {
+    color: COLORS.textTertiary,
+  },
+  lockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  lockedText: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
   },
   interactivePill: {
     backgroundColor: COLORS.primary + '15',

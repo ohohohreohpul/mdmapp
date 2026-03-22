@@ -640,8 +640,88 @@ async def create_course(course: CourseCreate):
     return with_id(res.data[0])
 
 
+# ── Career path sequence definitions ────────────────────────────────────────
+# Ordered list of course IDs for each sequenced career path.
+# A user must complete course N before course N+1 unlocks.
+# Completing all courses triggers issuance of a career certificate.
+CAREER_PATH_SEQUENCES: Dict[str, List[str]] = {
+    "Data Analysis": [
+        "6ea633e1-2ae9-4e18-bbe6-2801b3d9999e",  # Introduction of Data Analytics
+        "9762122a-03c9-4766-8f52-6c11e2163f6d",  # Mastering Spreadsheets
+        "2397e18d-aebc-412e-b46d-12aa99c45254",  # Explore the data
+        "2797c982-ce83-4007-b3cd-e394eb7b3deb",  # Data Cleaning with SQL
+        "f1b2f10e-a9bf-413c-807a-818c4d8a1a25",  # Introduction to Python
+        "58a6a79b-191b-477d-b86f-72f870176bf5",  # วิเคราะห์ข้อมูลด้วย Python Part 1
+        "ad5ef8c2-747e-48fe-b4d3-c544dc735dc9",  # วิเคราะห์ข้อมูลด้วย Python Part 2
+        "92cb258f-5b07-45ee-8468-7607fed6bc9d",  # Introduction to Data Storytelling
+        "20dcb6f6-3ad0-428c-8b81-7b763b0b1d87",  # Data Analysis and Visualization Capstone
+        "e0d9fd2e-5b41-471c-9954-9ee935a873ac",  # Data-Driven Marketing
+    ],
+    "UX Design": [
+        "0f879dc3-0c1f-434c-b630-d4912d48e4f3",  # Introduction to UX&UI Designs
+        "0a7c889b-defd-4826-af2d-eb1711dff6e9",  # Foundation of UX/UI Design
+        "1e2ccc48-02e7-4164-9750-86ad1ecdf76b",  # Design Foundation and Theory
+        "2699b86e-e10d-4662-9546-cd23fd659f1d",  # Introduction to Figma
+        "637516a7-7b64-4959-82a3-23a13702aacf",  # Empathize User with User Research
+        "92131454-e789-41d0-b39f-d99b27db57b9",  # Ideation & Creation of Wireframes
+        "c07c784a-6614-4052-8a51-7ab286d7b8a0",  # Prototype and Testing
+        "e29d1eb7-f8fa-41b3-8b78-fd0879bed1c7",  # Deep Dive into UX Writing
+        "e64a9500-21cd-4dca-9ad2-141964cd34dd",  # Build a UX Career - Final Chapter
+    ],
+    "Learning Designer": [
+        "0ed54de0-bab7-4fee-8757-ca62d3ada0ca",  # Introduction to Learning Design & Experience
+        "508599a4-ee45-46b2-9c94-799842934243",  # Learning Design for Adult Learner
+        "4ad3ad4d-9bad-4605-868f-898ab7368dfc",  # Learner-Centric Design for Educators
+        "b1403780-a5cd-4748-ba8b-cdaf6890e7ba",  # Project Management for Learning Designers
+    ],
+    "Project Management": [
+        "fd617c90-9df8-47f2-b284-2af7a38f6425",  # Project Management Crash Course
+        "eeaa3d1c-db5b-4b34-85b1-c69a5519a443",  # The Complete Series of Project Management (1-3)
+        "8e6e7a83-a691-412a-a01b-7a23c0f5b218",  # Project Leadership in the Digital Age (Part 4)
+    ],
+}
+
+
+async def _user_completed_course_ids(supabase_client, user_id: str) -> set:
+    """Return the set of course IDs the user has completed (either via cert or all practice modules)."""
+    if not user_id or user_id == "demo_user":
+        return set()
+
+    # Video courses: completed when they have a course certificate
+    cert_res = await supabase_client.table("certificates") \
+        .select("course_id") \
+        .eq("user_id", user_id) \
+        .eq("cert_type", "course") \
+        .execute()
+    completed: set = {r["course_id"] for r in (cert_res.data or []) if r.get("course_id")}
+
+    # Interactive courses: completed when all their practice modules are completed
+    # Get all practice modules grouped by course_id where user has completed=True
+    prog_res = await supabase_client.table("practice_progress") \
+        .select("module_id") \
+        .eq("user_id", user_id) \
+        .eq("completed", True) \
+        .execute()
+    completed_module_ids = {r["module_id"] for r in (prog_res.data or [])}
+
+    if completed_module_ids:
+        # Find which courses have ALL their modules completed
+        all_pm_res = await supabase_client.table("practice_modules") \
+            .select("id,course_id") \
+            .execute()
+        course_modules: Dict[str, set] = {}
+        for pm in (all_pm_res.data or []):
+            cid = pm["course_id"]
+            course_modules.setdefault(cid, set()).add(pm["id"])
+        for cid, all_mods in course_modules.items():
+            if all_mods and all_mods.issubset(completed_module_ids):
+                completed.add(cid)
+
+    return completed
+
+
 @api_router.get("/courses")
-async def list_courses(career_path: Optional[str] = None, published_only: bool = False):
+async def list_courses(career_path: Optional[str] = None, published_only: bool = False, user_id: Optional[str] = None):
     query = supabase.table("courses").select("*")
     if career_path:
         query = query.eq("career_path", career_path)
@@ -661,16 +741,59 @@ async def list_courses(career_path: Optional[str] = None, published_only: bool =
         for c in courses:
             c["practice_module_count"] = pm_counts.get(c["_id"], 0)
 
+    # Enrich with sequence order and lock status
+    user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
+    for c in courses:
+        cid = c["_id"]
+        cp = c.get("career_path", "")
+        sequence = CAREER_PATH_SEQUENCES.get(cp, [])
+        if cid in sequence:
+            idx = sequence.index(cid)
+            c["sequence_order"] = idx + 1  # 1-based
+            # Locked if there's a prerequisite and it's not completed
+            c["is_locked"] = idx > 0 and sequence[idx - 1] not in user_completed
+            c["prerequisite_course_id"] = sequence[idx - 1] if idx > 0 else None
+        else:
+            c["sequence_order"] = None
+            c["is_locked"] = False
+            c["prerequisite_course_id"] = None
+        c["is_completed"] = cid in user_completed
+
     return courses
 
 
 @api_router.get("/courses/{course_id}")
-async def get_course(course_id: str):
+async def get_course(course_id: str, user_id: Optional[str] = None):
     res = await supabase.table("courses").select("*").eq("id", course_id).limit(1).execute()
     data = _one(res)
     if not data:
         raise HTTPException(status_code=404, detail="Course not found")
-    return with_id(data)
+    course = with_id(data)
+
+    # Enrich with sequence/lock info
+    cp = course.get("career_path", "")
+    sequence = CAREER_PATH_SEQUENCES.get(cp, [])
+    cid = course["_id"]
+    if cid in sequence:
+        idx = sequence.index(cid)
+        course["sequence_order"] = idx + 1
+        course["prerequisite_course_id"] = sequence[idx - 1] if idx > 0 else None
+        if user_id and user_id != "demo_user" and idx > 0:
+            user_completed = await _user_completed_course_ids(supabase, user_id)
+            course["is_locked"] = sequence[idx - 1] not in user_completed
+            course["is_completed"] = cid in user_completed
+        else:
+            course["is_locked"] = False
+            user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
+            course["is_completed"] = cid in user_completed
+    else:
+        course["sequence_order"] = None
+        course["prerequisite_course_id"] = None
+        course["is_locked"] = False
+        user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
+        course["is_completed"] = cid in user_completed
+
+    return course
 
 
 @api_router.put("/courses/{course_id}")
@@ -1054,6 +1177,45 @@ async def submit_quiz(submission: QuizSubmission):
                 except Exception as e:
                     logger.warning(f"Could not auto-issue certificate: {e}")
 
+                # Check career path sequence completion after course cert
+                if cid:
+                    try:
+                        user_completed_set = await _user_completed_course_ids(supabase, submission.user_id)
+                        course_cp_res = await supabase.table("courses") \
+                            .select("career_path").eq("id", cid).limit(1).execute()
+                        cp_data = _one(course_cp_res)
+                        cp = (cp_data or {}).get("career_path", "")
+                        sequence = CAREER_PATH_SEQUENCES.get(cp, [])
+                        if sequence and all(sid in user_completed_set for sid in sequence):
+                            existing_career = await supabase.table("certificates") \
+                                .select("id").eq("user_id", submission.user_id).eq("career_path", cp).eq("cert_type", "career").limit(1).execute()
+                            if not _one(existing_career):
+                                courses_res = await supabase.table("courses") \
+                                    .select("title").in_("id", sequence).execute()
+                                career_courses_titles = [c["title"] for c in (courses_res.data or [])]
+                                display_name_career = (
+                                    user_data.get("display_name")
+                                    or user_data.get("username")
+                                    or "ผู้เรียน"
+                                )
+                                now_c = datetime.utcnow()
+                                import secrets as _sec, string as _str
+                                _chars = _str.ascii_uppercase + _str.digits
+                                _suffix = "".join(_sec.choice(_chars) for _ in range(6))
+                                career_code = f"MDY-{now_c.year}{now_c.month:02d}-{_suffix}"
+                                await supabase.table("certificates").insert({
+                                    "user_id": submission.user_id,
+                                    "cert_type": "career",
+                                    "career_path": cp,
+                                    "career_courses": career_courses_titles,
+                                    "user_display_name": display_name_career,
+                                    "issue_month": now_c.month,
+                                    "issue_year": now_c.year,
+                                    "verification_code": career_code,
+                                }).execute()
+                    except Exception as e:
+                        logger.warning(f"Could not check/issue career cert after final exam: {e}")
+
     # Award XP for the quiz attempt
     if submission.user_id and submission.user_id != "demo_user":
         try:
@@ -1384,7 +1546,82 @@ async def save_practice_progress(body: PracticeProgressRequest):
         except Exception:
             pass
 
-    return {"passed": passed, "best_score": new_best, "newly_completed": newly_completed, "xp_awarded": xp_awarded}
+    # Check if this completion finishes the entire course (interactive) → issue course cert + check career cert
+    career_cert_issued = False
+    if newly_completed and body.user_id != "demo_user":
+        try:
+            # Identify the course for this module
+            mod_res = await supabase.table("practice_modules") \
+                .select("course_id") \
+                .eq("id", body.module_id) \
+                .limit(1).execute()
+            mod_data = _one(mod_res)
+            if mod_data:
+                course_id = mod_data["course_id"]
+                # Check if all modules for this course are now completed
+                user_completed_set = await _user_completed_course_ids(supabase, body.user_id)
+                if course_id in user_completed_set:
+                    # Issue course cert if not already issued
+                    existing_cert = await supabase.table("certificates") \
+                        .select("id").eq("user_id", body.user_id).eq("course_id", course_id).limit(1).execute()
+                    if not _one(existing_cert):
+                        course_res = await supabase.table("courses") \
+                            .select("title,career_path").eq("id", course_id).limit(1).execute()
+                        course_data = _one(course_res)
+                        user_res = await supabase.table("users") \
+                            .select("display_name,username").eq("id", body.user_id).limit(1).execute()
+                        user_data = _one(user_res)
+                        if course_data and user_data:
+                            now = datetime.utcnow()
+                            display_name = user_data.get("display_name") or user_data.get("username") or "ผู้เรียน"
+                            await supabase.table("certificates").insert({
+                                "user_id": body.user_id,
+                                "cert_type": "course",
+                                "course_id": course_id,
+                                "career_path": course_data.get("career_path"),
+                                "course_title": course_data.get("title"),
+                                "user_display_name": display_name,
+                                "issue_month": now.month,
+                                "issue_year": now.year,
+                                "verification_code": _gen_cert_code("MDY"),
+                            }).execute()
+
+                    # Re-fetch updated completed set after potential new cert
+                    user_completed_set = await _user_completed_course_ids(supabase, body.user_id)
+                    # Check career path sequence completion
+                    course_res2 = await supabase.table("courses") \
+                        .select("career_path").eq("id", course_id).limit(1).execute()
+                    cp_data = _one(course_res2)
+                    cp = (cp_data or {}).get("career_path", "")
+                    sequence = CAREER_PATH_SEQUENCES.get(cp, [])
+                    if sequence and all(cid in user_completed_set for cid in sequence):
+                        # All sequence courses done — issue career cert if not already
+                        existing_career = await supabase.table("certificates") \
+                            .select("id").eq("user_id", body.user_id).eq("career_path", cp).eq("cert_type", "career").limit(1).execute()
+                        if not _one(existing_career):
+                            courses_res = await supabase.table("courses") \
+                                .select("title").in_("id", sequence).execute()
+                            career_courses_titles = [c["title"] for c in (courses_res.data or [])]
+                            user_res2 = await supabase.table("users") \
+                                .select("display_name,username").eq("id", body.user_id).limit(1).execute()
+                            u2 = _one(user_res2)
+                            display_name2 = (u2 or {}).get("display_name") or (u2 or {}).get("username") or "ผู้เรียน"
+                            now2 = datetime.utcnow()
+                            await supabase.table("certificates").insert({
+                                "user_id": body.user_id,
+                                "cert_type": "career",
+                                "career_path": cp,
+                                "career_courses": career_courses_titles,
+                                "user_display_name": display_name2,
+                                "issue_month": now2.month,
+                                "issue_year": now2.year,
+                                "verification_code": _gen_cert_code("MDY"),
+                            }).execute()
+                            career_cert_issued = True
+        except Exception as e:
+            logger.warning(f"Could not check/issue career cert after practice module: {e}")
+
+    return {"passed": passed, "best_score": new_best, "newly_completed": newly_completed, "xp_awarded": xp_awarded, "career_cert_issued": career_cert_issued}
 
 
 # ==================== CERTIFICATES ====================
