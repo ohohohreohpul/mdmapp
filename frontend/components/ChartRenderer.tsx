@@ -10,16 +10,18 @@ import Svg, { Rect, Polyline, Path, Line as SvgLine, Circle, Text as SvgText, G 
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface ChartConfig {
-  type: 'bar' | 'line' | 'donut' | 'pie' | 'radar' | 'treemap' | 'histogram';
+  type: string; // bar | line | donut | pie | radar | treemap | histogram | scatter | area | multi-line | stacked-bar | heatmap | funnel | dual-axis
   data: Record<string, any>[];
   title?: string;
   xKey?: string;
-  yKey?: string;
+  yKey?: string | string[];
+  yKey2?: string;
   key?: string;
   valueKey?: string;
   nameKey?: string;
   valueKeys?: string[];
   bins?: number;
+  [key: string]: any;
 }
 
 interface Props {
@@ -297,6 +299,306 @@ function TreemapChart({ config, w }: { config: ChartConfig; w: number }) {
   );
 }
 
+// ─── Scatter Chart ─────────────────────────────────────────────────────────────
+function ScatterChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
+  const xKey = config.xKey!;
+  const yKey = config.yKey as string;
+  const data = config.data;
+  const pad = { l: 36, r: 8, t: 12, b: 28 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+  const xs = data.map(d => Number(d[xKey]));
+  const ys = data.map(d => Number(d[yKey]));
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rx = maxX - minX || 1, ry = maxY - minY || 1;
+  const pts = data.map(d => ({
+    cx: pad.l + ((Number(d[xKey]) - minX) / rx) * cw,
+    cy: pad.t + ch - ((Number(d[yKey]) - minY) / ry) * ch,
+  }));
+  return (
+    <Svg width={w} height={h}>
+      {[0, 0.5, 1].map(t => {
+        const y = pad.t + ch * (1 - t);
+        return <G key={t}>
+          <SvgLine x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="#E5E7EB" strokeWidth={1} />
+          <SvgText x={pad.l - 4} y={y + 4} fontSize={9} fill="#9CA3AF" textAnchor="end">{fmtNum(minY + ry * t)}</SvgText>
+        </G>;
+      })}
+      {pts.map((p, i) => <Circle key={i} cx={p.cx} cy={p.cy} r={5} fill="#f573bd" fillOpacity={0.75} />)}
+      <SvgText x={w / 2} y={h - 2} fontSize={9} fill="#6B7280" textAnchor="middle">{xKey}</SvgText>
+    </Svg>
+  );
+}
+
+// ─── Area Chart (multi-series stacked area) ─────────────────────────────────
+function AreaChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
+  const xKey = config.xKey!;
+  // yKey may be an array for multi-series area
+  const seriesKeys: string[] = Array.isArray(config.yKey)
+    ? (config.yKey as unknown as string[])
+    : [config.yKey as string];
+  const data = config.data;
+  const pad = { l: 36, r: 8, t: 12, b: 36 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+  const allVals = data.flatMap(d => seriesKeys.map(k => Number(d[k] || 0)));
+  const maxY = Math.max(...allVals, 1);
+
+  const ptX = (i: number) => pad.l + (i / Math.max(data.length - 1, 1)) * cw;
+  const ptY = (val: number) => pad.t + ch - (val / maxY) * ch;
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Svg width={w} height={h}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <G key={t}>
+            <SvgLine x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="#E5E7EB" strokeWidth={1} />
+            <SvgText x={pad.l - 4} y={y + 4} fontSize={9} fill="#9CA3AF" textAnchor="end">{fmtNum(maxY * t)}</SvgText>
+          </G>;
+        })}
+        {seriesKeys.map((key, ki) => {
+          const fill = `${ptX(0)},${pad.t + ch} ` +
+            data.map((d, i) => `${ptX(i)},${ptY(Number(d[key] || 0))}`).join(' ') +
+            ` ${ptX(data.length - 1)},${pad.t + ch}`;
+          const line = data.map((d, i) => `${ptX(i)},${ptY(Number(d[key] || 0))}`).join(' ');
+          return <G key={key}>
+            <Polyline points={fill} fill={PAL[ki % PAL.length]} fillOpacity={0.18} stroke="none" />
+            <Polyline points={line} fill="none" stroke={PAL[ki % PAL.length]} strokeWidth={2} />
+          </G>;
+        })}
+        {data.map((d, i) => (
+          <SvgText key={i} x={ptX(i)} y={h - pad.b + 12} fontSize={9} fill="#6B7280" textAnchor="middle">
+            {String(d[xKey]).length > 4 ? String(d[xKey]).slice(0, 4) : String(d[xKey])}
+          </SvgText>
+        ))}
+      </Svg>
+      {seriesKeys.length > 1 && (
+        <View style={styles.legendRow}>
+          {seriesKeys.map((k, i) => (
+            <View key={k} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: PAL[i % PAL.length] }]} />
+              <Text style={styles.legendText}>{k}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Multi-Line Chart ──────────────────────────────────────────────────────────
+function MultiLineChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
+  const xKey = config.xKey!;
+  const series = [config.yKey as string, (config as any).yKey2 as string].filter(Boolean);
+  const data = config.data;
+  const pad = { l: 36, r: 8, t: 12, b: 28 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+  const allVals = data.flatMap(d => series.map(k => Number(d[k] || 0)));
+  const minY = Math.min(...allVals), maxY = Math.max(...allVals, 1);
+  const range = maxY - minY || 1;
+  const ptX = (i: number) => pad.l + (i / Math.max(data.length - 1, 1)) * cw;
+  const ptY = (val: number) => pad.t + ch - ((val - minY) / range) * ch;
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Svg width={w} height={h}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <G key={t}>
+            <SvgLine x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="#E5E7EB" strokeWidth={1} />
+            <SvgText x={pad.l - 4} y={y + 4} fontSize={9} fill="#9CA3AF" textAnchor="end">{fmtNum(minY + range * t)}</SvgText>
+          </G>;
+        })}
+        {series.map((key, ki) => {
+          const pts = data.map((d, i) => `${ptX(i)},${ptY(Number(d[key] || 0))}`).join(' ');
+          return <G key={key}>
+            <Polyline points={pts} fill="none" stroke={PAL[ki % PAL.length]} strokeWidth={2.5} />
+            {data.map((d, i) => <Circle key={i} cx={ptX(i)} cy={ptY(Number(d[key] || 0))} r={3} fill={PAL[ki % PAL.length]} />)}
+          </G>;
+        })}
+        {data.map((d, i) => (
+          <SvgText key={i} x={ptX(i)} y={h - pad.b + 12} fontSize={9} fill="#6B7280" textAnchor="middle">
+            {String(d[xKey]).length > 4 ? String(d[xKey]).slice(0, 4) : String(d[xKey])}
+          </SvgText>
+        ))}
+      </Svg>
+      <View style={styles.legendRow}>
+        {series.map((k, i) => (
+          <View key={k} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: PAL[i % PAL.length] }]} />
+            <Text style={styles.legendText}>{k}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Stacked Bar Chart ─────────────────────────────────────────────────────────
+function StackedBarChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
+  const xKey = config.xKey!;
+  const series = [config.yKey as string, (config as any).yKey2 as string].filter(Boolean);
+  const data = config.data;
+  const pad = { l: 36, r: 8, t: 12, b: 28 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+  const totals = data.map(d => series.reduce((s, k) => s + Number(d[k] || 0), 0));
+  const maxY = Math.max(...totals, 1);
+  const barW = cw / data.length;
+  const gap = barW * 0.2;
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Svg width={w} height={h}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <G key={t}>
+            <SvgLine x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="#E5E7EB" strokeWidth={1} />
+            <SvgText x={pad.l - 4} y={y + 4} fontSize={9} fill="#9CA3AF" textAnchor="end">{fmtNum(maxY * t)}</SvgText>
+          </G>;
+        })}
+        {data.map((d, i) => {
+          const x = pad.l + i * barW + gap / 2;
+          let bottom = pad.t + ch;
+          return <G key={i}>
+            {series.map((key, ki) => {
+              const val = Number(d[key] || 0);
+              const bh = (val / maxY) * ch;
+              bottom -= bh;
+              return <Rect key={key} x={x} y={bottom} width={barW - gap} height={bh} fill={PAL[ki % PAL.length]} rx={ki === series.length - 1 ? 3 : 0} />;
+            })}
+            <SvgText x={x + (barW - gap) / 2} y={h - pad.b + 12} fontSize={9} fill="#6B7280" textAnchor="middle">
+              {String(d[xKey]).length > 4 ? String(d[xKey]).slice(0, 4) : String(d[xKey])}
+            </SvgText>
+          </G>;
+        })}
+      </Svg>
+      <View style={styles.legendRow}>
+        {series.map((k, i) => (
+          <View key={k} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: PAL[i % PAL.length] }]} />
+            <Text style={styles.legendText}>{k}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────────────
+function HeatmapChart({ config, w }: { config: ChartConfig; w: number }) {
+  const rows = config.data;
+  if (!rows || rows.length === 0) return null;
+  const cols = (rows[0].data as any[]).map((c: any) => c.x);
+  const allVals = rows.flatMap(r => (r.data as any[]).map((c: any) => Number(c.y)));
+  const minV = Math.min(...allVals), maxV = Math.max(...allVals, 1);
+  const cellW = Math.max((w - 52) / cols.length, 20);
+  const cellH = 22;
+  const labelW = 48;
+  return (
+    <View style={{ width: w }}>
+      {/* Column headers */}
+      <View style={{ flexDirection: 'row', marginLeft: labelW }}>
+        {cols.map((c: string) => (
+          <Text key={c} style={{ width: cellW, fontSize: 8, color: '#9CA3AF', textAlign: 'center' }} numberOfLines={1}>{c}</Text>
+        ))}
+      </View>
+      {rows.map((row, ri) => (
+        <View key={ri} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+          <Text style={{ width: labelW, fontSize: 9, color: '#6B7280' }} numberOfLines={1}>{row[config.yKey as string] || row.id}</Text>
+          {(row.data as any[]).map((cell: any, ci: number) => {
+            const intensity = (Number(cell.y) - minV) / (maxV - minV);
+            const alpha = Math.round(40 + intensity * 200);
+            return (
+              <View key={ci} style={{ width: cellW, height: cellH, backgroundColor: `rgba(245,115,189,${(alpha / 255).toFixed(2)})`, borderRadius: 3, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 7, color: intensity > 0.6 ? '#fff' : '#374151' }}>{cell.y}</Text>
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Funnel Chart ─────────────────────────────────────────────────────────────
+function FunnelChart({ config, w }: { config: ChartConfig; w: number }) {
+  const nameKey = config.nameKey || config.xKey || 'stage';
+  const valueKey = config.valueKey || config.yKey as string || 'value';
+  const data = config.data;
+  const maxVal = Math.max(...data.map(d => Number(d[valueKey])), 1);
+  const barH = 32;
+  const gap = 4;
+  return (
+    <View style={{ width: w, alignItems: 'center' }}>
+      {data.map((d, i) => {
+        const pct = Number(d[valueKey]) / maxVal;
+        const barW = Math.max(pct * (w - 40), 60);
+        return (
+          <View key={i} style={{ alignItems: 'center', marginBottom: gap }}>
+            <View style={{ width: barW, height: barH, backgroundColor: PAL[i % PAL.length], borderRadius: 6, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }} numberOfLines={1}>{d[nameKey]}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10 }}>{fmtNum(Number(d[valueKey]))}</Text>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Dual-Axis Chart (bars + line) ────────────────────────────────────────────
+function DualAxisChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
+  const xKey = config.xKey!;
+  const yKey = config.yKey as string;
+  const yKey2 = (config as any).yKey2 as string;
+  const data = config.data;
+  const pad = { l: 36, r: 36, t: 12, b: 28 };
+  const cw = w - pad.l - pad.r;
+  const ch = h - pad.t - pad.b;
+  const barVals = data.map(d => Number(d[yKey] || 0));
+  const lineVals = data.map(d => Number(d[yKey2] || 0));
+  const maxBar = Math.max(...barVals, 1);
+  const minLine = Math.min(...lineVals), maxLine = Math.max(...lineVals, 1);
+  const rangeL = maxLine - minLine || 1;
+  const barW = cw / data.length;
+  const gap = barW * 0.25;
+  const ptX = (i: number) => pad.l + i * barW + barW / 2;
+  const ptY = (val: number) => pad.t + ch - ((val - minLine) / rangeL) * ch;
+  const linePts = data.map((d, i) => `${ptX(i)},${ptY(Number(d[yKey2] || 0))}`).join(' ');
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Svg width={w} height={h}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <G key={t}>
+            <SvgLine x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="#E5E7EB" strokeWidth={1} />
+            <SvgText x={pad.l - 4} y={y + 4} fontSize={9} fill="#9CA3AF" textAnchor="end">{fmtNum(maxBar * t)}</SvgText>
+            <SvgText x={w - pad.r + 4} y={y + 4} fontSize={9} fill="#6366f1" textAnchor="start">{fmtNum(minLine + rangeL * t)}</SvgText>
+          </G>;
+        })}
+        {data.map((d, i) => {
+          const bh = (Number(d[yKey] || 0) / maxBar) * ch;
+          const x = pad.l + i * barW + gap / 2;
+          return <G key={i}>
+            <Rect x={x} y={pad.t + ch - bh} width={barW - gap} height={bh} fill="#f573bd" fillOpacity={0.8} rx={3} />
+            <SvgText x={ptX(i)} y={h - pad.b + 12} fontSize={9} fill="#6B7280" textAnchor="middle">
+              {String(d[xKey]).length > 4 ? String(d[xKey]).slice(0, 4) : String(d[xKey])}
+            </SvgText>
+          </G>;
+        })}
+        <Polyline points={linePts} fill="none" stroke="#6366f1" strokeWidth={2.5} />
+        {data.map((d, i) => <Circle key={i} cx={ptX(i)} cy={ptY(Number(d[yKey2] || 0))} r={3.5} fill="#6366f1" />)}
+      </Svg>
+      <View style={styles.legendRow}>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#f573bd' }]} /><Text style={styles.legendText}>{yKey}</Text></View>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#6366f1' }]} /><Text style={styles.legendText}>{yKey2}</Text></View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Histogram ─────────────────────────────────────────────────────────────────
 function HistogramChart({ config, w, h }: { config: ChartConfig; w: number; h: number }) {
   const numKey = Object.keys(config.data[0] || {}).find(k => typeof config.data[0][k] === 'number') || 'value';
@@ -332,21 +634,30 @@ export default function ChartRenderer({ config, height = 200 }: Props) {
 
   if (!config || !config.data) return null;
 
-  // Normalise 'pie' → 'donut' and 'area' → 'line'
+  // Normalise aliases
   const type = config.type === 'pie' ? 'donut' : config.type;
+
+  const SUPPORTED = ['bar','line','donut','treemap','histogram','radar','scatter','area','multi-line','stacked-bar','heatmap','funnel','dual-axis'];
 
   try {
     return (
       <View style={styles.wrapper}>
         {config.title ? <Text style={styles.title}>{config.title}</Text> : null}
 
-        {type === 'bar' && <BarChart config={config} w={w} h={height} />}
-        {type === 'line' && <LineChart config={config} w={w} h={height} />}
-        {(type === 'donut') && <DonutChart config={config} size={Math.min(w, 260)} />}
-        {type === 'treemap' && <TreemapChart config={config} w={w} />}
-        {type === 'histogram' && <HistogramChart config={config} w={w} h={height} />}
-        {type === 'radar' && <RadarChart config={config} size={Math.min(w, 280)} />}
-        {!['bar','line','donut','treemap','histogram','radar'].includes(type) && (
+        {type === 'bar'          && <BarChart config={config} w={w} h={height} />}
+        {type === 'line'         && <LineChart config={config} w={w} h={height} />}
+        {type === 'donut'        && <DonutChart config={config} size={Math.min(w, 260)} />}
+        {type === 'treemap'      && <TreemapChart config={config} w={w} />}
+        {type === 'histogram'    && <HistogramChart config={config} w={w} h={height} />}
+        {type === 'radar'        && <RadarChart config={config} size={Math.min(w, 280)} />}
+        {type === 'scatter'      && <ScatterChart config={config} w={w} h={height} />}
+        {type === 'area'         && <AreaChart config={config} w={w} h={height} />}
+        {type === 'multi-line'   && <MultiLineChart config={config} w={w} h={height} />}
+        {type === 'stacked-bar'  && <StackedBarChart config={config} w={w} h={height} />}
+        {type === 'heatmap'      && <HeatmapChart config={config} w={w} />}
+        {type === 'funnel'       && <FunnelChart config={config} w={w} />}
+        {type === 'dual-axis'    && <DualAxisChart config={config} w={w} h={height} />}
+        {!SUPPORTED.includes(type) && (
           <View style={styles.unsupportedChart}>
             <Text style={styles.unsupportedText}>📊 {config.title || 'กราฟ'}</Text>
           </View>
