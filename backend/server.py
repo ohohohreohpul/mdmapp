@@ -759,6 +759,9 @@ async def list_courses(career_path: Optional[str] = None, published_only: bool =
             c["prerequisite_course_id"] = None
         c["is_completed"] = cid in user_completed
 
+    # Sort: sequenced courses first (by sequence_order), then non-sequenced
+    courses.sort(key=lambda c: (c["sequence_order"] is None, c["sequence_order"] or 0))
+
     return courses
 
 
