@@ -10,7 +10,7 @@ import Svg, { Rect, Polyline, Path, Line as SvgLine, Circle, Text as SvgText, G 
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface ChartConfig {
-  type: 'bar' | 'line' | 'donut' | 'radar' | 'treemap' | 'histogram';
+  type: 'bar' | 'line' | 'donut' | 'pie' | 'radar' | 'treemap' | 'histogram';
   data: Record<string, any>[];
   title?: string;
   xKey?: string;
@@ -141,38 +141,42 @@ function LineChart({ config, w, h }: { config: ChartConfig; w: number; h: number
 
 // ─── Donut Chart ───────────────────────────────────────────────────────────────
 function DonutChart({ config, size }: { config: ChartConfig; size: number }) {
-  const keyField = config.key!;
-  const valueKey = config.valueKey!;
+  // Accept both 'key' and 'nameKey' for the label field
+  const keyField = config.key || config.nameKey || Object.keys(config.data[0] || {})[0];
+  const valueKey = config.valueKey || config.yKey || Object.keys(config.data[0] || {})[1];
   const data = config.data;
-  const total = data.reduce((s, d) => s + Number(d[valueKey]), 0);
+  if (!data || data.length === 0) return null;
+  const total = data.reduce((s, d) => s + Number(d[valueKey] || 0), 0);
+  if (total === 0) return null;
   const cx = size / 2;
   const cy = size / 2;
   const outerR = size / 2 - 16;
-  const innerR = outerR * 0.55;
+  const innerR = outerR * 0.5;
 
   let startAngle = -Math.PI / 2;
   const slices = data.map((d, i) => {
     const val = Number(d[valueKey]);
     const angle = (val / total) * 2 * Math.PI;
     const endAngle = startAngle + angle;
-    const slice = { label: String(d[keyField]), val, pct: Math.round((val / total) * 100), color: PAL[i % PAL.length], startAngle, endAngle };
+    const slice = { label: String(d[keyField] ?? i), val, pct: Math.round((val / total) * 100), color: PAL[i % PAL.length], startAngle, endAngle };
     startAngle = endAngle;
     return slice;
   });
 
-  const arc = (s: number, e: number, r: number) => {
-    const x1 = cx + r * Math.cos(s);
-    const y1 = cy + r * Math.sin(s);
-    const x2 = cx + r * Math.cos(e);
-    const y2 = cy + r * Math.sin(e);
-    const large = e - s > Math.PI ? 1 : 0;
-    return `M${x1},${y1} A${r},${r},0,${large},1,${x2},${y2}`;
-  };
-
+  // Correct SVG donut-slice path: outer arc CW → line to inner → inner arc CCW → Z
   const slicePath = (s: typeof slices[0]) => {
-    const a1 = arc(s.startAngle, s.endAngle, outerR);
-    const a2 = arc(s.endAngle, s.startAngle, innerR);
-    return `${a1} L${cx + innerR * Math.cos(s.endAngle)},${cy + innerR * Math.sin(s.endAngle)} ${a2} Z`;
+    const sa = s.startAngle;
+    const ea = s.endAngle;
+    const large = ea - sa > Math.PI ? 1 : 0;
+    const ox1 = cx + outerR * Math.cos(sa);
+    const oy1 = cy + outerR * Math.sin(sa);
+    const ox2 = cx + outerR * Math.cos(ea);
+    const oy2 = cy + outerR * Math.sin(ea);
+    const ix1 = cx + innerR * Math.cos(ea);
+    const iy1 = cy + innerR * Math.sin(ea);
+    const ix2 = cx + innerR * Math.cos(sa);
+    const iy2 = cy + innerR * Math.sin(sa);
+    return `M${ox1},${oy1} A${outerR},${outerR},0,${large},1,${ox2},${oy2} L${ix1},${iy1} A${innerR},${innerR},0,${large},0,${ix2},${iy2} Z`;
   };
 
   return (
@@ -326,18 +330,38 @@ export default function ChartRenderer({ config, height = 200 }: Props) {
   const { width: sw } = useWindowDimensions();
   const w = sw - 48;
 
-  return (
-    <View style={styles.wrapper}>
-      {config.title ? <Text style={styles.title}>{config.title}</Text> : null}
+  if (!config || !config.data) return null;
 
-      {config.type === 'bar' && <BarChart config={config} w={w} h={height} />}
-      {config.type === 'line' && <LineChart config={config} w={w} h={height} />}
-      {config.type === 'donut' && <DonutChart config={config} size={Math.min(w, 260)} />}
-      {config.type === 'treemap' && <TreemapChart config={config} w={w} />}
-      {config.type === 'histogram' && <HistogramChart config={config} w={w} h={height} />}
-      {config.type === 'radar' && <RadarChart config={config} size={Math.min(w, 280)} />}
-    </View>
-  );
+  // Normalise 'pie' → 'donut' and 'area' → 'line'
+  const type = config.type === 'pie' ? 'donut' : config.type;
+
+  try {
+    return (
+      <View style={styles.wrapper}>
+        {config.title ? <Text style={styles.title}>{config.title}</Text> : null}
+
+        {type === 'bar' && <BarChart config={config} w={w} h={height} />}
+        {type === 'line' && <LineChart config={config} w={w} h={height} />}
+        {(type === 'donut') && <DonutChart config={config} size={Math.min(w, 260)} />}
+        {type === 'treemap' && <TreemapChart config={config} w={w} />}
+        {type === 'histogram' && <HistogramChart config={config} w={w} h={height} />}
+        {type === 'radar' && <RadarChart config={config} size={Math.min(w, 280)} />}
+        {!['bar','line','donut','treemap','histogram','radar'].includes(type) && (
+          <View style={styles.unsupportedChart}>
+            <Text style={styles.unsupportedText}>📊 {config.title || 'กราฟ'}</Text>
+          </View>
+        )}
+      </View>
+    );
+  } catch {
+    return (
+      <View style={styles.wrapper}>
+        <View style={styles.unsupportedChart}>
+          <Text style={styles.unsupportedText}>📊 {config.title || 'กราฟ'}</Text>
+        </View>
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
@@ -373,4 +397,6 @@ const styles = StyleSheet.create({
   treemapCell: { minHeight: 56, borderRadius: 8, padding: 6, justifyContent: 'center', alignItems: 'center' },
   treemapLabel: { fontSize: 11, color: '#fff', fontWeight: '700', textAlign: 'center' },
   treemapValue: { fontSize: 10, color: 'rgba(255,255,255,0.85)', marginTop: 2, textAlign: 'center' },
+  unsupportedChart: { minHeight: 80, justifyContent: 'center', alignItems: 'center' },
+  unsupportedText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
 });

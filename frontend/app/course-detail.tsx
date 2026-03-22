@@ -102,6 +102,18 @@ export default function CourseDetail() {
   };
 
   const startCourse = () => {
+    // Interactive-only course → navigate to practice modules
+    if (practiceModules.length > 0 && modules.length === 0) {
+      const target = practiceModules.find((pm, idx) => {
+        const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
+        return unlocked && !pm.user_completed;
+      }) || practiceModules[0];
+      if (target) {
+        router.push(`/duolingo?moduleId=${target.id}&courseId=${courseId}&title=${encodeURIComponent(target.title)}`);
+      }
+      return;
+    }
+    // Traditional course
     const next = getNextLesson();
     if (next) {
       router.push(`/lesson?id=${next._id}&courseId=${courseId}`);
@@ -157,6 +169,9 @@ export default function CourseDetail() {
   }
 
   const progress = getUserProgress();
+  // Detect course type: interactive-only = has practice modules but no traditional lessons
+  const isInteractive = practiceModules.length > 0 && modules.length === 0;
+  const totalInteractiveQuestions = practiceModules.reduce((s, pm) => s + (pm.question_count || 0), 0);
 
   return (
     <View style={styles.container}>
@@ -184,21 +199,43 @@ export default function CourseDetail() {
 
           {/* Title bar at bottom of image — pointerEvents none so it never blocks the back button */}
           <View style={styles.heroContent} pointerEvents="none">
-            <View style={styles.courseBadge}>
-              <Text style={styles.courseBadgeText}>{course.career_path}</Text>
+            <View style={styles.heroBadgeRow}>
+              <View style={styles.courseBadge}>
+                <Text style={styles.courseBadgeText}>{course.career_path}</Text>
+              </View>
+              {isInteractive && (
+                <View style={[styles.courseBadge, styles.interactiveBadge]}>
+                  <Text style={styles.courseBadgeText}>⚡ Interactive</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.courseTitle} numberOfLines={3}>{course.title}</Text>
 
             {/* Stats */}
             <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Ionicons name="book" size={18} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.statText}>{course.total_lessons} บทเรียน</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Ionicons name="layers" size={18} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.statText}>{modules.length} โมดูล</Text>
-              </View>
+              {isInteractive ? (
+                <>
+                  <View style={styles.statItem}>
+                    <Ionicons name="grid" size={18} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.statText}>{practiceModules.length} โมดูล</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="flash" size={18} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.statText}>{totalInteractiveQuestions} แบบฝึกหัด</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.statItem}>
+                    <Ionicons name="book" size={18} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.statText}>{course.total_lessons} บทเรียน</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="layers" size={18} color="rgba(255,255,255,0.9)" />
+                    <Text style={styles.statText}>{modules.length} โมดูล</Text>
+                  </View>
+                </>
+              )}
               {course.has_final_exam && (
                 <View style={styles.statItem}>
                   <Ionicons name="ribbon" size={18} color="rgba(255,255,255,0.9)" />
@@ -225,10 +262,9 @@ export default function CourseDetail() {
               <View style={[styles.progressBar, { width: `${progress.percentage}%` }]} />
             </View>
             <Text style={styles.progressSubtext}>
-              บทเรียน {progress.completedLessons}/{course.total_lessons}
-              {progress.totalPractice > 0
-                ? `  ·  แบบฝึกหัด ${progress.completedPractice}/${progress.totalPractice}`
-                : ''}
+              {isInteractive
+                ? `โมดูล ${progress.completedPractice}/${progress.totalPractice} ผ่านแล้ว`
+                : `บทเรียน ${progress.completedLessons}/${course.total_lessons}${progress.totalPractice > 0 ? `  ·  แบบฝึกหัด ${progress.completedPractice}/${progress.totalPractice}` : ''}`}
             </Text>
           </View>
         )}
@@ -237,9 +273,15 @@ export default function CourseDetail() {
         <View style={styles.actionSection}>
           <TouchableOpacity style={styles.startButton} onPress={startCourse}>
             <View style={styles.startButtonInner}>
-              <Ionicons name={progress.completed > 0 ? "play" : "rocket"} size={24} color="#FFFFFF" />
+              <Ionicons
+                name={progress.completed > 0 ? "play" : isInteractive ? "flash" : "rocket"}
+                size={24}
+                color="#FFFFFF"
+              />
               <Text style={styles.startButtonText}>
-                {progress.completed > 0 ? 'เรียนต่อ' : 'เริ่มเรียน'}
+                {progress.completed > 0
+                  ? (isInteractive ? 'ฝึกต่อ' : 'เรียนต่อ')
+                  : (isInteractive ? 'เริ่มฝึกทักษะ' : 'เริ่มเรียน')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -253,8 +295,85 @@ export default function CourseDetail() {
           </View>
         ) : null}
 
-        {/* ── Practice Modules (Duolingo) ── */}
-        {practiceModules.length > 0 && (
+        {/* ── Learning Path (Interactive-only course) ── */}
+        {isInteractive && (
+          <View style={styles.pathSection}>
+            <View style={styles.pathSectionHeader}>
+              <Text style={styles.sectionTitle}>🗺️ เส้นทางการเรียนรู้</Text>
+              <View style={styles.pathProgressChip}>
+                <Text style={styles.pathProgressChipText}>
+                  {practiceModules.filter(m => m.user_completed).length}/{practiceModules.length} ผ่าน
+                </Text>
+              </View>
+            </View>
+            {practiceModules.map((pm, idx) => {
+              const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
+              const isCurrent = unlocked && !pm.user_completed;
+              const isLast = idx === practiceModules.length - 1;
+              return (
+                <View key={pm.id} style={styles.pathNodeWrapper}>
+                  {/* Vertical connector between nodes */}
+                  {!isLast && (
+                    <View style={[styles.pathConnector, pm.user_completed && styles.pathConnectorDone]} />
+                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.pathCard,
+                      pm.user_completed && styles.pathCardDone,
+                      isCurrent && styles.pathCardCurrent,
+                      !unlocked && styles.pathCardLocked,
+                    ]}
+                    onPress={() => unlocked && router.push(
+                      `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
+                    )}
+                    activeOpacity={unlocked ? 0.7 : 1}
+                  >
+                    {/* Left node circle */}
+                    <View style={[
+                      styles.pathNode,
+                      pm.user_completed ? styles.pathNodeDone :
+                      isCurrent ? styles.pathNodeCurrent :
+                      styles.pathNodeLocked,
+                    ]}>
+                      {pm.user_completed
+                        ? <Ionicons name="checkmark" size={20} color="#fff" />
+                        : unlocked
+                        ? <Text style={styles.pathNodeText}>{idx + 1}</Text>
+                        : <Ionicons name="lock-closed" size={15} color="#fff" />}
+                    </View>
+                    {/* Content */}
+                    <View style={styles.pathCardBody}>
+                      <Text style={[styles.pathCardTitle, !unlocked && styles.pathCardTitleLocked]} numberOfLines={2}>
+                        {pm.title}
+                      </Text>
+                      <Text style={styles.pathCardMeta}>
+                        {pm.question_count} แบบฝึกหัด
+                        {pm.user_completed && ` · ⭐ ${pm.user_best_score}%`}
+                        {!pm.user_completed && pm.user_attempts > 0 && ` · ลองแล้ว ${pm.user_attempts} ครั้ง`}
+                        {!unlocked && ' · ทำโมดูลก่อนหน้าก่อน'}
+                      </Text>
+                      {isCurrent && (
+                        <View style={styles.pathCurrentBadge}>
+                          <Text style={styles.pathCurrentBadgeText}>ถัดไป</Text>
+                        </View>
+                      )}
+                    </View>
+                    {/* Right indicator */}
+                    {pm.user_completed && (
+                      <Text style={styles.pathScoreBig}>{pm.user_best_score}%</Text>
+                    )}
+                    {isCurrent && (
+                      <Ionicons name="play-circle" size={34} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* ── Practice Modules (mixed course: has both videos + practice) ── */}
+        {!isInteractive && practiceModules.length > 0 && (
           <View style={styles.curriculumSection}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md, gap: 8 }}>
               <Text style={styles.sectionTitle}>🎯 ฝึกทำ</Text>
@@ -269,10 +388,7 @@ export default function CourseDetail() {
               return (
                 <TouchableOpacity
                   key={pm.id}
-                  style={[
-                    styles.moduleCard,
-                    { opacity: unlocked ? 1 : 0.5 },
-                  ]}
+                  style={[styles.moduleCard, { opacity: unlocked ? 1 : 0.5 }]}
                   onPress={() => unlocked && router.push(
                     `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
                   )}
@@ -287,8 +403,7 @@ export default function CourseDetail() {
                           ? <Ionicons name="checkmark" size={18} color="#fff" />
                           : unlocked
                           ? <Text style={styles.moduleNumberText}>{idx + 1}</Text>
-                          : <Ionicons name="lock-closed" size={16} color="#fff" />
-                        }
+                          : <Ionicons name="lock-closed" size={16} color="#fff" />}
                       </View>
                       <View style={styles.moduleInfo}>
                         <Text style={styles.moduleTitle}>{pm.title}</Text>
@@ -304,9 +419,7 @@ export default function CourseDetail() {
                       <Ionicons name="play-circle" size={28} color={COLORS.primary} />
                     )}
                     {pm.user_completed && (
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.success }}>{pm.user_best_score}%</Text>
-                      </View>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.success }}>{pm.user_best_score}%</Text>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -315,7 +428,8 @@ export default function CourseDetail() {
           </View>
         )}
 
-        {/* Curriculum Section */}
+        {/* Curriculum Section — only for traditional courses */}
+        {!isInteractive && (
         <View style={styles.curriculumSection}>
           <Text style={styles.sectionTitle}>หลักสูตร</Text>
 
@@ -404,29 +518,53 @@ export default function CourseDetail() {
             })
           )}
         </View>
+        )}
 
         {/* What You'll Learn */}
         <View style={styles.learnSection}>
           <Text style={styles.sectionTitle}>สิ่งที่คุณจะได้เรียนรู้</Text>
           <View style={styles.learnCard}>
-            <View style={styles.learnItem}>
-              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-              <Text style={styles.learnText}>เนื้อหาครบถ้วนสำหรับเริ่มต้นอาชีพ {course.career_path}</Text>
-            </View>
-            <View style={styles.learnItem}>
-              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-              <Text style={styles.learnText}>แบบทดสอบทุกบทเรียนเพื่อวัดความเข้าใจ</Text>
-            </View>
-            {course.has_final_exam && (
-              <View style={styles.learnItem}>
-                <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-                <Text style={styles.learnText}>สอบปลายภาคและรับใบประกาศนียบัตร</Text>
-              </View>
+            {isInteractive ? (
+              <>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>เรียนรู้แบบ Interactive ด้วย {totalInteractiveQuestions} แบบฝึกหัด</Text>
+                </View>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>ฝึกคิดวิเคราะห์ผ่านสถานการณ์จริงและโจทย์หลากหลายรูปแบบ</Text>
+                </View>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>ได้รับ Feedback ทันทีหลังตอบแต่ละข้อ</Text>
+                </View>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>เข้าถึงได้ตลอดเวลา ทุกที่ ทุกอุปกรณ์</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>เนื้อหาครบถ้วนสำหรับเริ่มต้นอาชีพ {course.career_path}</Text>
+                </View>
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>แบบทดสอบทุกบทเรียนเพื่อวัดความเข้าใจ</Text>
+                </View>
+                {course.has_final_exam && (
+                  <View style={styles.learnItem}>
+                    <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                    <Text style={styles.learnText}>สอบปลายภาคและรับใบประกาศนียบัตร</Text>
+                  </View>
+                )}
+                <View style={styles.learnItem}>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                  <Text style={styles.learnText}>เข้าถึงเนื้อหาได้ตลอดชีวิต</Text>
+                </View>
+              </>
             )}
-            <View style={styles.learnItem}>
-              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-              <Text style={styles.learnText}>เข้าถึงเนื้อหาได้ตลอดชีวิต</Text>
-            </View>
           </View>
         </View>
 
@@ -801,5 +939,137 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     flex: 1,
     lineHeight: 22,
+  },
+  // ── Hero badge row ──────────────────────────────────────────────────────────
+  heroBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: SPACING.md,
+  },
+  interactiveBadge: {
+    backgroundColor: 'rgba(239,94,168,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  // ── Learning Path section ────────────────────────────────────────────────────
+  pathSection: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
+  },
+  pathSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    gap: 8,
+  },
+  pathProgressChip: {
+    backgroundColor: COLORS.primary + '18',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  pathProgressChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  pathNodeWrapper: {
+    position: 'relative',
+    paddingLeft: 28,      // space for the connector line
+    marginBottom: SPACING.sm,
+  },
+  pathConnector: {
+    position: 'absolute',
+    left: 19,             // center of the 40px node (pathSection paddingLeft = 28, node center at 28-8=20… adjust)
+    top: 52,              // below the node
+    width: 2,
+    bottom: -SPACING.sm,
+    backgroundColor: '#E5E7EB',
+    zIndex: 0,
+  },
+  pathConnectorDone: {
+    backgroundColor: COLORS.success,
+  },
+  pathCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    ...SHADOWS.small,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E5E7EB',
+    zIndex: 1,
+  },
+  pathCardDone: {
+    borderLeftColor: COLORS.success,
+    backgroundColor: '#F0FDF4',
+  },
+  pathCardCurrent: {
+    borderLeftColor: COLORS.primary,
+    backgroundColor: '#FFF5FB',
+  },
+  pathCardLocked: {
+    opacity: 0.5,
+  },
+  pathNode: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  pathNodeDone: {
+    backgroundColor: COLORS.success,
+  },
+  pathNodeCurrent: {
+    backgroundColor: COLORS.primary,
+  },
+  pathNodeLocked: {
+    backgroundColor: '#9CA3AF',
+  },
+  pathNodeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  pathCardBody: {
+    flex: 1,
+  },
+  pathCardTitle: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  pathCardTitleLocked: {
+    color: COLORS.textTertiary,
+  },
+  pathCardMeta: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  pathCurrentBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary + '18',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  pathCurrentBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  pathScoreBig: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.success,
+    flexShrink: 0,
   },
 });

@@ -111,8 +111,8 @@ const TYPE_LABELS: Record<string, string> = {
   'drag-arrange':    '🗂️ จัดเรียง',
 };
 
-// Non-answer types — auto-counted as correct, no feedback panel
-const NO_ANSWER_TYPES = new Set(['micro-lesson', 'concept-reveal', 'scenario', 'drag-arrange']);
+// Types that have their own advance mechanism (no feedback panel / no submit button)
+const NO_ANSWER_TYPES = new Set(['micro-lesson', 'concept-reveal', 'scenario']);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DuolingoScreen() {
@@ -266,7 +266,8 @@ export default function DuolingoScreen() {
   const passed   = pct >= 70;
   const progress = questions.length ? (current + (revealed || NO_ANSWER_TYPES.has(questions[current]?.type) ? 1 : 0)) / questions.length : 0;
   const q        = questions[current];
-  const isCorrect = selected === q?.answer;
+  // 'correct'/'__wrong__' are sentinels used by fill-blank and drag-arrange
+  const isCorrect = selected === 'correct' || (selected !== null && selected !== '__wrong__' && selected === q?.answer);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
@@ -565,7 +566,7 @@ export default function DuolingoScreen() {
             const allCorrect = correctIds.every((cid, i) => slots[i] === cid);
             setRevealed(true);
             setResults(prev => [...prev, allCorrect]);
-            setSelected(allCorrect ? q.answer.split(',')[0] : '__wrong__');
+            setSelected(allCorrect ? 'correct' : '__wrong__');
             showFeedback();
           };
 
