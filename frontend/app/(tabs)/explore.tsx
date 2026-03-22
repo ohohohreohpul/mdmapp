@@ -180,61 +180,59 @@ export default function Explore() {
               <Text style={styles.emptySubtext}>ลองค้นหาด้วยคำอื่น</Text>
             </View>
           ) : (
-            filteredCourses.map((course: any) => (
-              {(() => {
-                const pmCount = course.practice_module_count || 0;
-                const lessonCount = course.total_lessons || 0;
-                const isInteractive = pmCount > 0 && lessonCount === 0;
-                return (
-                  <TouchableOpacity
-                    key={course._id}
-                    style={[styles.courseCard, isInteractive && styles.courseCardInteractive]}
-                    onPress={() => router.push(`/course-detail?id=${course._id}`)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={[styles.courseThumbnail, { backgroundColor: isInteractive ? '#f0e6f8' : COLORS.primary }]}>
-                      <Ionicons name={isInteractive ? 'flash' : 'school'} size={28} color={isInteractive ? COLORS.primary : '#FFFFFF'} />
-                    </View>
+            filteredCourses.map((course: any) => {
+            const pmCount = course.practice_module_count || 0;
+            const lessonCount = course.total_lessons || 0;
+            const isInteractive = pmCount > 0 && lessonCount === 0;
+            return (
+              <TouchableOpacity
+                key={course._id}
+                style={[styles.courseCard, isInteractive && styles.courseCardInteractive]}
+                onPress={() => router.push(`/course-detail?id=${course._id}`)}
+                activeOpacity={0.9}
+              >
+                <View style={[styles.courseThumbnail, { backgroundColor: isInteractive ? '#f0e6f8' : COLORS.primary }]}>
+                  <Ionicons name={isInteractive ? 'flash' : 'school'} size={28} color={isInteractive ? COLORS.primary : '#FFFFFF'} />
+                </View>
 
-                    <View style={styles.courseInfo}>
-                      <View style={styles.courseTitleRow}>
-                        <Text style={styles.courseTitle} numberOfLines={2}>
-                          {course.title}
-                        </Text>
-                        {isInteractive && (
-                          <View style={styles.interactivePill}>
-                            <Text style={styles.interactivePillText}>⚡ Interactive</Text>
-                          </View>
-                        )}
+                <View style={styles.courseInfo}>
+                  <View style={styles.courseTitleRow}>
+                    <Text style={styles.courseTitle} numberOfLines={2}>
+                      {course.title}
+                    </Text>
+                    {isInteractive && (
+                      <View style={styles.interactivePill}>
+                        <Text style={styles.interactivePillText}>⚡ Interactive</Text>
                       </View>
-                      <Text style={styles.courseCareer}>{course.career_path}</Text>
-                      <View style={styles.courseMeta}>
-                        {lessonCount > 0 && (
-                          <View style={styles.metaItem}>
-                            <Ionicons name="book-outline" size={14} color={COLORS.textSecondary} />
-                            <Text style={styles.metaText}>{lessonCount} บทเรียน</Text>
-                          </View>
-                        )}
-                        {pmCount > 0 && (
-                          <View style={styles.metaItem}>
-                            <Ionicons name="flash-outline" size={14} color={COLORS.primary} />
-                            <Text style={[styles.metaText, { color: COLORS.primary }]}>{pmCount} โมดูลฝึกหัด</Text>
-                          </View>
-                        )}
-                        {course.has_final_exam && (
-                          <View style={styles.metaItem}>
-                            <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
-                            <Text style={[styles.metaText, { color: COLORS.success }]}>มีใบประกาศ</Text>
-                          </View>
-                        )}
+                    )}
+                  </View>
+                  <Text style={styles.courseCareer}>{course.career_path}</Text>
+                  <View style={styles.courseMeta}>
+                    {lessonCount > 0 && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="book-outline" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.metaText}>{lessonCount} บทเรียน</Text>
                       </View>
-                    </View>
+                    )}
+                    {pmCount > 0 && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="flash-outline" size={14} color={COLORS.primary} />
+                        <Text style={[styles.metaText, { color: COLORS.primary }]}>{pmCount} โมดูลฝึกหัด</Text>
+                      </View>
+                    )}
+                    {course.has_final_exam && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
+                        <Text style={[styles.metaText, { color: COLORS.success }]}>มีใบประกาศ</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
 
-                    <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
-                  </TouchableOpacity>
-                );
-              })()}
-            ))
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+              </TouchableOpacity>
+            );
+          })
           )}
         </View>
 
