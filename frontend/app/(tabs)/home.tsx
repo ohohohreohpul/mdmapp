@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   useWindowDimensions,
-  Image,
   ActivityIndicator,
   Linking,
+  Animated,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +39,7 @@ interface Course {
   description: string;
   career_path: string;
   total_lessons: number;
+  practice_module_count?: number;
 }
 
 interface Announcement {
@@ -390,6 +391,17 @@ Figma มีระบบ Component และ Variable ที่ทรงพล�
   },
 ];
 
+// ─── Streak milestone labels ─────────────────────────────────────────────────
+function streakMilestoneMsg(streak: number): string {
+  if (streak >= 30) return `🌟 ${streak} วันติดต่อกัน! สุดยอดมาก!`;
+  if (streak >= 14) return `💎 ${streak} วัน กำลังไปได้ดีมาก!`;
+  if (streak >= 7) return `🔥 ${streak} วัน! ครบสัปดาห์แรกแล้ว!`;
+  if (streak >= 3) return `⚡ ${streak} วันติดต่อกัน ไปต่อเลย!`;
+  if (streak === 2) return `✨ 2 วันติดต่อกัน! รักษาไว้นะ`;
+  if (streak === 1) return `🌱 วันแรก เริ่มต้นที่ดี!`;
+  return `🎯 เช็คอินวันนี้เพื่อเริ่ม streak`;
+}
+
 export default function HomeScreen() {
   const { user } = useUser();
   const router = useRouter();
@@ -404,10 +416,16 @@ export default function HomeScreen() {
   const [checkedInToday, setCheckedInToday] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkInXp, setCheckInXp] = useState(0);
+  const [showXpPop, setShowXpPop] = useState(false);
+
+  // ── Animations ──────────────────────────────────────────────────────────────
+  const checkInScale = useRef(new Animated.Value(1)).current;
+  const xpPopOpacity = useRef(new Animated.Value(0)).current;
+  const xpPopY = useRef(new Animated.Value(0)).current;
 
   const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`;
 
-  // Grid — 2 columns, no overflow
+  // Grid — 2 columns
   const gridPadding = SPACING.lg * 2;
   const gridGap = SPACING.sm;
   const cardWidth = (width - gridPadding - gridGap) / 2;
@@ -426,21 +444,10 @@ export default function HomeScreen() {
         } catch (_) {}
       }
 
-      // Check if already checked in today (local cache)
       try {
         const done = await AsyncStorage.getItem(todayKey);
         setCheckedInToday(done === 'true');
       } catch (_) {}
-
-      // Future: load real announcements & articles
-      // try {
-      //   const annRes = await axios.get(`${API_URL}/api/announcements`);
-      //   setAnnouncements(annRes.data);
-      // } catch (_) {}
-      // try {
-      //   const artRes = await axios.get(`${API_URL}/api/articles`);
-      //   setArticles(artRes.data);
-      // } catch (_) {}
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -448,7 +455,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Re-fetch every time the tab is focused so XP/streak updates appear immediately
   useFocusEffect(useCallback(() => { fetchData(); }, [user?._id]));
 
   const onRefresh = async () => {
@@ -457,22 +463,70 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const animateCheckInPress = () => {
+    xpPopOpacity.setValue(0);
+    xpPopY.setValue(0);
+    Animated.sequence([
+      Animated.spring(checkInScale, {
+        toValue: 0.88,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 200,
+      }),
+      Animated.spring(checkInScale, {
+        toValue: 1.12,
+        useNativeDriver: true,
+        friction: 4,
+        tension: 200,
+      }),
+      Animated.spring(checkInScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 200,
+      }),
+    ]).start();
+  };
+
+  const animateXpPop = () => {
+    xpPopOpacity.setValue(1);
+    xpPopY.setValue(0);
+    Animated.parallel([
+      Animated.timing(xpPopY, {
+        toValue: -40,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(500),
+        Animated.timing(xpPopOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => setShowXpPop(false));
+  };
+
   const handleCheckIn = async () => {
     if (!user || checkingIn || checkedInToday) return;
+    animateCheckInPress();
     setCheckingIn(true);
     try {
       const res = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
       if (!res.data.already_checked_in) {
         setCheckInXp(res.data.xp_awarded);
         setCheckedInToday(true);
+        setShowXpPop(true);
         await AsyncStorage.setItem(todayKey, 'true');
-        fetchData(); // refresh streak + XP chips
+        animateXpPop();
+        fetchData();
       } else {
         setCheckedInToday(true);
         await AsyncStorage.setItem(todayKey, 'true');
       }
     } catch (_) {
-      // silently fail — check-in is a bonus, not critical
+      // silently fail
     } finally {
       setCheckingIn(false);
     }
@@ -482,8 +536,11 @@ export default function HomeScreen() {
   const getPathIcon = (path: string) => CAREER_PATHS.find(p => p.id === path)?.icon || '📚';
   const careerPathsToShow = CAREER_PATHS.filter(p => p.id !== 'all');
 
-  // First name only to keep header compact, show full name in profile
   const firstName = (user?.display_name || user?.username || 'คุณ').split(' ')[0];
+  const streak = dashboard?.current_streak ?? 0;
+  const levelPct = dashboard?.level_info?.progress_percent ?? 0;
+  const level = dashboard?.level_info?.level ?? 1;
+  const goalPct = Math.min(dashboard?.daily_progress_percent ?? 0, 100);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -494,124 +551,153 @@ export default function HomeScreen() {
 
         {/* ─────────────────────────────── HEADER ─────────────────────────────── */}
         <View style={styles.header}>
-          {/* Top row: avatar + greeting | stats */}
+          {/* Top: avatar + greeting */}
           <View style={styles.headerTop}>
-            <View style={styles.headerLeft}>
-              {/* Avatar circle */}
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(user?.display_name || user?.username || '?')[0].toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.greetingBlock}>
-                <Text style={styles.greetingSmall}>สวัสดี 👋</Text>
-                <Text style={styles.greetingName} numberOfLines={1} ellipsizeMode="tail">
-                  {firstName}
-                </Text>
-                <Text style={styles.greetingSub}>มาเรียนรู้กันเถอะ</Text>
-              </View>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(user?.display_name || user?.username || '?')[0].toUpperCase()}
+              </Text>
             </View>
+            <View style={styles.greetingBlock}>
+              <Text style={styles.greetingSmall}>สวัสดี 👋</Text>
+              <Text style={styles.greetingName} numberOfLines={1}>{firstName}</Text>
+            </View>
+            <View style={styles.notifBtn}>
+              <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.85)" />
+            </View>
+          </View>
 
-            {/* Stats — vertical stack so they never overflow */}
-            <View style={styles.statsList}>
-              <View style={styles.statChip}>
-                <Text style={styles.statEmoji}>🔥</Text>
-                <Text style={styles.statChipText}>{dashboard?.current_streak ?? 0} วัน</Text>
-              </View>
-              <View style={styles.statChip}>
-                <Text style={styles.statEmoji}>⚡</Text>
-                <Text style={styles.statChipText}>{dashboard?.xp_total ?? 0} XP</Text>
-              </View>
-              <View style={[styles.statChip, styles.levelChip]}>
-                <Text style={styles.statEmoji}>👑</Text>
-                <Text style={[styles.statChipText, { color: '#FFD700' }]}>
-                  Lv.{dashboard?.level_info?.level ?? 1}
-                </Text>
-              </View>
+          {/* Stats pills row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statPill}>
+              <Text style={styles.statPillEmoji}>🔥</Text>
+              <Text style={styles.statPillNum}>{streak}</Text>
+              <Text style={styles.statPillLabel}> วัน</Text>
             </View>
+            <View style={[styles.statPill, styles.statPillXp]}>
+              <Text style={styles.statPillEmoji}>⚡</Text>
+              <Text style={styles.statPillNum}>{dashboard?.xp_total ?? 0}</Text>
+              <Text style={styles.statPillLabel}> XP</Text>
+            </View>
+            <View style={[styles.statPill, styles.statPillLevel]}>
+              <Text style={styles.statPillEmoji}>👑</Text>
+              <Text style={[styles.statPillNum, { color: '#FFD700' }]}>Lv.{level}</Text>
+            </View>
+          </View>
+
+          {/* Level progress bar */}
+          <View style={styles.levelBarWrap}>
+            <View style={styles.levelBarTrack}>
+              <View style={[styles.levelBarFill, { width: `${levelPct}%` as any }]} />
+            </View>
+            <Text style={styles.levelBarLabel}>{levelPct}% → Lv.{level + 1}</Text>
           </View>
         </View>
 
-        {/* ─── Daily Goal — floating card below header ─── */}
-        <View style={styles.dailyGoalCard}>
-          <View style={styles.dailyGoalHeader}>
-            <View style={styles.dailyGoalLeft}>
-              <Text style={styles.dailyGoalLabel}>🎯 เป้าหมายวันนี้</Text>
-              <Text style={styles.dailyGoalSub}>
-                {(dashboard?.daily_progress_percent ?? 0) >= 100
-                  ? '🎉 ทำได้แล้ว!'
-                  : `เหลือ ${Math.max(0, (dashboard?.daily_goal ?? 30) - (dashboard?.today_xp ?? 0))} XP`}
+        {/* ─────────────────── TODAY CARD (goal + check-in) ─────────────────── */}
+        <View style={styles.todayCard}>
+          {/* Daily goal row */}
+          <View style={styles.todayGoalRow}>
+            <View>
+              <Text style={styles.todayGoalTitle}>🎯 เป้าหมายวันนี้</Text>
+              <Text style={styles.todayGoalSub}>
+                {goalPct >= 100
+                  ? '🎉 บรรลุเป้าหมายแล้ว!'
+                  : `เหลืออีก ${Math.max(0, (dashboard?.daily_goal ?? 30) - (dashboard?.today_xp ?? 0))} XP`}
               </Text>
             </View>
-            <Text style={styles.dailyGoalXP}>
+            <Text style={styles.todayXpNum}>
               {dashboard?.today_xp ?? 0}
-              <Text style={styles.dailyGoalGoal}> / {dashboard?.daily_goal ?? 30} XP</Text>
+              <Text style={styles.todayXpGoal}> /{dashboard?.daily_goal ?? 30}</Text>
             </Text>
           </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.min(dashboard?.daily_progress_percent ?? 0, 100)}%` as any },
-              ]}
-            />
+          <View style={styles.goalTrack}>
+            <View style={[styles.goalFill, { width: `${goalPct}%` as any }]} />
           </View>
 
-          {/* Week strip */}
-          {dashboard?.week_activity && (
-            <View style={styles.weekRow}>
-              {dashboard.week_activity.map((day, i) => (
-                <View key={i} style={styles.dayCol}>
-                  <View style={[styles.dayDot, day.goal_met ? styles.dayDotOn : styles.dayDotOff]}>
-                    {day.goal_met && <Ionicons name="checkmark" size={10} color="#fff" />}
+          {/* Divider */}
+          <View style={styles.todayDivider} />
+
+          {/* Check-in section */}
+          {user && (
+            <View style={styles.checkInSection}>
+              {/* Left: streak big display */}
+              <View style={styles.streakBig}>
+                <Text style={styles.streakFireEmoji}>{checkedInToday ? '🔥' : '💤'}</Text>
+                <Text style={styles.streakBigNum}>{streak}</Text>
+                <Text style={styles.streakBigLabel}>วัน</Text>
+              </View>
+
+              {/* Center: milestone text + week dots */}
+              <View style={styles.checkInCenter}>
+                <Text style={styles.streakMilestone}>{streakMilestoneMsg(streak)}</Text>
+                {dashboard?.week_activity ? (
+                  <View style={styles.weekRow}>
+                    {dashboard.week_activity.map((day, i) => (
+                      <View key={i} style={styles.dayCol}>
+                        <View style={[styles.dayDot, day.goal_met ? styles.dayDotOn : styles.dayDotOff]}>
+                          {day.goal_met
+                            ? <Text style={styles.dayDotEmoji}>🔥</Text>
+                            : <View style={styles.dayDotEmpty} />}
+                        </View>
+                        <Text style={styles.dayLabel}>
+                          {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(day.date).getDay()]}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
-                  <Text style={styles.dayLabel}>
-                    {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(day.date).getDay()]}
-                  </Text>
-                </View>
-              ))}
+                ) : (
+                  <View style={styles.weekRowPlaceholder} />
+                )}
+              </View>
+
+              {/* Right: check-in button */}
+              <View style={styles.checkInRight}>
+                {!checkedInToday ? (
+                  <View>
+                    <Animated.View style={{ transform: [{ scale: checkInScale }] }}>
+                      <TouchableOpacity
+                        style={[styles.checkInBtn, checkingIn && styles.checkInBtnDisabled]}
+                        onPress={handleCheckIn}
+                        disabled={checkingIn}
+                        activeOpacity={0.85}
+                      >
+                        {checkingIn
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : (
+                            <>
+                              <Text style={styles.checkInBtnEmoji}>✅</Text>
+                              <Text style={styles.checkInBtnText}>เช็คอิน</Text>
+                              <Text style={styles.checkInBtnXp}>+20 XP</Text>
+                            </>
+                          )}
+                      </TouchableOpacity>
+                    </Animated.View>
+                    {/* XP pop */}
+                    {showXpPop && (
+                      <Animated.Text
+                        style={[
+                          styles.xpPop,
+                          { opacity: xpPopOpacity, transform: [{ translateY: xpPopY }] },
+                        ]}
+                      >
+                        +{checkInXp} XP 🎉
+                      </Animated.Text>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.checkInDone}>
+                    <Ionicons name="checkmark-circle" size={36} color="#10B981" />
+                    <Text style={styles.checkInDoneLabel}>เช็คอินแล้ว</Text>
+                    {checkInXp > 0 && (
+                      <Text style={styles.checkInDoneXp}>+{checkInXp} XP</Text>
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
           )}
         </View>
-
-        {/* ─────────────────────── DAILY CHECK-IN ─────────────────────── */}
-        {user && (
-          <View style={styles.checkInCard}>
-            <View style={styles.checkInLeft}>
-              <Text style={styles.checkInIcon}>{checkedInToday ? '✅' : '🔥'}</Text>
-              <View style={styles.checkInText}>
-                <Text style={styles.checkInTitle}>
-                  {checkedInToday ? 'เช็คอินแล้ววันนี้' : 'เช็คอินวันนี้'}
-                  {checkedInToday && checkInXp > 0 ? `  +${checkInXp} XP` : ''}
-                </Text>
-                <Text style={styles.checkInSub}>
-                  {checkedInToday
-                    ? 'มาอีกครั้งพรุ่งนี้เพื่อรักษา streak!'
-                    : 'รับ 20 XP เพื่อรักษา streak ของคุณ'}
-                </Text>
-              </View>
-            </View>
-            {!checkedInToday && (
-              <TouchableOpacity
-                style={[styles.checkInBtn, checkingIn && styles.checkInBtnDisabled]}
-                onPress={handleCheckIn}
-                disabled={checkingIn}
-                activeOpacity={0.8}
-              >
-                {checkingIn ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.checkInBtnText}>เช็คอิน</Text>
-                )}
-              </TouchableOpacity>
-            )}
-            {checkedInToday && (
-              <View style={styles.checkInDone}>
-                <Ionicons name="checkmark-circle" size={28} color="#10B981" />
-              </View>
-            )}
-          </View>
-        )}
 
         {/* ─────────────────────── ANNOUNCEMENTS ─────────────────────── */}
         {announcements.length > 0 && (
@@ -650,9 +736,9 @@ export default function HomeScreen() {
         {recommendedCourses.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>เริ่มเรียนเลย</Text>
+              <Text style={styles.sectionTitle}>📚 เริ่มเรียนเลย</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-                <Text style={styles.seeAll}>ดูทั้งหมด</Text>
+                <Text style={styles.seeAll}>ดูทั้งหมด →</Text>
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -660,76 +746,53 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.hScrollContent}
             >
-              {recommendedCourses.map(course => (
-                <TouchableOpacity
-                  key={course._id}
-                  style={styles.courseHCard}
-                  onPress={() => router.push(`/course-detail?id=${course._id}`)}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.courseHCover, { backgroundColor: getPathColor(course.career_path) }]}>
-                    <Text style={styles.courseHIcon}>{getPathIcon(course.career_path)}</Text>
-                  </View>
-                  <View style={styles.courseHBody}>
-                    <Text style={styles.courseHTitle} numberOfLines={2}>{course.title}</Text>
-                    <View style={styles.courseHMeta}>
-                      <Ionicons name="book-outline" size={11} color={COLORS.textSecondary} />
-                      <Text style={styles.courseHMetaText}>{course.total_lessons} บทเรียน</Text>
+              {recommendedCourses.map(course => {
+                const pmCount = course.practice_module_count || 0;
+                const lessonCount = course.total_lessons || 0;
+                const isInteractive = pmCount > 0 && lessonCount === 0;
+                return (
+                  <TouchableOpacity
+                    key={course._id}
+                    style={styles.courseHCard}
+                    onPress={() => router.push(`/course-detail?id=${course._id}`)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={[styles.courseHCover, { backgroundColor: getPathColor(course.career_path) + (isInteractive ? '22' : '') }]}>
+                      <Text style={styles.courseHIcon}>{isInteractive ? '⚡' : getPathIcon(course.career_path)}</Text>
+                      {isInteractive && (
+                        <View style={styles.interactiveTag}>
+                          <Text style={styles.interactiveTagText}>Interactive</Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ─────────────────────── TIPS & ARTICLES ─────────────────────── */}
-        {articles.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>💡 รวมเคล็ดลับ</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAll}>ดูทั้งหมด</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.hScrollContent}
-            >
-              {articles.map(article => (
-                <TouchableOpacity
-                  key={article.id}
-                  style={styles.articleCard}
-                  activeOpacity={0.85}
-                  onPress={() => router.push(`/blog?id=${article.id}`)}
-                >
-                  {/* Cover */}
-                  <View style={[styles.articleCover, { backgroundColor: article.cover_color + '22' }]}>
-                    <Text style={styles.articleEmoji}>{article.cover_emoji}</Text>
-                    <View style={[styles.articleCategoryBadge, { backgroundColor: article.cover_color }]}>
-                      <Text style={styles.articleCategoryText} numberOfLines={1}>
-                        {article.category}
-                      </Text>
+                    <View style={styles.courseHBody}>
+                      <Text style={styles.courseHTitle} numberOfLines={2}>{course.title}</Text>
+                      <View style={styles.courseHMeta}>
+                        <Ionicons
+                          name={isInteractive ? 'flash-outline' : 'book-outline'}
+                          size={11}
+                          color={isInteractive ? COLORS.primary : COLORS.textSecondary}
+                        />
+                        <Text style={[styles.courseHMetaText, isInteractive && { color: COLORS.primary }]}>
+                          {isInteractive ? `${pmCount} โมดูล` : `${lessonCount} บทเรียน`}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  {/* Body */}
-                  <View style={styles.articleBody}>
-                    <Text style={styles.articleTitle} numberOfLines={3}>{article.title}</Text>
-                    <View style={styles.articleMeta}>
-                      <Ionicons name="time-outline" size={11} color={COLORS.textSecondary} />
-                      <Text style={styles.articleMetaText}>{article.read_time} นาที</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
 
         {/* ─────────────────────── CAREER PATHS ─────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>สาขาอาชีพ</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🎓 สาขาอาชีพ</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
+              <Text style={styles.seeAll}>เลือกเส้นทาง →</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.grid}>
             {careerPathsToShow.map((path, i) => {
               const isLastOdd = careerPathsToShow.length % 2 !== 0 && i === careerPathsToShow.length - 1;
@@ -748,71 +811,73 @@ export default function HomeScreen() {
                     <Text style={styles.pathEmoji}>{path.icon}</Text>
                   </View>
                   <Text style={styles.pathName} numberOfLines={2}>{path.name}</Text>
+                  <Text style={[styles.pathCta, { color: path.color }]}>ดูคอร์ส →</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* ─────────────────────── POPULAR COURSES ─────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>คอร์สยอดนิยม</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-              <Text style={styles.seeAll}>ดูทั้งหมด</Text>
-            </TouchableOpacity>
+        {/* ─────────────────────── TIPS & ARTICLES ─────────────────────── */}
+        {articles.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>💡 รวมเคล็ดลับ</Text>
+              <TouchableOpacity>
+                <Text style={styles.seeAll}>ดูทั้งหมด →</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScrollContent}
+            >
+              {articles.map(article => (
+                <TouchableOpacity
+                  key={article.id}
+                  style={styles.articleCard}
+                  activeOpacity={0.85}
+                  onPress={() => router.push(`/blog?id=${article.id}`)}
+                >
+                  <View style={[styles.articleCover, { backgroundColor: article.cover_color + '22' }]}>
+                    <Text style={styles.articleEmoji}>{article.cover_emoji}</Text>
+                    <View style={[styles.articleCategoryBadge, { backgroundColor: article.cover_color }]}>
+                      <Text style={styles.articleCategoryText} numberOfLines={1}>{article.category}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.articleBody}>
+                    <Text style={styles.articleTitle} numberOfLines={3}>{article.title}</Text>
+                    <View style={styles.articleMeta}>
+                      <Ionicons name="time-outline" size={11} color={COLORS.textSecondary} />
+                      <Text style={styles.articleMetaText}>{article.read_time} นาที</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-
-          {courses.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Ionicons name="school-outline" size={40} color={COLORS.textTertiary} />
-              <Text style={styles.emptyText}>ยังไม่มีคอร์ส</Text>
-            </View>
-          ) : (
-            <View style={styles.grid}>
-              {courses.slice(0, 6).map((course, i) => {
-                const isLastOdd = courses.slice(0, 6).length % 2 !== 0 && i === Math.min(courses.length, 6) - 1;
-                return (
-                  <TouchableOpacity
-                    key={course._id}
-                    style={[
-                      styles.courseCard,
-                      { width: cardWidth },
-                      isLastOdd && { marginRight: cardWidth + gridGap },
-                    ]}
-                    onPress={() => router.push(`/course-detail?id=${course._id}`)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={[styles.courseCardCover, { backgroundColor: getPathColor(course.career_path) }]}>
-                      <Text style={styles.courseCardIcon}>{getPathIcon(course.career_path)}</Text>
-                    </View>
-                    <View style={styles.courseCardBody}>
-                      <Text style={styles.courseCardTitle} numberOfLines={2}>{course.title}</Text>
-                      <Text style={styles.courseCardMeta}>{course.total_lessons} บทเรียน</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
+        )}
 
         {/* ─────────────────────── BADGES ─────────────────────── */}
         {dashboard?.badges && dashboard.badges.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>เหรียญรางวัล</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🏅 เหรียญรางวัล</Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.badgesRow}>
               {dashboard.badges.map((badge, i) => (
                 <View key={i} style={styles.badge}>
-                  <Text style={styles.badgeEmoji}>{badge.icon}</Text>
-                  <Text style={styles.badgeName} numberOfLines={1}>{badge.name}</Text>
+                  <View style={styles.badgeCircle}>
+                    <Text style={styles.badgeEmoji}>{badge.icon}</Text>
+                  </View>
+                  <Text style={styles.badgeName} numberOfLines={2}>{badge.name}</Text>
                 </View>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Ko-fi subtle support nudge */}
+        {/* Ko-fi support nudge */}
         <TouchableOpacity
           style={styles.kofiNudge}
           onPress={() => Linking.openURL('https://ko-fi.com/J3J11WBY0S')}
@@ -836,45 +901,39 @@ const styles = StyleSheet.create({
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl + 8,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xl + 16,
     backgroundColor: '#ef5ea8',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
   headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: SPACING.md,
     gap: SPACING.sm,
-    flex: 1,
-    marginRight: SPACING.sm,
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: 'rgba(255,255,255,0.55)',
     flexShrink: 0,
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#fff',
   },
   greetingBlock: {
     flex: 1,
   },
   greetingSmall: {
-    fontSize: 12,
+    fontSize: 11,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
   },
@@ -884,160 +943,247 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: -0.3,
   },
-  greetingSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 1,
-  },
-
-  // Stats — vertical stack on the right
-  statsList: {
-    gap: 5,
-    alignItems: 'flex-end',
+  notifBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
     flexShrink: 0,
   },
-  statChip: {
+
+  // Stats pills — horizontal row
+  statsRow: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  statPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: RADIUS.full,
-    gap: 4,
-    minWidth: 72,
+    gap: 2,
   },
-  levelChip: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  statPillXp: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  statEmoji: { fontSize: 12 },
-  statChipText: {
-    fontSize: 12,
-    fontWeight: '700',
+  statPillLevel: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  statPillEmoji: { fontSize: 12 },
+  statPillNum: {
+    fontSize: 13,
+    fontWeight: '800',
     color: '#fff',
   },
+  statPillLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.85)',
+  },
 
-  // ── Daily Goal card (below header) ────────────────────────────────────────
-  dailyGoalCard: {
+  // Level progress bar
+  levelBarWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  levelBarTrack: {
+    flex: 1,
+    height: 5,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: RADIUS.full,
+    overflow: 'hidden',
+  },
+  levelBarFill: {
+    height: '100%',
+    backgroundColor: '#FFD700',
+    borderRadius: RADIUS.full,
+  },
+  levelBarLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    flexShrink: 0,
+  },
+
+  // ── Today Card ────────────────────────────────────────────────────────────
+  todayCard: {
     marginHorizontal: SPACING.lg,
-    marginTop: -18,           // overlap the header slightly
+    marginTop: -20,
     backgroundColor: '#fff',
-    borderRadius: RADIUS.xl,
+    borderRadius: 20,
     padding: SPACING.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.10,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  dailyGoalHeader: {
+  todayGoalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: SPACING.sm,
   },
-  dailyGoalLeft: { gap: 2 },
-  dailyGoalLabel: {
+  todayGoalTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 2,
   },
-  dailyGoalSub: {
+  todayGoalSub: {
     fontSize: 12,
     color: COLORS.textSecondary,
   },
-  dailyGoalXP: {
-    fontSize: 18,
+  todayXpNum: {
+    fontSize: 20,
     fontWeight: '800',
     color: COLORS.primary,
   },
-  dailyGoalGoal: {
+  todayXpGoal: {
     fontSize: 13,
     fontWeight: '500',
     color: COLORS.textSecondary,
   },
-  progressTrack: {
-    height: 8,
+  goalTrack: {
+    height: 7,
     backgroundColor: '#F3F4F6',
     borderRadius: RADIUS.full,
     overflow: 'hidden',
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
   },
-  progressFill: {
+  goalFill: {
     height: '100%',
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.full,
   },
-  // Week strip inside daily goal card
+  todayDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: SPACING.sm,
+  },
+
+  // Check-in inside today card
+  checkInSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  streakBig: {
+    alignItems: 'center',
+    minWidth: 48,
+    flexShrink: 0,
+  },
+  streakFireEmoji: {
+    fontSize: 22,
+  },
+  streakBigNum: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1F2937',
+    lineHeight: 26,
+  },
+  streakBigLabel: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  checkInCenter: {
+    flex: 1,
+  },
+  streakMilestone: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+    lineHeight: 16,
+  },
   weekRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: 4,
   },
-  dayCol: { alignItems: 'center', gap: 3 },
+  weekRowPlaceholder: {
+    height: 30,
+  },
+  dayCol: {
+    alignItems: 'center',
+    gap: 2,
+  },
   dayDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  dayDotOn: { backgroundColor: COLORS.success },
+  dayDotOn: { backgroundColor: '#FFF3CD' },
   dayDotOff: { backgroundColor: '#F3F4F6' },
-  dayLabel: { fontSize: 10, color: COLORS.textSecondary },
-
-  // ── Daily Check-in card ───────────────────────────────────────────────────
-  checkInCard: {
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
-    backgroundColor: '#fce7f3',
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    padding: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  checkInLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  checkInIcon: {
-    fontSize: 26,
-  },
-  checkInText: {
-    flex: 1,
-  },
-  checkInTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 2,
-  },
-  checkInSub: {
-    fontSize: 12,
+  dayDotEmoji: { fontSize: 13 },
+  dayDotEmpty: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' },
+  dayLabel: {
+    fontSize: 9,
     color: COLORS.textSecondary,
-    lineHeight: 16,
+    fontWeight: '500',
+  },
+  checkInRight: {
+    flexShrink: 0,
+    alignItems: 'center',
   },
   checkInBtn: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: RADIUS.md,
-    minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
     alignItems: 'center',
+    minWidth: 76,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  checkInBtnDisabled: {
-    opacity: 0.6,
-  },
+  checkInBtnDisabled: { opacity: 0.6 },
+  checkInBtnEmoji: { fontSize: 18, marginBottom: 1 },
   checkInBtnText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
+    marginBottom: 1,
+  },
+  checkInBtnXp: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  xpPop: {
+    position: 'absolute',
+    top: -4,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#10B981',
   },
   checkInDone: {
-    padding: 4,
+    alignItems: 'center',
+    gap: 2,
+  },
+  checkInDoneLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  checkInDoneXp: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 
   // ── Sections ──────────────────────────────────────────────────────────────
@@ -1052,16 +1198,15 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: SPACING.md,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.2,
   },
   seeAll: {
     fontSize: 13,
     color: COLORS.primary,
     fontWeight: '600',
-    marginBottom: SPACING.md,
   },
   hScrollContent: {
     paddingRight: SPACING.lg,
@@ -1107,8 +1252,23 @@ const styles = StyleSheet.create({
     height: 88,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   courseHIcon: { fontSize: 34 },
+  interactiveTag: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.full,
+  },
+  interactiveTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+  },
   courseHBody: { padding: SPACING.sm },
   courseHTitle: {
     fontSize: 13,
@@ -1116,6 +1276,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 4,
     minHeight: 34,
+    lineHeight: 17,
   },
   courseHMeta: {
     flexDirection: 'row',
@@ -1124,7 +1285,47 @@ const styles = StyleSheet.create({
   },
   courseHMetaText: { fontSize: 11, color: COLORS.textSecondary },
 
-  // ── Article / Tips cards ──────────────────────────────────────────────────
+  // ── Career path cards ─────────────────────────────────────────────────────
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  pathCard: {
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1.5,
+    padding: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  pathIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  pathEmoji: { fontSize: 22 },
+  pathName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  pathCta: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // ── Article cards ─────────────────────────────────────────────────────────
   articleCard: {
     width: 190,
     backgroundColor: '#fff',
@@ -1173,82 +1374,7 @@ const styles = StyleSheet.create({
   },
   articleMetaText: { fontSize: 11, color: COLORS.textSecondary },
 
-  // ── 2-col grid ────────────────────────────────────────────────────────────
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-
-  // Career path cards
-  pathCard: {
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    padding: SPACING.md,
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  pathIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.xs,
-  },
-  pathEmoji: { fontSize: 22 },
-  pathName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
-  },
-
-  // Popular course cards (2-col)
-  courseCard: {
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    marginBottom: SPACING.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  courseCardCover: {
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  courseCardIcon: { fontSize: 30 },
-  courseCardBody: { padding: SPACING.sm },
-  courseCardTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 3,
-    minHeight: 30,
-  },
-  courseCardMeta: { fontSize: 11, color: COLORS.textSecondary },
-
-  // Empty state
-  emptyBox: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl,
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.lg,
-    gap: SPACING.sm,
-  },
-  emptyText: { fontSize: 14, color: COLORS.textSecondary },
-
-  // Badges
+  // ── Badges ────────────────────────────────────────────────────────────────
   badgesRow: {
     paddingRight: SPACING.lg,
     gap: SPACING.md,
@@ -1256,13 +1382,24 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     width: 64,
+    gap: 4,
   },
-  badgeEmoji: { fontSize: 30 },
+  badgeCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFF3CD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  badgeEmoji: { fontSize: 26 },
   badgeName: {
     fontSize: 10,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginTop: 4,
+    lineHeight: 13,
   },
 
   // Ko-fi nudge
