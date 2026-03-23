@@ -40,17 +40,22 @@ CREATE TABLE IF NOT EXISTS user_progress (
 
 -- ── Courses ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS courses (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title         TEXT NOT NULL,
-    description   TEXT NOT NULL DEFAULT '',
-    career_path   TEXT NOT NULL DEFAULT '',
-    thumbnail     TEXT,
-    total_lessons INTEGER NOT NULL DEFAULT 0,
-    is_published  BOOLEAN NOT NULL DEFAULT FALSE,
-    has_final_exam BOOLEAN NOT NULL DEFAULT TRUE,
-    prerequisites TEXT[] NOT NULL DEFAULT '{}',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title                    TEXT NOT NULL,
+    description              TEXT NOT NULL DEFAULT '',
+    career_path              TEXT NOT NULL DEFAULT '',
+    thumbnail                TEXT,
+    total_lessons            INTEGER NOT NULL DEFAULT 0,
+    is_published             BOOLEAN NOT NULL DEFAULT FALSE,
+    has_final_exam           BOOLEAN NOT NULL DEFAULT TRUE,
+    prerequisites            TEXT[] NOT NULL DEFAULT '{}',
+    sequence_order           INTEGER,
+    counts_for_certification BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Migration: add new columns if upgrading an existing DB
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS sequence_order INTEGER;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS counts_for_certification BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- ── Modules ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS modules (

@@ -267,6 +267,8 @@ class CourseUpdate(BaseModel):
     thumbnail: Optional[str] = None
     is_published: Optional[bool] = None
     prerequisites: Optional[List[str]] = None
+    sequence_order: Optional[int] = None
+    counts_for_certification: Optional[bool] = None
 
 
 class Module(BaseModel):
@@ -741,20 +743,32 @@ async def list_courses(career_path: Optional[str] = None, published_only: bool =
         for c in courses:
             c["practice_module_count"] = pm_counts.get(c["_id"], 0)
 
-    # Enrich with sequence order and lock status
+    # Enrich with lock status (sequence_order is now a real DB column)
     user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
+
+    # Build per-career-path ordered lists of cert-required courses for prerequisite chaining
+    cert_sequences: Dict[str, list] = {}
+    for c in courses:
+        cp = c.get("career_path", "")
+        if c.get("counts_for_certification", True) and c.get("sequence_order") is not None:
+            cert_sequences.setdefault(cp, []).append(c)
+    for cp in cert_sequences:
+        cert_sequences[cp].sort(key=lambda x: x["sequence_order"])
+
     for c in courses:
         cid = c["_id"]
         cp = c.get("career_path", "")
-        sequence = CAREER_PATH_SEQUENCES.get(cp, [])
-        if cid in sequence:
-            idx = sequence.index(cid)
-            c["sequence_order"] = idx + 1  # 1-based
-            # Locked if there's a prerequisite and it's not completed
-            c["is_locked"] = idx > 0 and sequence[idx - 1] not in user_completed
-            c["prerequisite_course_id"] = sequence[idx - 1] if idx > 0 else None
+        seq = cert_sequences.get(cp, [])
+        seq_ids = [x["_id"] for x in seq]
+        if not c.get("counts_for_certification", True):
+            # Optional courses are never locked
+            c["is_locked"] = False
+            c["prerequisite_course_id"] = None
+        elif cid in seq_ids:
+            idx = seq_ids.index(cid)
+            c["is_locked"] = idx > 0 and seq_ids[idx - 1] not in user_completed
+            c["prerequisite_course_id"] = seq_ids[idx - 1] if idx > 0 else None
         else:
-            c["sequence_order"] = None
             c["is_locked"] = False
             c["prerequisite_course_id"] = None
         c["is_completed"] = cid in user_completed
@@ -773,28 +787,34 @@ async def get_course(course_id: str, user_id: Optional[str] = None):
         raise HTTPException(status_code=404, detail="Course not found")
     course = with_id(data)
 
-    # Enrich with sequence/lock info
-    cp = course.get("career_path", "")
-    sequence = CAREER_PATH_SEQUENCES.get(cp, [])
+    # Enrich with lock info (sequence_order is a real DB column)
     cid = course["_id"]
-    if cid in sequence:
-        idx = sequence.index(cid)
-        course["sequence_order"] = idx + 1
-        course["prerequisite_course_id"] = sequence[idx - 1] if idx > 0 else None
-        if user_id and user_id != "demo_user" and idx > 0:
-            user_completed = await _user_completed_course_ids(supabase, user_id)
-            course["is_locked"] = sequence[idx - 1] not in user_completed
-            course["is_completed"] = cid in user_completed
+    cp = course.get("career_path", "")
+    user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
+    course["is_completed"] = cid in user_completed
+
+    if not course.get("counts_for_certification", True):
+        course["is_locked"] = False
+        course["prerequisite_course_id"] = None
+    elif course.get("sequence_order") is not None:
+        # Find the previous cert-required course in the same career path
+        prev_res = await supabase.table("courses") \
+            .select("id") \
+            .eq("career_path", cp) \
+            .eq("counts_for_certification", True) \
+            .lt("sequence_order", course["sequence_order"]) \
+            .order("sequence_order", desc=True) \
+            .limit(1).execute()
+        prev = (prev_res.data or [None])[0]
+        if prev:
+            course["prerequisite_course_id"] = prev["id"]
+            course["is_locked"] = prev["id"] not in user_completed
         else:
+            course["prerequisite_course_id"] = None
             course["is_locked"] = False
-            user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
-            course["is_completed"] = cid in user_completed
     else:
-        course["sequence_order"] = None
         course["prerequisite_course_id"] = None
         course["is_locked"] = False
-        user_completed = await _user_completed_course_ids(supabase, user_id) if user_id else set()
-        course["is_completed"] = cid in user_completed
 
     return course
 
@@ -819,6 +839,20 @@ async def delete_course(course_id: str):
     if not res.data:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"message": "Course deleted successfully"}
+
+
+@api_router.post("/admin/seed-sequences")
+async def seed_sequences():
+    """One-time migration: populate sequence_order from the hardcoded CAREER_PATH_SEQUENCES dict."""
+    updated = 0
+    for career_path, course_ids in CAREER_PATH_SEQUENCES.items():
+        for idx, course_id in enumerate(course_ids):
+            res = await supabase.table("courses") \
+                .update({"sequence_order": idx + 1}) \
+                .eq("id", course_id).execute()
+            if res.data:
+                updated += 1
+    return {"message": f"Seeded sequence_order for {updated} courses"}
 
 
 # ===== MODULES =====
