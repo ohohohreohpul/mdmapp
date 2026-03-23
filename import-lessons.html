@@ -43,6 +43,15 @@
     .success-banner .emoji { font-size: 36px; margin-bottom: 8px; }
     .success-banner h3 { font-size: 16px; font-weight: 700; color: #065F46; }
     .success-banner p { font-size: 13px; color: #047857; margin-top: 4px; }
+    .options-row { margin-bottom: 20px; }
+    .toggle-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
+    .toggle-label input { display: none; }
+    .toggle-track { flex-shrink: 0; width: 40px; height: 22px; background: #E5E7EB; border-radius: 11px; position: relative; transition: background .2s; margin-top: 1px; }
+    .toggle-label input:checked ~ .toggle-track { background: #ef5ea8; }
+    .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+    .toggle-label input:checked ~ .toggle-track .toggle-thumb { transform: translateX(18px); }
+    .toggle-text { font-size: 13px; font-weight: 600; color: #374151; line-height: 1.4; }
+    .toggle-sub { font-weight: 400; color: #9CA3AF; }
   </style>
 </head>
 <body>
@@ -74,6 +83,15 @@
     <h3>📋 What will be imported</h3>
     <div id="previewModules"></div>
     <div class="total-row"><span>Total questions</span><span id="previewTotal"></span></div>
+  </div>
+
+  <!-- Options -->
+  <div class="options-row">
+    <label class="toggle-label">
+      <input type="checkbox" id="shuffleChoices" checked />
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="toggle-text">Shuffle answer choices <span class="toggle-sub">(fixes position bias — correct answer won't always be option B)</span></span>
+    </label>
   </div>
 
   <button class="btn btn-primary" id="importBtn" disabled>Import</button>
@@ -191,14 +209,38 @@ function log(msg, type = '') {
   el.scrollTop = el.scrollHeight;
 }
 
+// ── Shuffle helper ────────────────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function shuffleQuestionChoices(questions) {
+  const SHUFFLEABLE = ['multiple-choice', 'comparison'];
+  return questions.map(q => {
+    if (!SHUFFLEABLE.includes(q.type)) return q;
+    const opts = q.content && q.content.options;
+    if (!opts || opts.length < 2) return q;
+    const shuffled = shuffle([...opts]);
+    return { ...q, content: { ...q.content, options: shuffled } };
+    // q.answer stores the option ID, not position — no change needed
+  });
+}
+
 // ── Import ────────────────────────────────────────────────────────────────────
 document.getElementById('importBtn').addEventListener('click', async () => {
   if (!parsedData || !selectedCourseId) return;
   const btn = document.getElementById('importBtn');
+  const doShuffle = document.getElementById('shuffleChoices').checked;
   btn.disabled = true;
   btn.textContent = 'Importing…';
   document.getElementById('log').innerHTML = '';
   document.getElementById('successBanner').style.display = 'none';
+
+  if (doShuffle) log('🔀 Shuffle choices: ON', 'info');
 
   log('🗑  Clearing existing modules…', 'info');
   const { error: delErr } = await sb.from('practice_modules').delete().eq('course_id', selectedCourseId);
@@ -207,7 +249,8 @@ document.getElementById('importBtn').addEventListener('click', async () => {
 
   let totalQ = 0;
   for (const module of parsedData.modules) {
-    const questions = module.batches.flatMap(b => b.lessons || []);
+    let questions = module.batches.flatMap(b => b.lessons || []);
+    if (doShuffle) questions = shuffleQuestionChoices(questions);
     const row = {
       course_id:         selectedCourseId,
       module_key:        module.moduleId,
