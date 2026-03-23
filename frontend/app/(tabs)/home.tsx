@@ -514,17 +514,23 @@ export default function HomeScreen() {
     setCheckingIn(true);
     try {
       const res = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
+      setCheckedInToday(true);
+      await AsyncStorage.setItem(todayKey, 'true');
       if (!res.data.already_checked_in) {
-        setCheckInXp(res.data.xp_awarded);
-        setCheckedInToday(true);
+        const awarded = res.data.xp_awarded ?? 20;
+        setCheckInXp(awarded);
         setShowXpPop(true);
-        await AsyncStorage.setItem(todayKey, 'true');
         animateXpPop();
-        fetchData();
-      } else {
-        setCheckedInToday(true);
-        await AsyncStorage.setItem(todayKey, 'true');
+        // Optimistically bump today_xp so the goal bar updates immediately
+        setDashboard(prev => prev ? {
+          ...prev,
+          today_xp: (prev.today_xp ?? 0) + awarded,
+          daily_progress_percent: Math.min(100, Math.round(((prev.today_xp ?? 0) + awarded) / (prev.daily_goal || 30) * 100)),
+          current_streak: res.data.streak ?? prev.current_streak,
+        } : prev);
       }
+      // Always re-fetch to get authoritative dashboard data
+      fetchData();
     } catch (_) {
       // silently fail
     } finally {

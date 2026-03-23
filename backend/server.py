@@ -1398,17 +1398,21 @@ async def daily_checkin(body: dict):
     stats = await get_or_create_user_stats(supabase, user_id)
     today = datetime.utcnow().strftime("%Y-%m-%d")
 
-    last = stats.get("last_activity_date")
-    # Normalise — Supabase may return a date object or a string
-    if last and not isinstance(last, str):
-        last = str(last)[:10]
+    # Use a dedicated checkin key inside daily_xp so that lesson/quiz activity
+    # on the same day doesn't falsely mark the user as already checked in.
+    daily_xp: dict = dict(stats.get("daily_xp") or {})
+    checkin_key = f"__checkin__{today}"
 
-    if last == today:
+    if daily_xp.get(checkin_key):
         return {
             "already_checked_in": True,
             "xp_awarded": 0,
             "streak": stats.get("current_streak", 0),
         }
+
+    # Mark the checkin flag first so re-entrant calls can't double-award
+    daily_xp[checkin_key] = True
+    await supabase.table("user_stats").update({"daily_xp": daily_xp}).eq("user_id", user_id).execute()
 
     result = await add_xp(supabase, user_id, 20, "daily_checkin")
     return {
