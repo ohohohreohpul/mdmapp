@@ -529,15 +529,19 @@ export default function DuolingoScreen() {
 
         {/* ─────────────── FILL-BLANK ─────────────── */}
         {q.type === 'fill-blank' && (() => {
-          const vis = q.content.visual!.config;
-          const code: string = (vis as any).code || '';
-          const blanks: { answer?: string; position?: number; id?: string; label?: string }[] = (vis as any).blanks || [];
-          const numBlanks = blanks.length;
+          // Safe optional chain — visual is absent on "no-template" fill-blank questions
+          const vis = q.content.visual?.config;
+          const code: string = (vis as any)?.code || '';
+          const blanks: { answer?: string; position?: number; id?: string; label?: string }[] = (vis as any)?.blanks || [];
+          // When there's no code template, derive blank count from the answer string
+          const numBlanks = blanks.length || q.answer.split(',').length;
+          const hasCodeTemplate = code.includes('___');
+
           // Initialize slots
           const slots: (string | null)[] = fillSlots.length === numBlanks ? fillSlots : Array(numBlanks).fill(null);
 
           // Parse code into parts: text segments and blank slots
-          const parts = code.split('___');
+          const parts = hasCodeTemplate ? code.split('___') : [];
           // options still in bank (not yet placed)
           const placedOptionIds = new Set(slots.filter(Boolean) as string[]);
           const opts = (q.content.options || []).filter(o => !placedOptionIds.has(o.id));
@@ -561,7 +565,6 @@ export default function DuolingoScreen() {
           const handleFillSubmit = () => {
             if (slots.some(s => s === null)) return;
             setFillSubmitted(true);
-            // Check correctness: answer field is "a,c" = slot 0 = a, slot 1 = c
             const correctIds = q.answer.split(',');
             const allCorrect = correctIds.every((cid, i) => slots[i] === cid);
             setRevealed(true);
@@ -585,40 +588,85 @@ export default function DuolingoScreen() {
           return (
             <View>
               <Text style={styles.prompt}>{q.prompt}</Text>
-              {/* Code with blanks */}
-              <View style={styles.codeBlock}>
-                <Text style={styles.codeText}>
-                  {parts.map((part, i) => {
-                    const slotIdx = i; // blank i comes AFTER part i (except last part)
+
+              {/* ── Code template with inline blanks (when visual has a code field) ── */}
+              {hasCodeTemplate && (
+                <View style={styles.codeBlock}>
+                  <Text style={styles.codeText}>
+                    {parts.map((part, i) => {
+                      const slotIdx = i;
+                      const correct = getSlotCorrect(slotIdx);
+                      const slotVal = slots[slotIdx];
+                      const slotLabel = getSlotLabel(slotVal);
+                      return (
+                        <Text key={i}>
+                          <Text style={styles.codeText}>{part}</Text>
+                          {i < parts.length - 1 && (
+                            <TouchableOpacity
+                              onPress={() => slotVal ? handleFillRemove(slotIdx) : undefined}
+                              style={[
+                                styles.codeBlank,
+                                fillSubmitted && correct === true && styles.codeBlankCorrect,
+                                fillSubmitted && correct === false && styles.codeBlankWrong,
+                              ]}
+                            >
+                              <Text style={[
+                                styles.codeBlankText,
+                                fillSubmitted && correct === true && { color: COLORS.success },
+                                fillSubmitted && correct === false && { color: COLORS.error },
+                              ]}>
+                                {slotLabel || '___'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </Text>
+                      );
+                    })}
+                  </Text>
+                </View>
+              )}
+
+              {/* ── Numbered slots (when there's no code template) ── */}
+              {!hasCodeTemplate && (
+                <View style={styles.nakedSlotsWrap}>
+                  {slots.map((slotVal, slotIdx) => {
                     const correct = getSlotCorrect(slotIdx);
-                    const slotVal = slots[slotIdx];
                     const slotLabel = getSlotLabel(slotVal);
                     return (
-                      <Text key={i}>
-                        <Text style={styles.codeText}>{part}</Text>
-                        {i < parts.length - 1 && (
-                          <TouchableOpacity
-                            onPress={() => slotVal ? handleFillRemove(slotIdx) : undefined}
-                            style={[
-                              styles.codeBlank,
-                              fillSubmitted && correct === true && styles.codeBlankCorrect,
-                              fillSubmitted && correct === false && styles.codeBlankWrong,
-                            ]}
-                          >
-                            <Text style={[
-                              styles.codeBlankText,
-                              fillSubmitted && correct === true && { color: COLORS.success },
-                              fillSubmitted && correct === false && { color: COLORS.error },
-                            ]}>
-                              {slotLabel || '___'}
-                            </Text>
-                          </TouchableOpacity>
+                      <TouchableOpacity
+                        key={slotIdx}
+                        style={[
+                          styles.nakedSlot,
+                          slotVal && styles.nakedSlotFilled,
+                          fillSubmitted && correct === true && styles.nakedSlotCorrect,
+                          fillSubmitted && correct === false && styles.nakedSlotWrong,
+                        ]}
+                        onPress={() => slotVal ? handleFillRemove(slotIdx) : undefined}
+                        disabled={!slotVal || fillSubmitted}
+                      >
+                        <Text style={styles.nakedSlotNum}>{slotIdx + 1}</Text>
+                        <Text style={[
+                          styles.nakedSlotText,
+                          fillSubmitted && correct === true && { color: COLORS.success },
+                          fillSubmitted && correct === false && { color: COLORS.error },
+                        ]}>
+                          {slotLabel || '_ _ _'}
+                        </Text>
+                        {slotVal && !fillSubmitted && (
+                          <Ionicons name="close-circle" size={14} color="#9CA3AF" style={{ marginLeft: 4 }} />
                         )}
-                      </Text>
+                        {fillSubmitted && correct === true && (
+                          <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginLeft: 4 }} />
+                        )}
+                        {fillSubmitted && correct === false && (
+                          <Ionicons name="close-circle" size={14} color={COLORS.error} style={{ marginLeft: 4 }} />
+                        )}
+                      </TouchableOpacity>
                     );
                   })}
-                </Text>
-              </View>
+                </View>
+              )}
+
               {/* Word bank */}
               {!revealed && (
                 <>
@@ -1048,6 +1096,53 @@ const styles = StyleSheet.create({
   codeBlankCorrect: { backgroundColor: '#064E3B', borderColor: COLORS.success },
   codeBlankWrong: { backgroundColor: '#7F1D1D', borderColor: COLORS.error },
   codeBlankText: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13, color: '#93C5FD' },
+
+  // Fill-blank: naked numbered slots (no code template)
+  nakedSlotsWrap: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  nakedSlot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  nakedSlotFilled: {
+    borderStyle: 'solid',
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '0D',
+  },
+  nakedSlotCorrect: {
+    borderStyle: 'solid',
+    borderColor: COLORS.success,
+    backgroundColor: '#D1FAE5',
+  },
+  nakedSlotWrong: {
+    borderStyle: 'solid',
+    borderColor: COLORS.error,
+    backgroundColor: '#FEE2E2',
+  },
+  nakedSlotNum: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    width: 16,
+    textAlign: 'center',
+  },
+  nakedSlotText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
 
   // Fill-blank word bank
   wordBankLabel: { fontSize: 12, color: COLORS.textSecondary, marginBottom: SPACING.sm, fontStyle: 'italic' },
