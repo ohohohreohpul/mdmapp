@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mydemy — Import Lessons</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F8FA; color: #1F2937; min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px; }
+    .card { background: #fff; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 36px; width: 100%; max-width: 620px; height: fit-content; }
+    h1 { font-size: 22px; font-weight: 800; color: #ef5ea8; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #6B7280; margin-bottom: 28px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .file-drop { border: 2px dashed #E5E7EB; border-radius: 12px; padding: 28px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 20px; }
+    .file-drop:hover, .file-drop.over { border-color: #ef5ea8; background: #FFF0F7; }
+    .file-drop input { display: none; }
+    .file-drop .icon { font-size: 32px; margin-bottom: 8px; }
+    .file-drop .hint { font-size: 13px; color: #9CA3AF; }
+    .file-drop .hint strong { color: #ef5ea8; }
+    .file-name { font-size: 13px; font-weight: 600; color: #10B981; margin-top: 8px; }
+    select { width: 100%; padding: 10px 12px; border: 1.5px solid #E5E7EB; border-radius: 10px; font-size: 14px; color: #1F2937; background: #fff; margin-bottom: 20px; outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239CA3AF' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    select:focus { border-color: #ef5ea8; }
+    .preview { background: #F9FAFB; border-radius: 10px; padding: 16px; margin-bottom: 20px; display: none; }
+    .preview h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #374151; }
+    .module-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
+    .module-row:last-child { border-bottom: none; }
+    .module-name { color: #374151; }
+    .module-count { font-weight: 700; color: #ef5ea8; }
+    .total-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-top: 10px; color: #1F2937; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .1s; }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: #ef5ea8; color: #fff; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary:not(:disabled):hover { opacity: 0.9; }
+    .log { margin-top: 20px; background: #1E293B; border-radius: 10px; padding: 16px; font-family: 'Menlo', monospace; font-size: 12px; line-height: 1.8; max-height: 220px; overflow-y: auto; display: none; }
+    .log-line { color: #94A3B8; }
+    .log-line.ok { color: #4ADE80; }
+    .log-line.err { color: #F87171; }
+    .log-line.info { color: #60A5FA; }
+    .warning { background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400E; margin-bottom: 20px; display: none; }
+    .success-banner { background: #D1FAE5; border-radius: 12px; padding: 20px; text-align: center; display: none; }
+    .success-banner .emoji { font-size: 36px; margin-bottom: 8px; }
+    .success-banner h3 { font-size: 16px; font-weight: 700; color: #065F46; }
+    .success-banner p { font-size: 13px; color: #047857; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>📚 Mydemy — Import Lessons</h1>
+  <p class="sub">Drop a manifest JSON to replace practice modules for any course.</p>
+
+  <!-- Step 1: File -->
+  <label>Step 1 — Choose manifest JSON</label>
+  <div class="file-drop" id="dropZone">
+    <input type="file" id="fileInput" accept=".json" />
+    <div class="icon">📂</div>
+    <div class="hint">Drag & drop your JSON here, or <strong>click to browse</strong></div>
+    <div class="file-name" id="fileName"></div>
+  </div>
+
+  <!-- Step 2: Course -->
+  <label>Step 2 — Select target course</label>
+  <select id="courseSelect" disabled>
+    <option value="">Loading courses…</option>
+  </select>
+
+  <div class="warning" id="warning">
+    ⚠️ This will <strong>delete all existing practice modules</strong> for the selected course and replace them with the new manifest. This cannot be undone.
+  </div>
+
+  <!-- Preview -->
+  <div class="preview" id="preview">
+    <h3>📋 What will be imported</h3>
+    <div id="previewModules"></div>
+    <div class="total-row"><span>Total questions</span><span id="previewTotal"></span></div>
+  </div>
+
+  <button class="btn btn-primary" id="importBtn" disabled>Import</button>
+
+  <div class="log" id="log"></div>
+
+  <div class="success-banner" id="successBanner">
+    <div class="emoji">🎉</div>
+    <h3>Import complete!</h3>
+    <p id="successMsg"></p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://wpzmmpctzthrnhbtggup.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indwem1tcGN0enRocm5oYnRnZ3VwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzgzMDY4NCwiZXhwIjoyMDg5NDA2Njg0fQ.y7KhiHj_rrE7OV2sa38OLq1vtCvwKKBpFZtaTCvdjmA';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let parsedData = null;
+let selectedCourseId = null;
+
+// ── Load courses ─────────────────────────────────────────────────────────────
+async function loadCourses() {
+  const { data, error } = await sb.from('courses').select('id, title, career_path').eq('is_published', true).order('title');
+  const sel = document.getElementById('courseSelect');
+  if (error || !data) { sel.innerHTML = '<option value="">Failed to load courses</option>'; return; }
+  sel.innerHTML = '<option value="">— Choose a course —</option>';
+  data.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.title;
+    sel.appendChild(opt);
+  });
+  sel.disabled = false;
+}
+loadCourses();
+
+// ── File handling ─────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('fileName').textContent = '📄 ' + file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      parsedData = JSON.parse(e.target.result);
+      showPreview();
+      tryAutoMatch();
+      checkReady();
+    } catch {
+      alert('Invalid JSON file.');
+      parsedData = null;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showPreview() {
+  if (!parsedData || !parsedData.modules) return;
+  let html = '';
+  let total = 0;
+  parsedData.modules.forEach(m => {
+    const q = m.batches.reduce((s, b) => s + (b.lessons || []).length, 0);
+    total += q;
+    html += `<div class="module-row"><span class="module-name">${m.moduleTitle}</span><span class="module-count">${q}q</span></div>`;
+  });
+  document.getElementById('previewModules').innerHTML = html;
+  document.getElementById('previewTotal').textContent = total + ' questions';
+  document.getElementById('preview').style.display = 'block';
+}
+
+async function tryAutoMatch() {
+  if (!parsedData) return;
+  const title = parsedData.courseTitle || '';
+  if (!title) return;
+  const words = title.split(/\s+/).filter(w => w.length > 3).slice(0, 3);
+  const query = '%' + words.join('%') + '%';
+  const { data } = await sb.from('courses').select('id, title').ilike('title', query).limit(5);
+  if (data && data.length === 1) {
+    document.getElementById('courseSelect').value = data[0].id;
+    selectedCourseId = data[0].id;
+    document.getElementById('warning').style.display = 'block';
+    checkReady();
+  }
+}
+
+document.getElementById('courseSelect').addEventListener('change', function() {
+  selectedCourseId = this.value;
+  document.getElementById('warning').style.display = this.value ? 'block' : 'none';
+  checkReady();
+});
+
+function checkReady() {
+  const ready = parsedData && selectedCourseId;
+  document.getElementById('importBtn').disabled = !ready;
+}
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+document.getElementById('importBtn').addEventListener('click', async () => {
+  if (!parsedData || !selectedCourseId) return;
+  const btn = document.getElementById('importBtn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('successBanner').style.display = 'none';
+
+  log('🗑  Clearing existing modules…', 'info');
+  const { error: delErr } = await sb.from('practice_modules').delete().eq('course_id', selectedCourseId);
+  if (delErr) { log('ERROR clearing: ' + delErr.message, 'err'); btn.disabled = false; btn.textContent = 'Import'; return; }
+  log('✓ Cleared', 'ok');
+
+  let totalQ = 0;
+  for (const module of parsedData.modules) {
+    const questions = module.batches.flatMap(b => b.lessons || []);
+    const row = {
+      course_id:         selectedCourseId,
+      module_key:        module.moduleId,
+      module_order:      module.moduleOrder,
+      title:             module.moduleTitle,
+      questions:         questions,
+      question_count:    questions.length,
+      mastery_threshold: (parsedData.config || {}).masteryThreshold || 70,
+    };
+    log(`  Importing "${module.moduleTitle}" (${questions.length}q)…`, 'info');
+    const { error } = await sb.from('practice_modules').insert(row);
+    if (error) { log('  ERROR: ' + error.message, 'err'); }
+    else { log(`  ✓ Done`, 'ok'); totalQ += questions.length; }
+  }
+
+  log(`\n✅ ${parsedData.modules.length} modules, ${totalQ} questions imported.`, 'ok');
+  document.getElementById('successBanner').style.display = 'block';
+  document.getElementById('successMsg').textContent = `${parsedData.modules.length} modules · ${totalQ} questions imported successfully.`;
+  btn.textContent = 'Import again';
+  btn.disabled = false;
+  parsedData = null;
+  document.getElementById('fileName').textContent = '';
+  document.getElementById('preview').style.display = 'none';
+  document.getElementById('warning').style.display = 'none';
+  fileInput.value = '';
+});
+</script>
+</body>
+</html>
