@@ -532,10 +532,35 @@ export default function DuolingoScreen() {
           // Safe optional chain — visual is absent on "no-template" fill-blank questions
           const vis = q.content.visual?.config;
           const code: string = (vis as any)?.code || '';
-          const blanks: { answer?: string; position?: number; id?: string; label?: string }[] = (vis as any)?.blanks || [];
-          // When there's no code template, derive blank count from the answer string
-          const numBlanks = blanks.length || q.answer.split(',').length;
+          const rawBlanks: any[] = (vis as any)?.blanks || [];
           const hasCodeTemplate = code.includes('___');
+
+          // numBlanks = answer parts count (most reliable across all 3 data formats)
+          const numBlanks = q.answer ? q.answer.split(',').length : (rawBlanks.length || 1);
+
+          // ── Derive word-bank options from whichever format the question uses ──
+          // Format 3 (legacy/injected): content.options already populated
+          // Format 1: blanks = flat [{id, label}, …] — all options including distractors
+          // Format 2: blanks = [{id:'blank1', options:[{id,label},…]}, …] — per-blank pools
+          const allOpts: QuestionOption[] = (() => {
+            const contentOpts = q.content.options || [];
+            if (contentOpts.length > 0) return contentOpts;             // Format 3
+            if (rawBlanks.length === 0) return [];
+            const first = rawBlanks[0];
+            if (first && Array.isArray(first.options)) {
+              // Format 2: flatten all per-blank option pools, dedupe by id
+              const seen = new Set<string>();
+              const flat: QuestionOption[] = [];
+              for (const blank of rawBlanks) {
+                for (const o of (blank.options || []) as QuestionOption[]) {
+                  if (!seen.has(o.id)) { seen.add(o.id); flat.push(o); }
+                }
+              }
+              return flat;
+            }
+            // Format 1: blanks IS the option pool
+            return rawBlanks.map((b: any) => ({ id: b.id, label: b.label }));
+          })();
 
           // Initialize slots
           const slots: (string | null)[] = fillSlots.length === numBlanks ? fillSlots : Array(numBlanks).fill(null);
@@ -544,7 +569,7 @@ export default function DuolingoScreen() {
           const parts = hasCodeTemplate ? code.split('___') : [];
           // options still in bank (not yet placed)
           const placedOptionIds = new Set(slots.filter(Boolean) as string[]);
-          const opts = (q.content.options || []).filter(o => !placedOptionIds.has(o.id));
+          const opts = allOpts.filter(o => !placedOptionIds.has(o.id));
 
           const handleFillSelect = (optId: string) => {
             if (fillSubmitted) return;
