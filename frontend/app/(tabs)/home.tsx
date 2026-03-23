@@ -631,24 +631,18 @@ export default function HomeScreen() {
               {/* Center: milestone text + week dots */}
               <View style={styles.checkInCenter}>
                 <Text style={styles.streakMilestone}>{streakMilestoneMsg(streak)}</Text>
-                {dashboard?.week_activity ? (
-                  <View style={styles.weekRow}>
-                    {dashboard.week_activity.map((day, i) => (
-                      <View key={i} style={styles.dayCol}>
-                        <View style={[styles.dayDot, day.goal_met ? styles.dayDotOn : styles.dayDotOff]}>
-                          {day.goal_met
-                            ? <Text style={styles.dayDotEmoji}>🔥</Text>
-                            : <View style={styles.dayDotEmpty} />}
-                        </View>
-                        <Text style={styles.dayLabel}>
-                          {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][new Date(day.date).getDay()]}
-                        </Text>
+                <View style={styles.weekRow}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(day => (
+                    <View key={day} style={styles.dayCol}>
+                      <View style={[styles.dayDot, day <= streak ? styles.dayDotOn : styles.dayDotOff]}>
+                        {day <= streak
+                          ? <Text style={styles.dayDotEmoji}>🔥</Text>
+                          : <View style={styles.dayDotEmpty} />}
                       </View>
-                    ))}
-                  </View>
-                ) : (
-                  <View style={styles.weekRowPlaceholder} />
-                )}
+                      <Text style={styles.dayLabel}>{day}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
 
               {/* Right: check-in button */}
@@ -1106,9 +1100,6 @@ const styles = StyleSheet.create({
   weekRow: {
     flexDirection: 'row',
     gap: 4,
-  },
-  weekRowPlaceholder: {
-    height: 30,
   },
   dayCol: {
     alignItems: 'center',
