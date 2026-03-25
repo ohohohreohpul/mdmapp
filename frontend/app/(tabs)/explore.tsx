@@ -185,6 +185,7 @@ export default function Explore() {
           ) : (
             filteredCourses.map((course: any) => {
             const lessonCount = course.total_lessons || 0;
+            const pmCount = course.practice_module_count || 0;
             const isLocked = course.is_locked === true;
             const isCompleted = course.is_completed === true;
             const seqOrder = course.sequence_order;
