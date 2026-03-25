@@ -112,6 +112,7 @@ export default function BunnyImport() {
   const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
   const [collections, setCollections] = useState<BunnyCollection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<BunnyCollection | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
@@ -141,14 +142,17 @@ export default function BunnyImport() {
 
   const loadCollections = useCallback(async () => {
     try {
+      setErrorMsg('');
       setPhase('loadingCollections');
+      console.log('[BunnyImport] fetching collections from', `${API_URL}/api/bunny/collections`);
       const [colRes, coursesRes] = await Promise.all([
         axios.get(`${API_URL}/api/bunny/collections`),
         axios.get(`${API_URL}/api/courses`),
       ]);
+      console.log('[BunnyImport] collections response:', colRes.data);
       const cols: BunnyCollection[] = colRes.data.collections || [];
       if (cols.length === 0) {
-        Alert.alert('ไม่พบ Collection', 'ยังไม่มี Collection ใน Bunny Library หรือ API Key ไม่ถูกต้อง');
+        setErrorMsg('ไม่พบ Collection — ตรวจสอบ API Key และ Library ID ใน Admin → ตั้งค่าระบบ');
         setPhase('idle');
         return;
       }
@@ -156,7 +160,9 @@ export default function BunnyImport() {
       setCourses(coursesRes.data || []);
       setPhase('pickCollection');
     } catch (err: any) {
-      Alert.alert('ผิดพลาด', err?.response?.data?.detail || err?.message || 'เกิดข้อผิดพลาด');
+      console.error('[BunnyImport] error:', err?.response?.data || err?.message || err);
+      const detail = err?.response?.data?.detail || err?.message || 'เกิดข้อผิดพลาด';
+      setErrorMsg(`ผิดพลาด: ${detail}`);
       setPhase('idle');
     }
   }, []);
@@ -429,6 +435,12 @@ export default function BunnyImport() {
             <Ionicons name="cloud-download-outline" size={20} color="#FFF" />
             <Text style={styles.primaryBtnText}>ดู Collections ใน Bunny</Text>
           </TouchableOpacity>
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="warning-outline" size={16} color="#DC2626" />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
           <Text style={styles.prereqNote}>
             ⚙️ ต้องตั้งค่า API Key + Library ID ใน Admin → ตั้งค่าระบบ ก่อน
           </Text>
@@ -621,6 +633,12 @@ const styles = StyleSheet.create({
   heroDesc: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
   prereqNote: { fontSize: 12, color: COLORS.textTertiary, textAlign: 'center', lineHeight: 18 },
   loadingMsg: { marginTop: SPACING.md, fontSize: 15, color: COLORS.textSecondary, textAlign: 'center' },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.xs,
+    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
+    borderRadius: RADIUS.sm, padding: SPACING.sm, width: '100%',
+  },
+  errorText: { flex: 1, fontSize: 13, color: '#DC2626', lineHeight: 18 },
 
   // Collection list
   collectionList: { padding: SPACING.md },
