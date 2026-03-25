@@ -313,230 +313,184 @@ export default function CourseDetail() {
           </View>
         ) : null}
 
-        {/* ── Learning Path (Interactive-only course) ── */}
-        {isInteractive && (
-          <View style={styles.pathSection}>
-            <View style={styles.pathSectionHeader}>
-              <Text style={styles.sectionTitle}>🗺️ เส้นทางการเรียนรู้</Text>
-              <View style={styles.pathProgressChip}>
-                <Text style={styles.pathProgressChipText}>
-                  {practiceModules.filter(m => m.user_completed).length}/{practiceModules.length} ผ่าน
-                </Text>
-              </View>
-            </View>
-            {practiceModules.map((pm, idx) => {
-              const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
-              const isCurrent = unlocked && !pm.user_completed;
-              const isLast = idx === practiceModules.length - 1;
-              return (
-                <View key={pm.id} style={styles.pathNodeWrapper}>
-                  {/* Vertical connector between nodes */}
-                  {!isLast && (
-                    <View style={[styles.pathConnector, pm.user_completed && styles.pathConnectorDone]} />
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.pathCard,
-                      pm.user_completed && styles.pathCardDone,
-                      isCurrent && styles.pathCardCurrent,
-                      !unlocked && styles.pathCardLocked,
-                    ]}
-                    onPress={() => unlocked && router.push(
-                      `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
-                    )}
-                    activeOpacity={unlocked ? 0.7 : 1}
-                  >
-                    {/* Left node circle */}
-                    <View style={[
-                      styles.pathNode,
-                      pm.user_completed ? styles.pathNodeDone :
-                      isCurrent ? styles.pathNodeCurrent :
-                      styles.pathNodeLocked,
-                    ]}>
-                      {pm.user_completed
-                        ? <Ionicons name="checkmark" size={20} color="#fff" />
-                        : unlocked
-                        ? <Text style={styles.pathNodeText}>{idx + 1}</Text>
-                        : <Ionicons name="lock-closed" size={15} color="#fff" />}
-                    </View>
-                    {/* Content */}
-                    <View style={styles.pathCardBody}>
-                      <Text style={[styles.pathCardTitle, !unlocked && styles.pathCardTitleLocked]} numberOfLines={2}>
-                        {pm.title}
-                      </Text>
-                      <Text style={styles.pathCardMeta}>
-                        {pm.question_count} แบบฝึกหัด
-                        {pm.user_completed && ` · ⭐ ${pm.user_best_score}%`}
-                        {!pm.user_completed && pm.user_attempts > 0 && ` · ลองแล้ว ${pm.user_attempts} ครั้ง`}
-                        {!unlocked && ' · ทำโมดูลก่อนหน้าก่อน'}
-                      </Text>
-                      {isCurrent && (
-                        <View style={styles.pathCurrentBadge}>
-                          <Text style={styles.pathCurrentBadgeText}>ถัดไป</Text>
-                        </View>
-                      )}
-                    </View>
-                    {/* Right indicator */}
-                    {pm.user_completed && (
-                      <Text style={styles.pathScoreBig}>{pm.user_best_score}%</Text>
-                    )}
-                    {isCurrent && (
-                      <Ionicons name="play-circle" size={34} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* ── Practice Modules (mixed course: has both videos + practice) ── */}
-        {!isInteractive && practiceModules.length > 0 && (
-          <View style={styles.curriculumSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md, gap: 8 }}>
-              <Text style={styles.sectionTitle}>🎯 ฝึกทำ</Text>
-              <View style={{ backgroundColor: COLORS.primary + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
-                  {practiceModules.filter(m => m.user_completed).length}/{practiceModules.length} ผ่าน
-                </Text>
-              </View>
-            </View>
-            {practiceModules.map((pm, idx) => {
-              const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
-              return (
-                <TouchableOpacity
-                  key={pm.id}
-                  style={[styles.moduleCard, { opacity: unlocked ? 1 : 0.5 }]}
-                  onPress={() => unlocked && router.push(
-                    `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
-                  )}
-                  activeOpacity={unlocked ? 0.7 : 1}
-                >
-                  <View style={styles.moduleHeader}>
-                    <View style={styles.moduleLeft}>
-                      <View style={[styles.moduleNumber, {
-                        backgroundColor: pm.user_completed ? COLORS.success : unlocked ? COLORS.primary : '#9CA3AF'
-                      }]}>
-                        {pm.user_completed
-                          ? <Ionicons name="checkmark" size={18} color="#fff" />
-                          : unlocked
-                          ? <Text style={styles.moduleNumberText}>{idx + 1}</Text>
-                          : <Ionicons name="lock-closed" size={16} color="#fff" />}
-                      </View>
-                      <View style={styles.moduleInfo}>
-                        <Text style={styles.moduleTitle}>{pm.title}</Text>
-                        <Text style={styles.moduleSubtitle}>
-                          {pm.question_count} คำถาม
-                          {pm.user_completed && ` • ✅ ผ่านแล้ว (${pm.user_best_score}%)`}
-                          {!pm.user_completed && pm.user_attempts > 0 && ` • ลองแล้ว ${pm.user_attempts} ครั้ง`}
-                          {!unlocked && ' • 🔒 ทำโมดูลก่อนหน้าให้ผ่านก่อน'}
-                        </Text>
-                      </View>
-                    </View>
-                    {unlocked && !pm.user_completed && (
-                      <Ionicons name="play-circle" size={28} color={COLORS.primary} />
-                    )}
-                    {pm.user_completed && (
-                      <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.success }}>{pm.user_best_score}%</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Curriculum Section — only for traditional courses */}
-        {!isInteractive && (
+        {/* ── Unified Curriculum Section (all course types) ── */}
         <View style={styles.curriculumSection}>
           <Text style={styles.sectionTitle}>หลักสูตร</Text>
 
-          {modules.length === 0 ? (
+          {modules.length === 0 && practiceModules.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="folder-open" size={48} color={COLORS.textTertiary} />
               <Text style={styles.emptyText}>ยังไม่มีเนื้อหาในคอร์สนี้</Text>
             </View>
           ) : (
-            modules.map((module, index) => {
-              const isExpanded = expandedModules.includes(module._id);
-              const moduleLessons = lessonsMap[module._id] || [];
-              const completedInModule = moduleLessons.filter(l => isLessonCompleted(l._id)).length;
+            <>
+              {/* Render traditional video modules */}
+              {modules.map((module, index) => {
+                const isExpanded = expandedModules.includes(module._id);
+                const moduleLessons = lessonsMap[module._id] || [];
+                const completedInModule = moduleLessons.filter(l => isLessonCompleted(l._id)).length;
 
-              return (
-                <View key={module._id} style={styles.moduleCard}>
-                  <TouchableOpacity 
-                    style={styles.moduleHeader}
-                    onPress={() => toggleModule(module._id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.moduleLeft}>
-                      <View style={[styles.moduleNumber, { backgroundColor: index === 0 ? COLORS.primary : '#6366F1' }]}>
-                        <Text style={styles.moduleNumberText}>{index + 1}</Text>
+                return (
+                  <View key={module._id} style={styles.moduleCard}>
+                    <TouchableOpacity
+                      style={styles.moduleHeader}
+                      onPress={() => toggleModule(module._id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.moduleLeft}>
+                        <View style={[styles.moduleNumber, { backgroundColor: index === 0 ? COLORS.primary : '#6366F1' }]}>
+                          <Text style={styles.moduleNumberText}>{index + 1}</Text>
+                        </View>
+                        <View style={styles.moduleInfo}>
+                          <Text style={styles.moduleTitle}>{module.title}</Text>
+                          <Text style={styles.moduleSubtitle}>
+                            {moduleLessons.length} บทเรียน
+                            {completedInModule > 0 && ` • ${completedInModule} เสร็จแล้ว`}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={styles.moduleInfo}>
-                        <Text style={styles.moduleTitle}>{module.title}</Text>
-                        <Text style={styles.moduleSubtitle}>
-                          {moduleLessons.length} บทเรียน
-                          {completedInModule > 0 && ` • ${completedInModule} เสร็จแล้ว`}
-                        </Text>
-                      </View>
-                    </View>
-                    <Ionicons 
-                      name={isExpanded ? "chevron-up" : "chevron-down"} 
-                      size={24} 
-                      color={COLORS.textSecondary} 
-                    />
-                  </TouchableOpacity>
+                      <Ionicons
+                        name={isExpanded ? "chevron-up" : "chevron-down"}
+                        size={24}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
 
-                  {isExpanded && (
-                    <View style={styles.lessonsContainer}>
-                      {moduleLessons.length === 0 ? (
-                        <Text style={styles.noLessonsText}>ยังไม่มีบทเรียน</Text>
-                      ) : (
-                        moduleLessons.map((lesson, lessonIndex) => {
-                          const completed = isLessonCompleted(lesson._id);
-                          return (
-                            <TouchableOpacity
-                              key={lesson._id}
-                              style={styles.lessonItem}
-                              onPress={() => router.push(`/lesson?id=${lesson._id}&courseId=${courseId}`)}
-                            >
-                              <View style={[styles.lessonIcon, completed && styles.lessonIconCompleted]}>
-                                {completed ? (
-                                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                                ) : (
-                                  <Text style={styles.lessonIndexText}>{lessonIndex + 1}</Text>
-                                )}
-                              </View>
-                              <View style={styles.lessonInfo}>
-                                <Text style={[styles.lessonTitle, completed && styles.lessonTitleCompleted]}>
-                                  {lesson.title}
-                                </Text>
-                                <View style={styles.lessonMeta}>
-                                  <Ionicons 
-                                    name={lesson.content_type === 'video' ? 'play-circle' : lesson.content_type === 'audio' ? 'headset' : 'document-text'} 
-                                    size={14} 
-                                    color={COLORS.textTertiary} 
-                                  />
-                                  <Text style={styles.lessonMetaText}>
-                                    {lesson.content_type === 'video' ? 'วิดีโอ' : lesson.content_type === 'audio' ? 'เสียง' : 'บทความ'}
-                                    {lesson.duration_minutes > 0 && ` • ${lesson.duration_minutes} นาที`}
-                                  </Text>
+                    {isExpanded && (
+                      <View style={styles.lessonsContainer}>
+                        {moduleLessons.length === 0 ? (
+                          <Text style={styles.noLessonsText}>ยังไม่มีบทเรียน</Text>
+                        ) : (
+                          moduleLessons.map((lesson, lessonIndex) => {
+                            const completed = isLessonCompleted(lesson._id);
+                            return (
+                              <TouchableOpacity
+                                key={lesson._id}
+                                style={styles.lessonItem}
+                                onPress={() => router.push(`/lesson?id=${lesson._id}&courseId=${courseId}`)}
+                              >
+                                <View style={[styles.lessonIcon, completed && styles.lessonIconCompleted]}>
+                                  {completed ? (
+                                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                                  ) : (
+                                    <Text style={styles.lessonIndexText}>{lessonIndex + 1}</Text>
+                                  )}
                                 </View>
-                              </View>
-                              <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
-                            </TouchableOpacity>
-                          );
-                        })
+                                <View style={styles.lessonInfo}>
+                                  <Text style={[styles.lessonTitle, completed && styles.lessonTitleCompleted]}>
+                                    {lesson.title}
+                                  </Text>
+                                  <View style={styles.lessonMeta}>
+                                    <Ionicons
+                                      name={lesson.content_type === 'video' ? 'play-circle' : lesson.content_type === 'audio' ? 'headset' : 'document-text'}
+                                      size={14}
+                                      color={COLORS.textTertiary}
+                                    />
+                                    <Text style={styles.lessonMetaText}>
+                                      {lesson.content_type === 'video' ? 'วิดีโอ' : lesson.content_type === 'audio' ? 'เสียง' : 'บทความ'}
+                                      {lesson.duration_minutes > 0 && ` • ${lesson.duration_minutes} นาที`}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+                              </TouchableOpacity>
+                            );
+                          })
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {/* Render practice modules as collapsible module cards (same style as video modules) */}
+              {practiceModules.map((pm, idx) => {
+                const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
+                const moduleIndex = modules.length + idx;
+                const isExpanded = expandedModules.includes(`practice-${pm.id}`);
+
+                return (
+                  <View key={`practice-${pm.id}`} style={styles.moduleCard}>
+                    <TouchableOpacity
+                      style={styles.moduleHeader}
+                      onPress={() => unlocked && toggleModule(`practice-${pm.id}`)}
+                      activeOpacity={unlocked ? 0.7 : 1}
+                    >
+                      <View style={styles.moduleLeft}>
+                        <View style={[styles.moduleNumber, {
+                          backgroundColor: pm.user_completed ? COLORS.success : unlocked ? COLORS.primary : '#9CA3AF'
+                        }]}>
+                          {pm.user_completed
+                            ? <Ionicons name="checkmark" size={18} color="#fff" />
+                            : unlocked
+                            ? <Text style={styles.moduleNumberText}>{moduleIndex + 1}</Text>
+                            : <Ionicons name="lock-closed" size={16} color="#fff" />}
+                        </View>
+                        <View style={styles.moduleInfo}>
+                          <Text style={[styles.moduleTitle, !unlocked && { opacity: 0.6 }]}>
+                            {pm.title}
+                          </Text>
+                          <Text style={[styles.moduleSubtitle, !unlocked && { opacity: 0.6 }]}>
+                            {pm.question_count} คำถาม
+                            {pm.user_completed && ` • ✅ ผ่านแล้ว (${pm.user_best_score}%)`}
+                            {!pm.user_completed && pm.user_attempts > 0 && ` • ลองแล้ว ${pm.user_attempts} ครั้ง`}
+                            {!unlocked && ' • 🔒 ทำโมดูลก่อนหน้าให้ผ่านก่อน'}
+                          </Text>
+                        </View>
+                      </View>
+                      {unlocked && (
+                        <Ionicons
+                          name={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={24}
+                          color={COLORS.textSecondary}
+                        />
                       )}
-                    </View>
-                  )}
-                </View>
-              );
-            })
+                      {!unlocked && (
+                        <Ionicons name="lock-closed" size={20} color="#9CA3AF" />
+                      )}
+                    </TouchableOpacity>
+
+                    {isExpanded && unlocked && (
+                      <View style={styles.lessonsContainer}>
+                        <TouchableOpacity
+                          style={styles.lessonItem}
+                          onPress={() => router.push(
+                            `/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`
+                          )}
+                        >
+                          <View style={[styles.lessonIcon, pm.user_completed && styles.lessonIconCompleted]}>
+                            {pm.user_completed ? (
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            ) : (
+                              <Ionicons name="play-circle" size={16} color="#FFFFFF" />
+                            )}
+                          </View>
+                          <View style={styles.lessonInfo}>
+                            <Text style={[styles.lessonTitle, pm.user_completed && styles.lessonTitleCompleted]}>
+                              {pm.title}
+                            </Text>
+                            <View style={styles.lessonMeta}>
+                              <Ionicons
+                                name="help-circle"
+                                size={14}
+                                color={COLORS.textTertiary}
+                              />
+                              <Text style={styles.lessonMetaText}>
+                                {pm.question_count} คำถาม
+                                {pm.user_completed && ` • ${pm.user_best_score}%`}
+                              </Text>
+                            </View>
+                          </View>
+                          <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </>
           )}
         </View>
-        )}
 
         {/* What You'll Learn */}
         <View style={styles.learnSection}>
