@@ -103,7 +103,7 @@ export default function CourseDetail() {
 
   const startCourse = () => {
     // Interactive-only course → navigate to practice modules
-    if (practiceModules.length > 0 && modules.length === 0) {
+    if (modules.length > 0 || (practiceModules.length > 0 && modules.length === 0)) {
       const target = practiceModules.find((pm, idx) => {
         const unlocked = idx === 0 || practiceModules[idx - 1]?.user_completed;
         return unlocked && !pm.user_completed;
