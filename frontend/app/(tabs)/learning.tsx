@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
@@ -18,6 +18,7 @@ import axios from 'axios';
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function Learning() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
@@ -53,11 +54,10 @@ export default function Learning() {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-        <SafeAreaView edges={['top']} style={styles.headerSafe}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
-          </View>
-        </SafeAreaView>
+        <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
+        </View>
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: COLORS.primary }]}>
             <Ionicons name="book" size={48} color="#FFFFFF" />
@@ -80,11 +80,10 @@ export default function Learning() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <SafeAreaView edges={['top']} style={styles.headerSafe}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
-        </View>
-      </SafeAreaView>
+      <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}

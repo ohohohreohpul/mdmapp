@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 import { StatusBar } from 'expo-status-bar';
 
 export default function JobsScreen() {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Job Board</Text>
-        </View>
-      </SafeAreaView>
+      <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Job Board</Text>
+      </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Coming Soon Hero */}

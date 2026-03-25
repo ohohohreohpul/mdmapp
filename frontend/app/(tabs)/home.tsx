@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, RADIUS, CAREER_PATHS } from '../../constants/theme';
@@ -404,6 +404,7 @@ function streakMilestoneMsg(streak: number): string {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -552,7 +553,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.primary }} />
+      <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
