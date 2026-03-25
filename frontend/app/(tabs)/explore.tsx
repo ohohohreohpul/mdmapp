@@ -184,9 +184,7 @@ export default function Explore() {
             </View>
           ) : (
             filteredCourses.map((course: any) => {
-            const pmCount = course.practice_module_count || 0;
             const lessonCount = course.total_lessons || 0;
-            const isInteractive = pmCount > 0 && lessonCount === 0;
             const isLocked = course.is_locked === true;
             const isCompleted = course.is_completed === true;
             const seqOrder = course.sequence_order;
@@ -195,7 +193,6 @@ export default function Explore() {
                 key={course._id}
                 style={[
                   styles.courseCard,
-                  isInteractive && !isLocked && styles.courseCardInteractive,
                   isLocked && styles.courseCardLocked,
                   isCompleted && styles.courseCardCompleted,
                 ]}
@@ -203,12 +200,12 @@ export default function Explore() {
                 activeOpacity={0.9}
               >
                 <View style={[styles.courseThumbnail, {
-                  backgroundColor: isLocked ? '#E5E5E5' : isInteractive ? '#f0e6f8' : COLORS.primary,
+                  backgroundColor: isLocked ? '#E5E5E5' : COLORS.primary,
                 }]}>
                   <Ionicons
-                    name={isLocked ? 'lock-closed' : isInteractive ? 'flash' : 'school'}
+                    name={isLocked ? 'lock-closed' : 'school'}
                     size={28}
-                    color={isLocked ? '#AAAAAA' : isInteractive ? COLORS.primary : '#FFFFFF'}
+                    color={isLocked ? '#AAAAAA' : '#FFFFFF'}
                   />
                 </View>
 
@@ -223,11 +220,6 @@ export default function Explore() {
                     {isCompleted && (
                       <View style={styles.completedPill}>
                         <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                      </View>
-                    )}
-                    {isInteractive && !isLocked && (
-                      <View style={styles.interactivePill}>
-                        <Text style={styles.interactivePillText}>⚡ Interactive</Text>
                       </View>
                     )}
                   </View>
