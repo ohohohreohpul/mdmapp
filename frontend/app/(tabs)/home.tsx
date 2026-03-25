@@ -14,6 +14,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, RADIUS, CAREER_PATHS } from '../../constants/theme';
 import axios from 'axios';
@@ -549,7 +550,9 @@ export default function HomeScreen() {
   const goalPct = Math.min(dashboard?.daily_progress_percent ?? 0, 100);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.primary }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
@@ -888,7 +891,7 @@ export default function HomeScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

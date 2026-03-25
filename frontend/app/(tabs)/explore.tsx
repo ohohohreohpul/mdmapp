@@ -58,7 +58,7 @@ export default function Explore() {
       }
 
       const response = await axios.get(`${API_URL}/api/courses`, { params });
-      setCourses(response.data);
+      setCourses(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error loading courses:', error);
     } finally {
@@ -67,7 +67,7 @@ export default function Explore() {
   };
 
   const filteredCourses = courses.filter((course: any) =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (course.title || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getPathColor = (pathId: string) => {

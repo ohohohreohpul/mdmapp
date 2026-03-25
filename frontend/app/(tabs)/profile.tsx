@@ -10,6 +10,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS } from '../../constants/theme';
 
@@ -74,9 +75,10 @@ export default function Profile() {
   // Logged in view
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       {/* Pink Header */}
       <View style={styles.profileHeader}>
-        <SafeAreaView edges={['top']}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.primary }}>
           {/* Avatar */}
           <View style={styles.avatarRow}>
             <View style={styles.avatar}>
