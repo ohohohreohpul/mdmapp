@@ -24,7 +24,7 @@ import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface BunnyCollection { guid: string; name: string; videoCount: number }
+interface BunnyCollection { guid: string; name: string; video_count: number }
 interface BunnyVideo      { guid: string; title: string; length: number; embed_url: string }
 
 interface ImportRow {
@@ -99,7 +99,7 @@ export default function BunnyImport() {
     try {
       setPhase('loadingCollections');
       const res = await axios.get(`${API_URL}/api/bunny/collections`);
-      const items: BunnyCollection[] = res.data?.items ?? [];
+      const items: BunnyCollection[] = res.data?.collections ?? [];
       setCollections(items);
       setPhase('collections');
     } catch (e: any) {
@@ -276,7 +276,7 @@ export default function BunnyImport() {
               </View>
               <View style={{flex:1}}>
                 <Text style={s.colName}>{c.name}</Text>
-                <Text style={s.colCount}>{c.videoCount} วิดีโอ</Text>
+                <Text style={s.colCount}>{c.video_count} วิดีโอ</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
             </TouchableOpacity>
