@@ -16,6 +16,7 @@ import re
 import asyncio
 import uuid as uuid_lib
 import urllib.request
+import httpx
 
 try:
     import pdfplumber as _pdfplumber
@@ -2319,6 +2320,203 @@ async def update_cover_letter(letter_id: str, body: CoverLetterUpdate):
 async def delete_cover_letter(letter_id: str):
     await supabase.table("user_cover_letters").delete().eq("id", letter_id).execute()
     return {"deleted": True}
+
+
+# ===== LESSON VIDEO UPDATE =====
+
+class LessonVideoUpdate(BaseModel):
+    video_url: Optional[str] = None
+    video_id: Optional[str] = None
+
+
+@api_router.put("/lessons/{lesson_id}")
+async def update_lesson(lesson_id: str, body: LessonVideoUpdate):
+    update_data = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    await supabase.table("lessons").update(update_data).eq("id", lesson_id).execute()
+    res = await supabase.table("lessons").select("*").eq("id", lesson_id).limit(1).execute()
+    data = _one(res)
+    if not data:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    data["order"] = data.get("order_index", 0)
+    return with_id(data)
+
+
+# ===== BUNNY.NET INTEGRATION =====
+
+BUNNY_API_BASE = "https://video.bunnycdn.com"
+
+
+async def _get_bunny_credentials():
+    res = await supabase.table("admin_settings").select("bunny_api_key,bunny_library_id").eq("id", 1).limit(1).execute()
+    data = _one(res)
+    if not data or not data.get("bunny_api_key") or not data.get("bunny_library_id"):
+        raise HTTPException(status_code=400, detail="Bunny.net API key and Library ID are not configured. Please set them in Admin → Settings.")
+    return data["bunny_api_key"], data["bunny_library_id"]
+
+
+@api_router.get("/bunny/collections")
+async def list_bunny_collections():
+    """Fetch all collections from the configured Bunny.net library."""
+    api_key, library_id = await _get_bunny_credentials()
+    all_collections = []
+    page = 1
+    items_per_page = 100
+    async with httpx.AsyncClient(timeout=30) as client:
+        while True:
+            resp = await client.get(
+                f"{BUNNY_API_BASE}/library/{library_id}/collections",
+                params={"page": page, "itemsPerPage": items_per_page, "orderBy": "name"},
+                headers={"AccessKey": api_key},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Bunny.net API error: {resp.text}")
+            data = resp.json()
+            items = data.get("items") or []
+            all_collections.extend([
+                {
+                    "guid": c["guid"],
+                    "name": c.get("name", ""),
+                    "video_count": c.get("videoCount", 0),
+                    "thumbnail_url": c.get("previewImageUrls", [None])[0],
+                }
+                for c in items
+            ])
+            total = data.get("totalItems", 0)
+            if page * items_per_page >= total:
+                break
+            page += 1
+    return {"collections": all_collections, "total": len(all_collections)}
+
+
+@api_router.get("/bunny/videos")
+async def list_bunny_videos(collection_id: Optional[str] = None):
+    """Fetch videos from the configured Bunny.net library, optionally filtered by collection."""
+    api_key, library_id = await _get_bunny_credentials()
+    all_videos = []
+    page = 1
+    items_per_page = 100
+    async with httpx.AsyncClient(timeout=30) as client:
+        while True:
+            params: Dict[str, Any] = {"page": page, "itemsPerPage": items_per_page, "orderBy": "title"}
+            if collection_id:
+                params["collection"] = collection_id
+            resp = await client.get(
+                f"{BUNNY_API_BASE}/library/{library_id}/videos",
+                params=params,
+                headers={"AccessKey": api_key},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Bunny.net API error: {resp.text}")
+            data = resp.json()
+            items = data.get("items") or []
+            all_videos.extend([
+                {
+                    "guid": v["guid"],
+                    "title": v.get("title", ""),
+                    "length": v.get("length", 0),
+                    "collection_id": v.get("collectionId", ""),
+                    "embed_url": f"https://iframe.mediadelivery.net/embed/{library_id}/{v['guid']}",
+                }
+                for v in items
+            ])
+            total = data.get("totalItems", 0)
+            if page * items_per_page >= total:
+                break
+            page += 1
+    return {"videos": all_videos, "total": len(all_videos)}
+
+
+class BunnyMatchRequest(BaseModel):
+    lessons: List[Dict[str, Any]]   # [{id, title, module_title, course_title}]
+    videos: List[Dict[str, Any]]    # [{guid, title, embed_url}]
+
+
+@api_router.post("/bunny/ai-match")
+async def ai_match_bunny_videos(body: BunnyMatchRequest):
+    """Use the configured AI provider to suggest which Bunny video belongs to each lesson."""
+    if not body.lessons or not body.videos:
+        raise HTTPException(status_code=400, detail="lessons and videos are required")
+
+    # Fetch AI credentials
+    settings_res = await supabase.table("admin_settings").select("*").eq("id", 1).limit(1).execute()
+    settings = _one(settings_res) or {}
+    ai_provider = settings.get("ai_provider", "openai")
+    openai_key = settings.get("openai_key")
+    claude_key = settings.get("claude_key")
+    gemini_key = settings.get("gemini_key")
+
+    # Build a compact prompt
+    lessons_list = "\n".join(
+        f'{i+1}. [ID:{l["id"]}] {l["course_title"]} > {l["module_title"]} > {l["title"]}'
+        for i, l in enumerate(body.lessons)
+    )
+    videos_list = "\n".join(
+        f'{i+1}. [GUID:{v["guid"]}] {v["title"]}'
+        for i, v in enumerate(body.videos)
+    )
+    prompt = f"""You are a helpful assistant matching course lesson titles to video titles.
+Below are lessons and available videos. For each lesson, pick the BEST matching video (or null if none fits).
+Return ONLY a valid JSON array — no markdown, no explanation.
+Format: [{{"lesson_id": "...", "video_guid": "...", "confidence": 0.0-1.0}}]
+
+LESSONS:
+{lessons_list}
+
+VIDEOS:
+{videos_list}
+"""
+
+    result_text = ""
+    async with httpx.AsyncClient(timeout=60) as client:
+        if (ai_provider == "claude" or not openai_key) and claude_key:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": claude_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json={"model": "claude-3-haiku-20240307", "max_tokens": 4096, "messages": [{"role": "user", "content": prompt}]},
+            )
+            resp.raise_for_status()
+            result_text = resp.json()["content"][0]["text"]
+        elif (ai_provider == "gemini" or not openai_key) and gemini_key:
+            resp = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}",
+                json={"contents": [{"parts": [{"text": prompt}]}]},
+            )
+            resp.raise_for_status()
+            result_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        elif openai_key:
+            resp = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+                json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}], "max_tokens": 4096},
+            )
+            resp.raise_for_status()
+            result_text = resp.json()["choices"][0]["message"]["content"]
+        else:
+            raise HTTPException(status_code=400, detail="No AI credentials configured. Please add an OpenAI, Claude, or Gemini API key in Settings.")
+
+    # Strip markdown fences if present
+    result_text = re.sub(r"```json|```", "", result_text).strip()
+    try:
+        matches = json.loads(result_text)
+    except Exception:
+        raise HTTPException(status_code=500, detail=f"AI returned unparseable response: {result_text[:200]}")
+
+    # Build a guid→video lookup for convenience
+    video_map = {v["guid"]: v for v in body.videos}
+    enriched = []
+    for m in matches:
+        guid = m.get("video_guid")
+        video = video_map.get(guid) if guid else None
+        enriched.append({
+            "lesson_id": m.get("lesson_id"),
+            "video_guid": guid,
+            "video_title": video["title"] if video else None,
+            "embed_url": video["embed_url"] if video else None,
+            "confidence": m.get("confidence", 0),
+        })
+    return {"matches": enriched}
 
 
 # ── Register router & middleware ──────────────────────────────

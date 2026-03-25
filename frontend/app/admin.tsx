@@ -121,6 +121,15 @@ export default function Admin() {
       onPress: () => router.push('/admin/users' as any),
     },
     {
+      id: 'bunny',
+      emoji: '🐰',
+      title: 'Import from Bunny.net',
+      description: 'สร้างบทเรียนจากวิดีโอใน Bunny Library อัตโนมัติ',
+      color: '#F97316',
+      bgColor: '#FFF7ED',
+      onPress: () => router.push('/admin/bunny-import' as any),
+    },
+    {
       id: 'settings',
       emoji: '⚙️',
       title: 'ตั้งค่าระบบ',
