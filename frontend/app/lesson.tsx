@@ -14,10 +14,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import RenderHtml from 'react-native-render-html';
 import { useUser } from '../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../constants/theme';
-import { cleanWordPressContent, stripHtml } from '../utils/contentUtils';
+import { stripHtml } from '../utils/contentUtils';
 import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -83,16 +82,6 @@ export default function LessonView() {
     } catch (error) {
       console.error('Error marking complete:', error);
       Alert.alert('ข้อผิดพลาด', 'ไม่สามารถบันทึกความคืบหน้าได้');
-    }
-  };
-
-  const goToQuiz = () => {
-    if (lesson?.has_quiz) {
-      // replace (not push) so quiz takes lesson's slot in stack —
-      // then router.back() from quiz goes directly to course-detail (no double-back)
-      router.replace(`/quiz?lessonId=${lessonId}&courseId=${courseId}`);
-    } else {
-      Alert.alert('แจ้งเตือน', 'บทเรียนนี้ยังไม่มีแบบทดสอบ');
     }
   };
 
@@ -194,53 +183,6 @@ export default function LessonView() {
           </View>
         )}
 
-        {/* Article Content */}
-        {lesson.content_type === 'article' && (
-          <View style={styles.articleContainer}>
-            <View style={styles.articleHeader}>
-              <View style={[styles.articleIcon, { backgroundColor: COLORS.primary }]}>
-                <Ionicons name="document-text" size={28} color="#FFFFFF" />
-              </View>
-              <View style={styles.articleTitleContainer}>
-                <Text style={styles.articleTitle}>{lesson.title}</Text>
-                {lesson.duration_minutes > 0 && (
-                  <Text style={styles.articleDuration}>
-                    <Ionicons name="time" size={14} color={COLORS.textSecondary} /> {lesson.duration_minutes} นาที
-                  </Text>
-                )}
-              </View>
-            </View>
-            
-            {lesson.audio_url && (
-              <TouchableOpacity style={styles.podcastButton}>
-                <View style={[styles.podcastGradient, { backgroundColor: '#6366F1' }]}>
-                  <Ionicons name="headset" size={20} color="#FFFFFF" />
-                  <Text style={styles.podcastButtonText}>ฟังเป็น Podcast</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.articleContent}>
-              {lesson.article_content ? (
-                <RenderHtml
-                  contentWidth={width - 64}
-                  source={{ html: `<div>${cleanWordPressContent(lesson.article_content)}</div>` }}
-                  tagsStyles={{
-                    div: { color: COLORS.textPrimary, fontSize: 16, lineHeight: 28 },
-                    p: { marginBottom: 16 },
-                    h1: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, color: COLORS.textPrimary },
-                    h2: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: COLORS.textPrimary },
-                    h3: { fontSize: 18, fontWeight: '600', marginBottom: 8, color: COLORS.textPrimary },
-                    li: { marginBottom: 8 },
-                  }}
-                />
-              ) : (
-                <Text style={styles.articleText}>{stripHtml(lesson.description)}</Text>
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Audio/Podcast Content */}
         {lesson.content_type === 'audio' && (
           <View style={styles.audioContainer}>
@@ -305,12 +247,6 @@ export default function LessonView() {
                 <Text style={styles.metaText}>{lesson.duration_minutes} นาที</Text>
               </View>
             )}
-            {lesson.has_quiz && (
-              <View style={styles.metaItem}>
-                <Ionicons name="checkbox" size={18} color={COLORS.success} />
-                <Text style={[styles.metaText, { color: COLORS.success }]}>มีแบบทดสอบ</Text>
-              </View>
-            )}
           </View>
         </View>
 
@@ -330,13 +266,6 @@ export default function LessonView() {
             </View>
           )}
 
-          {lesson.has_quiz && (
-            <TouchableOpacity style={styles.quizButton} onPress={goToQuiz}>
-              <Ionicons name="clipboard" size={22} color={COLORS.primary} />
-              <Text style={styles.quizButtonText}>ทำแบบทดสอบ</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Bottom padding */}
@@ -476,35 +405,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.xs,
   },
-  articleContainer: {
-    padding: SPACING.xl,
-    backgroundColor: '#FFFFFF',
-  },
-  articleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    gap: SPACING.md,
-  },
-  articleIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  articleTitleContainer: {
-    flex: 1,
-  },
-  articleTitle: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.textPrimary,
-  },
-  articleDuration: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
   podcastButton: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
@@ -521,14 +421,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: '#FFFFFF',
     fontWeight: '600',
-  },
-  articleContent: {
-    paddingTop: SPACING.md,
-  },
-  articleText: {
-    ...TYPOGRAPHY.body,
-    lineHeight: 28,
-    color: COLORS.textPrimary,
   },
   audioContainer: {
     backgroundColor: '#FFFFFF',
@@ -678,23 +570,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodyLarge,
     color: COLORS.success,
     fontWeight: '600',
-  },
-  quizButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: RADIUS.lg,
-    gap: SPACING.sm,
-  },
-  quizButtonText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.primary,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
   },
 });
