@@ -559,7 +559,8 @@ export default function DuolingoScreen() {
               return flat;
             }
             // Format 1: blanks IS the option pool
-            return rawBlanks.map((b: any) => ({ id: b.id, label: b.label }));
+            // Also handle {answer, position} format where id/label may be absent
+            return rawBlanks.map((b: any) => ({ id: b.id ?? b.answer, label: b.label ?? b.answer }));
           })();
 
           // Initialize slots
@@ -600,7 +601,7 @@ export default function DuolingoScreen() {
 
           const getSlotLabel = (optId: string | null) => {
             if (!optId) return null;
-            const opt = q.content.options?.find(o => o.id === optId);
+            const opt = allOpts.find(o => o.id === optId);
             return opt?.label ?? optId;
           };
 
@@ -615,41 +616,53 @@ export default function DuolingoScreen() {
               <Text style={styles.prompt}>{q.prompt}</Text>
 
               {/* ── Code template with inline blanks (when visual has a code field) ── */}
-              {hasCodeTemplate && (
-                <View style={styles.codeBlock}>
-                  <Text style={styles.codeText}>
-                    {parts.map((part, i) => {
-                      const slotIdx = i;
-                      const correct = getSlotCorrect(slotIdx);
-                      const slotVal = slots[slotIdx];
-                      const slotLabel = getSlotLabel(slotVal);
+              {hasCodeTemplate && (() => {
+                // Split code by newline first, then each line by ___ so blanks become
+                // View-level siblings of Text spans (never nested inside Text, which
+                // is invalid in React Native and causes rendering artifacts).
+                let globalBlankIdx = 0;
+                return (
+                  <View style={styles.codeBlock}>
+                    {code.split('\n').map((line, lineIdx) => {
+                      const lineParts = line.split('___');
                       return (
-                        <Text key={i}>
-                          <Text style={styles.codeText}>{part}</Text>
-                          {i < parts.length - 1 && (
-                            <TouchableOpacity
-                              onPress={() => slotVal ? handleFillRemove(slotIdx) : undefined}
-                              style={[
-                                styles.codeBlank,
-                                fillSubmitted && correct === true && styles.codeBlankCorrect,
-                                fillSubmitted && correct === false && styles.codeBlankWrong,
-                              ]}
-                            >
-                              <Text style={[
-                                styles.codeBlankText,
-                                fillSubmitted && correct === true && { color: COLORS.success },
-                                fillSubmitted && correct === false && { color: COLORS.error },
-                              ]}>
-                                {slotLabel || '___'}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </Text>
+                        <View key={lineIdx} style={styles.codeLineRow}>
+                          {lineParts.map((seg, segIdx) => {
+                            const blankIdx = globalBlankIdx;
+                            if (segIdx < lineParts.length - 1) globalBlankIdx++;
+                            const correct = segIdx < lineParts.length - 1 ? getSlotCorrect(blankIdx) : null;
+                            const slotVal = segIdx < lineParts.length - 1 ? slots[blankIdx] : null;
+                            const slotLabel = segIdx < lineParts.length - 1 ? getSlotLabel(slotVal) : null;
+                            return (
+                              <React.Fragment key={segIdx}>
+                                {seg.length > 0 && <Text style={styles.codeText}>{seg}</Text>}
+                                {segIdx < lineParts.length - 1 && (
+                                  <TouchableOpacity
+                                    onPress={() => { if (slotVal) handleFillRemove(blankIdx); }}
+                                    style={[
+                                      styles.codeBlank,
+                                      fillSubmitted && correct === true && styles.codeBlankCorrect,
+                                      fillSubmitted && correct === false && styles.codeBlankWrong,
+                                    ]}
+                                  >
+                                    <Text style={[
+                                      styles.codeBlankText,
+                                      fillSubmitted && correct === true && { color: COLORS.success },
+                                      fillSubmitted && correct === false && { color: COLORS.error },
+                                    ]}>
+                                      {slotLabel || '___'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </View>
                       );
                     })}
-                  </Text>
-                </View>
-              )}
+                  </View>
+                );
+              })()}
 
               {/* ── Numbered slots (when there's no code template) ── */}
               {!hasCodeTemplate && (
@@ -1116,6 +1129,7 @@ const styles = StyleSheet.create({
 
   // Code block
   codeBlock: { backgroundColor: '#1E293B', borderRadius: 12, padding: 16, marginBottom: SPACING.md },
+  codeLineRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 2 },
   codeText: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13, color: '#E2E8F0', lineHeight: 22 },
   codeBlank: { backgroundColor: '#334155', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1.5, borderColor: '#64748B', minWidth: 60 },
   codeBlankCorrect: { backgroundColor: '#064E3B', borderColor: COLORS.success },
