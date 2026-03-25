@@ -9,8 +9,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import axios from 'axios';
@@ -18,7 +16,6 @@ import axios from 'axios';
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function Learning() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
@@ -53,10 +50,10 @@ export default function Learning() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <StatusBar style="light" />
-        <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
+        <View style={styles.headerSafe}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
+          </View>
         </View>
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: COLORS.primary }]}>
@@ -79,8 +76,6 @@ export default function Learning() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-      <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
       </View>
@@ -174,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   headerSafe: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     paddingHorizontal: SPACING.xl,

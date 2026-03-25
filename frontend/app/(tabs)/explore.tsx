@@ -10,8 +10,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import { useUser } from '../../contexts/UserContext';
 import axios from 'axios';
@@ -20,7 +18,6 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 export default function Explore() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
@@ -79,10 +76,9 @@ export default function Explore() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-      <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.headerSafeArea}>
+        <View style={styles.header}>
           <Text style={styles.headerTitle}>สำรวจคอร์ส</Text>
           {isAdmin && (
             <TouchableOpacity
@@ -93,6 +89,7 @@ export default function Explore() {
             </TouchableOpacity>
           )}
         </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -280,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8FA',
   },
   headerSafeArea: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     paddingHorizontal: 20,

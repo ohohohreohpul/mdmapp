@@ -9,8 +9,6 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS } from '../../constants/theme';
 
@@ -26,7 +24,6 @@ interface GamDashboard {
 }
 
 export default function Profile() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
@@ -49,7 +46,6 @@ export default function Profile() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <View style={{ height: insets.top, backgroundColor: COLORS.primary }} />
         <View style={styles.guestHeader}>
           <Text style={styles.headerTitle}>โปรไฟล์</Text>
         </View>
@@ -75,10 +71,8 @@ export default function Profile() {
   // Logged in view
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       {/* Pink Header */}
       <View style={styles.profileHeader}>
-        <View style={{ height: insets.top }} />
           {/* Avatar */}
           <View style={styles.avatarRow}>
             <View style={styles.avatar}>
