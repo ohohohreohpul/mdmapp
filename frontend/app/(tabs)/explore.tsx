@@ -93,7 +93,6 @@ export default function Explore() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
