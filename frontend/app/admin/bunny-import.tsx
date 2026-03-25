@@ -1,7 +1,8 @@
 /**
  * Bunny Import  –  Collection → Videos → Create Lessons
  *
- * Calls Bunny Stream API *directly* from the frontend (no backend needed).
+ * Routes through the backend (PWA-safe, no CORS issues).
+ * Backend reads Bunny credentials from admin_settings table.
  *
  * Flow:
  *   1. Load Collections  →  each collection ≈ one course
@@ -20,17 +21,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
-// ─── Bunny credentials (from .env) ───────────────────────────────────────────
-const BUNNY_API_KEY    = process.env.EXPO_PUBLIC_BUNNY_API_KEY    ?? '';
-const BUNNY_LIBRARY_ID = process.env.EXPO_PUBLIC_BUNNY_LIBRARY_ID ?? '';
-const BUNNY_BASE       = `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}`;
-const BUNNY_HEADERS    = { AccessKey: BUNNY_API_KEY };
-
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BunnyCollection { guid: string; name: string; videoCount: number }
-interface BunnyVideo      { guid: string; title: string; length: number }
+interface BunnyVideo      { guid: string; title: string; length: number; embed_url: string }
 
 interface ImportRow {
   guid: string; embedUrl: string; rawTitle: string
@@ -75,9 +70,6 @@ function parseTitle(raw: string): { cleanTitle: string; order: number } {
 }
 
 function secToMin(s: number) { return Math.round(s / 60); }
-function embedUrl(guid: string) {
-  return `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${guid}`;
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function BunnyImport() {
@@ -104,20 +96,14 @@ export default function BunnyImport() {
 
   // ── 1. Load Collections ───────────────────────────────────────────────────
   const loadCollections = useCallback(async () => {
-    if (!BUNNY_API_KEY || !BUNNY_LIBRARY_ID) {
-      Alert.alert('ไม่พบ API Key', 'กรุณาตรวจสอบ EXPO_PUBLIC_BUNNY_API_KEY และ EXPO_PUBLIC_BUNNY_LIBRARY_ID ใน .env แล้วรีสตาร์ท Expo');
-      return;
-    }
     try {
       setPhase('loadingCollections');
-      const res = await axios.get(`${BUNNY_BASE}/collections?itemsPerPage=100`, {
-        headers: BUNNY_HEADERS,
-      });
+      const res = await axios.get(`${API_URL}/api/bunny/collections`);
       const items: BunnyCollection[] = res.data?.items ?? [];
       setCollections(items);
       setPhase('collections');
     } catch (e: any) {
-      Alert.alert('ผิดพลาด', e?.response?.data?.Message ?? e?.message ?? 'โหลด Collections ไม่สำเร็จ');
+      Alert.alert('ผิดพลาด', e?.response?.data?.detail ?? e?.message ?? 'โหลด Collections ไม่สำเร็จ\nตรวจสอบ Bunny API Key ใน Admin → ตั้งค่าระบบ');
       setPhase('idle');
     }
   }, []);
@@ -129,13 +115,11 @@ export default function BunnyImport() {
       setPhase('loadingVideos');
 
       const [videosRes, coursesRes] = await Promise.all([
-        axios.get(`${BUNNY_BASE}/videos?collection=${col.guid}&itemsPerPage=200&page=1`, {
-          headers: BUNNY_HEADERS,
-        }),
+        axios.get(`${API_URL}/api/bunny/videos?collection_id=${col.guid}`),
         axios.get(`${API_URL}/api/courses`),
       ]);
 
-      const videos: BunnyVideo[] = videosRes.data?.items ?? [];
+      const videos: BunnyVideo[] = videosRes.data?.videos ?? [];
       if (!videos.length) {
         Alert.alert('ไม่พบวิดีโอ', 'Collection นี้ว่างเปล่า');
         setPhase('collections');
@@ -145,7 +129,7 @@ export default function BunnyImport() {
       setRows(videos.map(v => {
         const { cleanTitle, order } = parseTitle(v.title);
         return {
-          guid: v.guid, embedUrl: embedUrl(v.guid),
+          guid: v.guid, embedUrl: v.embed_url,
           rawTitle: v.title, cleanTitle, order,
           durationMin: secToMin(v.length), selected: false,
         };
