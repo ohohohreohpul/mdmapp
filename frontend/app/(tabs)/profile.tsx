@@ -271,9 +271,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8FA',
   },
   safeArea: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.primary,
   },
   guestHeader: {
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',

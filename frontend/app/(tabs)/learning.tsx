@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import axios from 'axios';
@@ -51,6 +52,7 @@ export default function Learning() {
   if (!user) {
     return (
       <View style={styles.container}>
+        <StatusBar style="light" />
         <SafeAreaView edges={['top']} style={styles.headerSafe}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
@@ -77,6 +79,7 @@ export default function Learning() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
@@ -172,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   headerSafe: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.primary,
   },
   header: {
     paddingHorizontal: SPACING.xl,

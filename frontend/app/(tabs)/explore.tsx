@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import { useUser } from '../../contexts/UserContext';
 import axios from 'axios';
@@ -77,6 +78,7 @@ export default function Explore() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       {/* Header */}
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
         <View style={styles.header}>
@@ -278,7 +280,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F8FA',
   },
   headerSafeArea: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.primary,
   },
   header: {
     paddingHorizontal: 20,

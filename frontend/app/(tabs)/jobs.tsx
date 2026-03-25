@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
+import { StatusBar } from 'expo-status-bar';
 
 export default function JobsScreen() {
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Job Board</Text>
@@ -99,11 +101,12 @@ export default function JobsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
-  headerSafeArea: { backgroundColor: '#FFF' },
+  headerSafeArea: { backgroundColor: COLORS.primary },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EBEBEB',
   },
