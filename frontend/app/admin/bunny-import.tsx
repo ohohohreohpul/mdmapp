@@ -25,6 +25,9 @@ import axios from 'axios';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const BUNNY_API_KEY = process.env.EXPO_PUBLIC_BUNNY_API_KEY || '';
+const BUNNY_LIBRARY_ID = process.env.EXPO_PUBLIC_BUNNY_LIBRARY_ID || '';
+const BUNNY_BASE = 'https://video.bunnycdn.com';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,15 +147,31 @@ export default function BunnyImport() {
     try {
       setErrorMsg('');
       setPhase('loadingCollections');
-      console.log('[BunnyImport] fetching collections from', `${API_URL}/api/bunny/collections`);
+
+      if (!BUNNY_API_KEY || !BUNNY_LIBRARY_ID) {
+        setErrorMsg('ไม่พบ Bunny API Key หรือ Library ID — ตรวจสอบไฟล์ .env');
+        setPhase('idle');
+        return;
+      }
+
+      // Call Bunny directly from the frontend — no backend needed
       const [colRes, coursesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/bunny/collections`),
+        axios.get(`${BUNNY_BASE}/library/${BUNNY_LIBRARY_ID}/collections`, {
+          params: { page: 1, itemsPerPage: 100, orderBy: 'name' },
+          headers: { AccessKey: BUNNY_API_KEY },
+        }),
         axios.get(`${API_URL}/api/courses`),
       ]);
-      console.log('[BunnyImport] collections response:', colRes.data);
-      const cols: BunnyCollection[] = colRes.data.collections || [];
+
+      const cols: BunnyCollection[] = (colRes.data.items || []).map((c: any) => ({
+        guid: c.guid,
+        name: c.name || 'Unnamed',
+        video_count: c.videoCount || 0,
+        thumbnail_url: (c.previewImageUrls || [])[0] || undefined,
+      }));
+
       if (cols.length === 0) {
-        setErrorMsg('ไม่พบ Collection — ตรวจสอบ API Key และ Library ID ใน Admin → ตั้งค่าระบบ');
+        setErrorMsg('ไม่พบ Collection ใน Library นี้ — ลองตรวจสอบ Library ID');
         setPhase('idle');
         return;
       }
@@ -161,7 +180,7 @@ export default function BunnyImport() {
       setPhase('pickCollection');
     } catch (err: any) {
       console.error('[BunnyImport] error:', err?.response?.data || err?.message || err);
-      const detail = err?.response?.data?.detail || err?.message || 'เกิดข้อผิดพลาด';
+      const detail = err?.response?.data?.detail || err?.response?.data?.Message || err?.message || 'เกิดข้อผิดพลาด';
       setErrorMsg(`ผิดพลาด: ${detail}`);
       setPhase('idle');
     }
@@ -173,10 +192,16 @@ export default function BunnyImport() {
     try {
       setSelectedCollection(collection);
       setPhase('loadingVideos');
-      const res = await axios.get(`${API_URL}/api/bunny/videos`, {
-        params: { collection_id: collection.guid },
+      const res = await axios.get(`${BUNNY_BASE}/library/${BUNNY_LIBRARY_ID}/videos`, {
+        params: { page: 1, itemsPerPage: 200, collection: collection.guid, orderBy: 'title' },
+        headers: { AccessKey: BUNNY_API_KEY },
       });
-      const videos: BunnyVideo[] = res.data.videos || [];
+      const videos: BunnyVideo[] = (res.data.items || []).map((v: any) => ({
+        guid: v.guid,
+        title: v.title || '',
+        length: v.length || 0,
+        embed_url: `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${v.guid}`,
+      }));
       if (videos.length === 0) {
         Alert.alert('ไม่มีวิดีโอ', `Collection "${collection.name}" ยังไม่มีวิดีโอ`);
         setPhase('pickCollection');
