@@ -1,22 +1,18 @@
 /**
- * Bunny Import — Collection-first flow
- * ─────────────────────────────────────────────────────────
- * Step 1 – Pick a Collection  (Collection = Course)
- * Step 2 – Browse & select videos from that collection
- * Step 3 – Edit titles + pick target module → Create lessons
+ * Bunny Import  –  Collection → Videos → Create Lessons
+ *
+ * Calls Bunny Stream API *directly* from the frontend (no backend needed).
+ *
+ * Flow:
+ *   1. Load Collections  →  each collection ≈ one course
+ *   2. Tap a collection  →  load its videos
+ *   3. Multi-select videos  →  auto-parse titles from filenames
+ *   4. Edit titles inline, pick target module, create lessons
  */
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Image,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  TextInput, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,423 +20,231 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 
-const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-const BUNNY_API_KEY = process.env.EXPO_PUBLIC_BUNNY_API_KEY || '';
-const BUNNY_LIBRARY_ID = process.env.EXPO_PUBLIC_BUNNY_LIBRARY_ID || '';
-const BUNNY_BASE = 'https://video.bunnycdn.com';
+// ─── Bunny credentials (from .env) ───────────────────────────────────────────
+const BUNNY_API_KEY    = process.env.EXPO_PUBLIC_BUNNY_API_KEY    ?? '';
+const BUNNY_LIBRARY_ID = process.env.EXPO_PUBLIC_BUNNY_LIBRARY_ID ?? '';
+const BUNNY_BASE       = `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}`;
+const BUNNY_HEADERS    = { AccessKey: BUNNY_API_KEY };
+
+const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface BunnyCollection {
-  guid: string;
-  name: string;
-  video_count: number;
-  thumbnail_url?: string;
-}
-
-interface BunnyVideo {
-  guid: string;
-  title: string;
-  length: number;
-  embed_url: string;
-}
+interface BunnyCollection { guid: string; name: string; videoCount: number }
+interface BunnyVideo      { guid: string; title: string; length: number }
 
 interface ImportRow {
-  guid: string;
-  embed_url: string;
-  rawTitle: string;
-  cleanTitle: string;
-  order: number;
-  durationMinutes: number;
-  selected: boolean;
+  guid: string; embedUrl: string; rawTitle: string
+  cleanTitle: string; order: number; durationMin: number; selected: boolean
 }
 
-interface Course {
-  _id: string;
-  title: string;
-}
+interface Course  { _id: string; title: string }
+interface Module  { _id: string; title: string; order: number }
 
-interface Module {
-  _id: string;
-  title: string;
-}
+type Phase = 'idle' | 'loadingCollections' | 'collections'
+           | 'loadingVideos' | 'select' | 'configure' | 'creating'
 
-type Phase = 'idle' | 'loadingCollections' | 'pickCollection' | 'loadingVideos' | 'pickVideos' | 'configure' | 'creating';
-
-// ─── Title parser ─────────────────────────────────────────────────────────────
-
-function parseVideoTitle(raw: string): { cleanTitle: string; order: number } {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function parseTitle(raw: string): { cleanTitle: string; order: number } {
   let t = raw.replace(/\.[^.]+$/, '').trim();
 
+  // Leading numeric order: "01_", "16 ", "16."
   let order = 0;
-  const orderMatch = t.match(/^(\d+)[_.\s]/);
-  if (orderMatch) {
-    order = parseInt(orderMatch[1], 10);
-    t = t.slice(orderMatch[0].length);
-  }
+  const m = t.match(/^(\d+)[_.\s]/);
+  if (m) { order = parseInt(m[1], 10); t = t.slice(m[0].length); }
 
-  const isWorkshop = /_wk$/i.test(t);
-  if (isWorkshop) t = t.replace(/_wk$/i, '');
+  // _wk / _WK suffix = workshop
+  const isWk = /_wk$/i.test(t);
+  if (isWk) t = t.replace(/_wk$/i, '');
 
-  // Split CamelCase
-  t = t.replace(/([a-z])([A-Z])/g, '$1 $2');
-  t = t.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+  // CamelCase → spaced
+  t = t.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
 
-  // Replace underscores/dashes
+  // Underscores / dashes → spaces
   t = t.replace(/[_-]+/g, ' ').trim();
 
-  // Title case, preserve small words after first
-  const small = new Set(['in', 'on', 'of', 'and', 'or', 'to', 'the', 'a', 'an', 'for', 'with']);
-  t = t
-    .split(/\s+/)
-    .map((w, i) =>
-      i === 0 || !small.has(w.toLowerCase())
-        ? w.charAt(0).toUpperCase() + w.slice(1)
-        : w.toLowerCase(),
-    )
-    .join(' ');
+  // Title-case (keep small words lowercase unless first)
+  const small = new Set(['in','on','of','and','or','to','the','a','an','for','with']);
+  t = t.split(/\s+/)
+       .map((w, i) => (!i || !small.has(w.toLowerCase()))
+         ? w.charAt(0).toUpperCase() + w.slice(1)
+         : w.toLowerCase())
+       .join(' ');
 
-  if (isWorkshop) t += ' (Workshop)';
-
+  if (isWk) t += ' (Workshop)';
   return { cleanTitle: t || raw, order };
 }
 
-function secToMinutes(sec: number): number {
-  return Math.round(sec / 60);
+function secToMin(s: number) { return Math.round(s / 60); }
+function embedUrl(guid: string) {
+  return `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${guid}`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export default function BunnyImport() {
   const router = useRouter();
 
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [phase, setPhase]       = useState<Phase>('idle');
   const [collections, setCollections] = useState<BunnyCollection[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<BunnyCollection | null>(null);
-  const [rows, setRows] = useState<ImportRow[]>([]);
-  const [sortByNumber, setSortByNumber] = useState(true);
+  const [activeCollection, setActiveCollection] = useState<BunnyCollection | null>(null);
+  const [rows, setRows]         = useState<ImportRow[]>([]);
+  const [sortByNum, setSortByNum] = useState(true);
 
-  // Phase 3 – target
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModuleId, setSelectedModuleId] = useState('');
-  const [loadingModules, setLoadingModules] = useState(false);
+  // Phase 2 – target
+  const [courses, setCourses]           = useState<Course[]>([]);
+  const [selectedCourseId, setSelCourse] = useState('');
+  const [modules, setModules]           = useState<Module[]>([]);
+  const [selectedModuleId, setSelModule] = useState('');
+  const [loadingMods, setLoadingMods]   = useState(false);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  const selectedRows = useMemo(() => rows.filter(r => r.selected), [rows]);
+  const sortedRows   = useMemo(() => [...rows].sort((a, b) =>
+    sortByNum ? (a.order - b.order || a.rawTitle.localeCompare(b.rawTitle))
+              : a.rawTitle.localeCompare(b.rawTitle)
+  ), [rows, sortByNum]);
 
-  const selectedRows = useMemo(() => rows.filter((r) => r.selected), [rows]);
-  const sortedRows = useMemo(() => {
-    const copy = [...rows];
-    copy.sort((a, b) =>
-      sortByNumber
-        ? a.order - b.order || a.rawTitle.localeCompare(b.rawTitle)
-        : a.rawTitle.localeCompare(b.rawTitle),
-    );
-    return copy;
-  }, [rows, sortByNumber]);
-
-  // ── Step 1: Load collections ──────────────────────────────────────────────
-
+  // ── 1. Load Collections ───────────────────────────────────────────────────
   const loadCollections = useCallback(async () => {
+    if (!BUNNY_API_KEY || !BUNNY_LIBRARY_ID) {
+      Alert.alert('ไม่พบ API Key', 'กรุณาตรวจสอบ EXPO_PUBLIC_BUNNY_API_KEY และ EXPO_PUBLIC_BUNNY_LIBRARY_ID ใน .env แล้วรีสตาร์ท Expo');
+      return;
+    }
     try {
-      setErrorMsg('');
       setPhase('loadingCollections');
-
-      if (!BUNNY_API_KEY || !BUNNY_LIBRARY_ID) {
-        setErrorMsg('ไม่พบ Bunny API Key หรือ Library ID — ตรวจสอบไฟล์ .env');
-        setPhase('idle');
-        return;
-      }
-
-      // Call Bunny directly from the frontend — no backend needed
-      const [colRes, coursesRes] = await Promise.all([
-        axios.get(`${BUNNY_BASE}/library/${BUNNY_LIBRARY_ID}/collections`, {
-          params: { page: 1, itemsPerPage: 100, orderBy: 'name' },
-          headers: { AccessKey: BUNNY_API_KEY },
-        }),
-        axios.get(`${API_URL}/api/courses`),
-      ]);
-
-      const cols: BunnyCollection[] = (colRes.data.items || []).map((c: any) => ({
-        guid: c.guid,
-        name: c.name || 'Unnamed',
-        video_count: c.videoCount || 0,
-        thumbnail_url: (c.previewImageUrls || [])[0] || undefined,
-      }));
-
-      if (cols.length === 0) {
-        setErrorMsg('ไม่พบ Collection ใน Library นี้ — ลองตรวจสอบ Library ID');
-        setPhase('idle');
-        return;
-      }
-      setCollections(cols);
-      setCourses(coursesRes.data || []);
-      setPhase('pickCollection');
-    } catch (err: any) {
-      console.error('[BunnyImport] error:', err?.response?.data || err?.message || err);
-      const detail = err?.response?.data?.detail || err?.response?.data?.Message || err?.message || 'เกิดข้อผิดพลาด';
-      setErrorMsg(`ผิดพลาด: ${detail}`);
+      const res = await axios.get(`${BUNNY_BASE}/collections?itemsPerPage=100`, {
+        headers: BUNNY_HEADERS,
+      });
+      const items: BunnyCollection[] = res.data?.items ?? [];
+      setCollections(items);
+      setPhase('collections');
+    } catch (e: any) {
+      Alert.alert('ผิดพลาด', e?.response?.data?.Message ?? e?.message ?? 'โหลด Collections ไม่สำเร็จ');
       setPhase('idle');
     }
   }, []);
 
-  // ── Step 2: Load videos for selected collection ───────────────────────────
-
-  const loadVideos = useCallback(async (collection: BunnyCollection) => {
+  // ── 2. Load Videos in Collection ─────────────────────────────────────────
+  const loadVideos = useCallback(async (col: BunnyCollection) => {
     try {
-      setSelectedCollection(collection);
+      setActiveCollection(col);
       setPhase('loadingVideos');
-      const res = await axios.get(`${BUNNY_BASE}/library/${BUNNY_LIBRARY_ID}/videos`, {
-        params: { page: 1, itemsPerPage: 200, collection: collection.guid, orderBy: 'title' },
-        headers: { AccessKey: BUNNY_API_KEY },
-      });
-      const videos: BunnyVideo[] = (res.data.items || []).map((v: any) => ({
-        guid: v.guid,
-        title: v.title || '',
-        length: v.length || 0,
-        embed_url: `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${v.guid}`,
-      }));
-      if (videos.length === 0) {
-        Alert.alert('ไม่มีวิดีโอ', `Collection "${collection.name}" ยังไม่มีวิดีโอ`);
-        setPhase('pickCollection');
+
+      const [videosRes, coursesRes] = await Promise.all([
+        axios.get(`${BUNNY_BASE}/videos?collection=${col.guid}&itemsPerPage=200&page=1`, {
+          headers: BUNNY_HEADERS,
+        }),
+        axios.get(`${API_URL}/api/courses`),
+      ]);
+
+      const videos: BunnyVideo[] = videosRes.data?.items ?? [];
+      if (!videos.length) {
+        Alert.alert('ไม่พบวิดีโอ', 'Collection นี้ว่างเปล่า');
+        setPhase('collections');
         return;
       }
-      const parsed: ImportRow[] = videos.map((v) => {
-        const { cleanTitle, order } = parseVideoTitle(v.title);
+
+      setRows(videos.map(v => {
+        const { cleanTitle, order } = parseTitle(v.title);
         return {
-          guid: v.guid,
-          embed_url: v.embed_url,
-          rawTitle: v.title,
-          cleanTitle,
-          order,
-          durationMinutes: secToMinutes(v.length),
-          selected: false,
+          guid: v.guid, embedUrl: embedUrl(v.guid),
+          rawTitle: v.title, cleanTitle, order,
+          durationMin: secToMin(v.length), selected: false,
         };
-      });
-      setRows(parsed);
-      setPhase('pickVideos');
-    } catch (err: any) {
-      Alert.alert('ผิดพลาด', err?.response?.data?.detail || err?.message || 'เกิดข้อผิดพลาด');
-      setPhase('pickCollection');
+      }));
+
+      setCourses(coursesRes.data ?? []);
+      setPhase('select');
+    } catch (e: any) {
+      Alert.alert('ผิดพลาด', e?.response?.data?.Message ?? e?.message ?? 'โหลดวิดีโอไม่สำเร็จ');
+      setPhase('collections');
     }
   }, []);
 
-  // ── Select helpers ────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const toggle    = (guid: string) => setRows(p => p.map(r => r.guid === guid ? {...r, selected: !r.selected} : r));
+  const selectAll = () => setRows(p => p.map(r => ({...r, selected: true})));
+  const clearAll  = () => setRows(p => p.map(r => ({...r, selected: false})));
+  const editTitle = (guid: string, v: string) => setRows(p => p.map(r => r.guid === guid ? {...r, cleanTitle: v} : r));
 
-  const toggleRow = (guid: string) =>
-    setRows((prev) => prev.map((r) => (r.guid === guid ? { ...r, selected: !r.selected } : r)));
-  const selectAll = () => setRows((prev) => prev.map((r) => ({ ...r, selected: true })));
-  const deselectAll = () => setRows((prev) => prev.map((r) => ({ ...r, selected: false })));
-
-  const goToConfigure = () => {
-    if (selectedRows.length === 0) {
-      Alert.alert('ยังไม่ได้เลือก', 'เลือกวิดีโออย่างน้อย 1 รายการ');
-      return;
-    }
-    setSelectedCourseId('');
-    setSelectedModuleId('');
-    setModules([]);
-    setPhase('configure');
-  };
-
-  // ── Course / Module selection ─────────────────────────────────────────────
-
-  const onSelectCourse = async (courseId: string) => {
-    setSelectedCourseId(courseId);
-    setSelectedModuleId('');
-    setModules([]);
-    if (!courseId) return;
+  const onSelectCourse = async (id: string) => {
+    setSelCourse(id); setSelModule(''); setModules([]);
+    if (!id) return;
     try {
-      setLoadingModules(true);
-      const res = await axios.get(`${API_URL}/api/modules/course/${courseId}`);
-      setModules(res.data || []);
-    } catch {
-      Alert.alert('ผิดพลาด', 'โหลดโมดูลไม่สำเร็จ');
-    } finally {
-      setLoadingModules(false);
-    }
+      setLoadingMods(true);
+      const res = await axios.get(`${API_URL}/api/modules/course/${id}`);
+      setModules(res.data ?? []);
+    } catch { Alert.alert('ผิดพลาด', 'โหลดโมดูลไม่สำเร็จ'); }
+    finally { setLoadingMods(false); }
   };
 
-  const updateTitle = (guid: string, value: string) =>
-    setRows((prev) => prev.map((r) => (r.guid === guid ? { ...r, cleanTitle: value } : r)));
-
-  // ── Create lessons ────────────────────────────────────────────────────────
-
+  // ── Create Lessons ────────────────────────────────────────────────────────
   const createLessons = useCallback(async () => {
-    if (!selectedModuleId) {
-      Alert.alert('เลือกโมดูล', 'กรุณาเลือก Course และ Module ก่อน');
-      return;
-    }
-    const toCreate = selectedRows
-      .slice()
-      .sort((a, b) => a.order - b.order || a.rawTitle.localeCompare(b.rawTitle));
+    if (!selectedModuleId) { Alert.alert('เลือกโมดูล', 'กรุณาเลือก Module ก่อน'); return; }
+    const toCreate = [...selectedRows].sort((a, b) => a.order - b.order || a.rawTitle.localeCompare(b.rawTitle));
 
-    Alert.alert(
-      'ยืนยันสร้างบทเรียน',
-      `สร้าง ${toCreate.length} บทเรียนใน Module นี้?`,
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        {
-          text: 'สร้าง',
-          onPress: async () => {
-            setPhase('creating');
-            let baseOrder = 1;
-            try {
-              const existing = await axios.get(`${API_URL}/api/lessons/module/${selectedModuleId}`);
-              baseOrder = (existing.data || []).length + 1;
-            } catch { /* use 1 */ }
+    Alert.alert('ยืนยัน', `สร้าง ${toCreate.length} บทเรียน?`, [
+      { text: 'ยกเลิก', style: 'cancel' },
+      { text: 'สร้าง', onPress: async () => {
+        setPhase('creating');
+        let ok = 0, fail = 0, base = 1;
+        try {
+          const ex = await axios.get(`${API_URL}/api/lessons/module/${selectedModuleId}`);
+          base = (ex.data ?? []).length + 1;
+        } catch {}
 
-            let success = 0;
-            let fail = 0;
-            for (let i = 0; i < toCreate.length; i++) {
-              const row = toCreate[i];
-              try {
-                await axios.post(`${API_URL}/api/lessons`, {
-                  module_id: selectedModuleId,
-                  title: row.cleanTitle.trim() || row.rawTitle,
-                  description: '',
-                  order: baseOrder + i,
-                  content_type: 'video',
-                  video_url: row.embed_url,
-                  video_id: row.guid,
-                  duration_minutes: row.durationMinutes || undefined,
-                });
-                success++;
-              } catch { fail++; }
-            }
-            setPhase('configure');
-            Alert.alert(
-              'เสร็จสิ้น! 🎉',
-              `สร้างบทเรียนสำเร็จ ${success} รายการ${fail > 0 ? `\nล้มเหลว ${fail} รายการ` : ''}`,
-              [{ text: 'OK', onPress: () => router.back() }],
-            );
-          },
-        },
-      ],
-    );
-  }, [selectedRows, selectedModuleId, router]);
+        for (let i = 0; i < toCreate.length; i++) {
+          const r = toCreate[i];
+          try {
+            await axios.post(`${API_URL}/api/lessons`, {
+              module_id: selectedModuleId,
+              title: r.cleanTitle.trim() || r.rawTitle,
+              description: '', order: base + i,
+              content_type: 'video',
+              video_url: r.embedUrl,
+              video_id: r.guid,
+              duration_minutes: r.durationMin || undefined,
+            });
+            ok++;
+          } catch { fail++; }
+        }
 
-  // ── Back button logic ─────────────────────────────────────────────────────
+        Alert.alert('เสร็จ! 🎉',
+          `สร้างสำเร็จ ${ok} บทเรียน${fail ? `\nล้มเหลว ${fail}` : ''}`,
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
+      }},
+    ]);
+  }, [selectedRows, selectedModuleId]);
 
-  const handleBack = () => {
-    if (phase === 'pickVideos') { setPhase('pickCollection'); setRows([]); }
-    else if (phase === 'configure') setPhase('pickVideos');
-    else if (phase === 'pickCollection') setPhase('idle');
+  // ─── Render ───────────────────────────────────────────────────────────────
+  const back = () => {
+    if (phase === 'configure')    setPhase('select');
+    else if (phase === 'select')  setPhase('collections');
+    else if (phase === 'collections') setPhase('idle');
     else router.back();
   };
 
-  // ── Step labels ───────────────────────────────────────────────────────────
-
-  const stepLabel: Record<Phase, string> = {
-    idle: '',
-    loadingCollections: 'กำลังโหลด…',
-    pickCollection: 'เลือก Collection',
-    loadingVideos: 'กำลังโหลดวิดีโอ…',
-    pickVideos: `เลือกวิดีโอ — ${selectedCollection?.name ?? ''}`,
-    configure: `ตั้งค่าและสร้าง — ${selectedRows.length} วิดีโอ`,
-    creating: 'กำลังสร้างบทเรียน…',
+  const stepLabel: Partial<Record<Phase, string>> = {
+    collections: 'เลือก Collection',
+    select: 'เลือกวิดีโอ',
+    configure: 'ตั้งค่าบทเรียน',
   };
 
-  // ── Step dots (3 steps: collection → videos → configure) ─────────────────
-
-  const stepIndex = { pickCollection: 0, loadingVideos: 0, pickVideos: 1, configure: 2, creating: 2 } as Record<Phase, number>;
-
-  // ─── Render helpers ───────────────────────────────────────────────────────
-
-  const renderCollection = ({ item }: { item: BunnyCollection }) => (
-    <TouchableOpacity style={styles.collectionCard} onPress={() => loadVideos(item)} activeOpacity={0.75}>
-      {item.thumbnail_url ? (
-        <Image source={{ uri: item.thumbnail_url }} style={styles.collectionThumb} />
-      ) : (
-        <View style={[styles.collectionThumb, styles.collectionThumbPlaceholder]}>
-          <Text style={styles.collectionThumbEmoji}>🎬</Text>
-        </View>
-      )}
-      <View style={styles.collectionInfo}>
-        <Text style={styles.collectionName}>{item.name}</Text>
-        <Text style={styles.collectionCount}>{item.video_count} วิดีโอ</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
-    </TouchableOpacity>
-  );
-
-  const renderVideoRow = ({ item }: { item: ImportRow }) => (
-    <TouchableOpacity
-      style={[styles.videoRow, item.selected && styles.videoRowSelected]}
-      onPress={() => toggleRow(item.guid)}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.checkbox, item.selected && styles.checkboxChecked]}>
-        {item.selected && <Ionicons name="checkmark" size={14} color="#FFF" />}
-      </View>
-      <View style={styles.videoInfo}>
-        <Text style={styles.videoCleanTitle}>{item.cleanTitle}</Text>
-        <Text style={styles.videoRawTitle} numberOfLines={1}>{item.rawTitle}</Text>
-      </View>
-      <View style={styles.videoMeta}>
-        {item.order > 0 && (
-          <View style={styles.orderBubble}>
-            <Text style={styles.orderBubbleText}>#{item.order}</Text>
-          </View>
-        )}
-        {item.durationMinutes > 0 && (
-          <Text style={styles.durationText}>{item.durationMinutes}m</Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderConfigRow = (item: ImportRow) => (
-    <View key={item.guid} style={styles.configRow}>
-      <View style={styles.configOrder}>
-        <Text style={styles.configOrderText}>{item.order > 0 ? `#${item.order}` : '—'}</Text>
-      </View>
-      <View style={styles.configTitleWrap}>
-        <TextInput
-          style={styles.configTitleInput}
-          value={item.cleanTitle}
-          onChangeText={(v) => updateTitle(item.guid, v)}
-          placeholder="ชื่อบทเรียน"
-          returnKeyType="done"
-        />
-        <Text style={styles.configRaw} numberOfLines={1}>{item.rawTitle}</Text>
-      </View>
-      {item.durationMinutes > 0 && (
-        <Text style={styles.configDuration}>{item.durationMinutes}m</Text>
-      )}
-    </View>
-  );
-
-  // ─── Shared header ────────────────────────────────────────────────────────
-
-  const showHeader = phase !== 'idle';
-  const showSteps = ['pickCollection', 'loadingVideos', 'pickVideos', 'configure', 'creating'].includes(phase);
-
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
-    <View style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.headerSafe}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+    <View style={s.root}>
+      {/* ── Header ── */}
+      <SafeAreaView edges={['top']} style={s.headerSafe}>
+        <View style={s.header}>
+          <TouchableOpacity style={s.backBtn} onPress={back}>
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>🐰 Import from Bunny.net</Text>
-            {showHeader && (
-              <Text style={styles.headerSub} numberOfLines={1}>{stepLabel[phase]}</Text>
-            )}
+          <View style={{flex:1}}>
+            <Text style={s.headerTitle}>🐰 Import from Bunny.net</Text>
+            {stepLabel[phase] ? <Text style={s.headerSub}>{stepLabel[phase]}</Text> : null}
           </View>
-          {/* 3-step dots */}
-          {showSteps && (
-            <View style={styles.stepRow}>
-              {[0, 1, 2].map((i) => (
-                <React.Fragment key={i}>
-                  <View style={[styles.stepDot, stepIndex[phase] === i && styles.stepDotActive, stepIndex[phase] > i && styles.stepDotDone]} />
-                  {i < 2 && <View style={styles.stepLine} />}
-                </React.Fragment>
+          {['collections','select','configure'].includes(phase) && (
+            <View style={s.dots}>
+              {(['collections','select','configure'] as Phase[]).map(p => (
+                <View key={p} style={[s.dot, phase === p && s.dotActive]} />
               ))}
             </View>
           )}
@@ -449,120 +253,129 @@ export default function BunnyImport() {
 
       {/* ── IDLE ── */}
       {phase === 'idle' && (
-        <View style={styles.centered}>
-          <Text style={styles.heroEmoji}>🎬</Text>
-          <Text style={styles.heroTitle}>สร้างบทเรียนจากวิดีโอ</Text>
-          <Text style={styles.heroDesc}>
-            ดึง Collections จาก Bunny.net — แต่ละ Collection คือ 1 คอร์ส
-            เลือกวิดีโอ แก้ชื่อ เลือกโมดูล แล้วสร้างบทเรียนทีเดียวทั้งหมด
+        <View style={s.center}>
+          <Text style={{fontSize:56}}>🎬</Text>
+          <Text style={s.heroTitle}>สร้างบทเรียนจากวิดีโอ</Text>
+          <Text style={s.heroDesc}>
+            ดึง Collections จาก Bunny.net ตรงๆ เลือกวิดีโอ แก้ชื่อ แล้วสร้างบทเรียนในคลิกเดียว
           </Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={loadCollections}>
-            <Ionicons name="cloud-download-outline" size={20} color="#FFF" />
-            <Text style={styles.primaryBtnText}>ดู Collections ใน Bunny</Text>
+          <TouchableOpacity style={s.primaryBtn} onPress={loadCollections}>
+            <Ionicons name="cloud-download-outline" size={20} color="#fff" />
+            <Text style={s.primaryBtnTxt}>ดู Collections ใน Bunny</Text>
           </TouchableOpacity>
-          {errorMsg ? (
-            <View style={styles.errorBox}>
-              <Ionicons name="warning-outline" size={16} color="#DC2626" />
-              <Text style={styles.errorText}>{errorMsg}</Text>
-            </View>
-          ) : null}
-          <Text style={styles.prereqNote}>
-            ⚙️ ต้องตั้งค่า API Key + Library ID ใน Admin → ตั้งค่าระบบ ก่อน
-          </Text>
         </View>
       )}
 
       {/* ── LOADING ── */}
       {(phase === 'loadingCollections' || phase === 'loadingVideos' || phase === 'creating') && (
-        <View style={styles.centered}>
+        <View style={s.center}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingMsg}>
-            {phase === 'loadingCollections' && 'กำลังโหลด Collections…'}
-            {phase === 'loadingVideos' && `กำลังโหลดวิดีโอใน "${selectedCollection?.name}"…`}
-            {phase === 'creating' && 'กำลังสร้างบทเรียน…'}
+          <Text style={s.loadTxt}>
+            {phase === 'creating' ? 'กำลังสร้างบทเรียน…'
+              : phase === 'loadingVideos' ? 'กำลังโหลดวิดีโอ…'
+              : 'กำลังโหลด Collections…'}
           </Text>
         </View>
       )}
 
-      {/* ── STEP 1: PICK COLLECTION ── */}
-      {phase === 'pickCollection' && (
+      {/* ── COLLECTIONS ── */}
+      {phase === 'collections' && (
         <FlatList
           data={collections}
-          keyExtractor={(c) => c.guid}
-          renderItem={renderCollection}
-          contentContainerStyle={styles.collectionList}
-          ListHeaderComponent={
-            <Text style={styles.listHint}>
-              แต่ละ Collection = 1 คอร์ส — แตะเพื่อดูวิดีโอภายใน
-            </Text>
-          }
+          keyExtractor={c => c.guid}
+          contentContainerStyle={s.listPad}
+          ListEmptyComponent={<Text style={s.emptyTxt}>ไม่พบ Collection ใน Library นี้</Text>}
+          renderItem={({ item: c }) => (
+            <TouchableOpacity style={s.colCard} onPress={() => loadVideos(c)} activeOpacity={0.75}>
+              <View style={s.colIcon}>
+                <Ionicons name="folder-open" size={28} color={COLORS.primary} />
+              </View>
+              <View style={{flex:1}}>
+                <Text style={s.colName}>{c.name}</Text>
+                <Text style={s.colCount}>{c.videoCount} วิดีโอ</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+            </TouchableOpacity>
+          )}
         />
       )}
 
-      {/* ── STEP 2: PICK VIDEOS ── */}
-      {phase === 'pickVideos' && (
+      {/* ── SELECT ── */}
+      {phase === 'select' && (
         <>
-          {/* Toolbar */}
-          <View style={styles.toolbar}>
-            <TouchableOpacity style={styles.toolbarBtn} onPress={selectAll}>
-              <Text style={styles.toolbarBtnText}>เลือกทั้งหมด</Text>
+          <View style={s.toolbar}>
+            <TouchableOpacity style={s.tbBtn} onPress={selectAll}>
+              <Text style={s.tbTxt}>เลือกทั้งหมด</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.toolbarBtn} onPress={deselectAll}>
-              <Text style={styles.toolbarBtnText}>ล้างทั้งหมด</Text>
+            <TouchableOpacity style={s.tbBtn} onPress={clearAll}>
+              <Text style={s.tbTxt}>ยกเลิก</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toolbarBtn, styles.toolbarBtnSort]}
-              onPress={() => setSortByNumber((v) => !v)}
-            >
-              <Ionicons name="swap-vertical" size={13} color={COLORS.primary} />
-              <Text style={[styles.toolbarBtnText, { color: COLORS.primary }]}>
-                {sortByNumber ? 'เลข' : 'A–Z'}
+            <TouchableOpacity style={[s.tbBtn, s.tbSort]} onPress={() => setSortByNum(v => !v)}>
+              <Ionicons name="swap-vertical" size={14} color={COLORS.primary} />
+              <Text style={[s.tbTxt, {color: COLORS.primary}]}>
+                {sortByNum ? 'เรียงตามเลข' : 'A–Z'}
               </Text>
             </TouchableOpacity>
           </View>
 
           <FlatList
             data={sortedRows}
-            keyExtractor={(r) => r.guid}
-            renderItem={renderVideoRow}
-            contentContainerStyle={styles.listContent}
+            keyExtractor={r => r.guid}
+            contentContainerStyle={s.listPad}
+            renderItem={({ item: r }) => (
+              <TouchableOpacity
+                style={[s.vidRow, r.selected && s.vidRowSel]}
+                onPress={() => toggle(r.guid)} activeOpacity={0.7}
+              >
+                <View style={[s.check, r.selected && s.checkOn]}>
+                  {r.selected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                </View>
+                <View style={{flex:1}}>
+                  <Text style={s.vidClean}>{r.cleanTitle}</Text>
+                  <Text style={s.vidRaw} numberOfLines={1}>{r.rawTitle}</Text>
+                </View>
+                <View style={{alignItems:'flex-end', gap:4}}>
+                  {r.order > 0 && (
+                    <View style={s.badge}>
+                      <Text style={s.badgeTxt}>#{r.order}</Text>
+                    </View>
+                  )}
+                  {r.durationMin > 0 && <Text style={s.dur}>{r.durationMin}m</Text>}
+                </View>
+              </TouchableOpacity>
+            )}
           />
 
-          <View style={styles.footer}>
+          <View style={s.footer}>
             <TouchableOpacity
-              style={[styles.primaryBtn, selectedRows.length === 0 && styles.primaryBtnDisabled]}
-              onPress={goToConfigure}
-              disabled={selectedRows.length === 0}
+              style={[s.primaryBtn, !selectedRows.length && s.btnDisabled]}
+              onPress={() => selectedRows.length ? setPhase('configure') : Alert.alert('เลือกวิดีโอก่อน','')}
+              disabled={!selectedRows.length}
             >
-              <Text style={styles.primaryBtnText}>
-                ต่อไป — เลือก {selectedRows.length} วิดีโอ
-              </Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" />
+              <Text style={s.primaryBtnTxt}>ต่อไป — {selectedRows.length} วิดีโอ</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         </>
       )}
 
-      {/* ── STEP 3: CONFIGURE ── */}
+      {/* ── CONFIGURE ── */}
       {phase === 'configure' && (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.configContainer}>
+        <ScrollView style={{flex:1}} contentContainerStyle={s.configPad}>
 
-          {/* Course + Module */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>📁 เลือก Course และ Module</Text>
-            <Text style={styles.sectionHint}>
-              Collection: <Text style={{ fontWeight: '700' }}>{selectedCollection?.name}</Text>
-            </Text>
-
-            <Text style={styles.pickerLabel}>Course</Text>
+          {/* Course picker */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>📁 เลือก Course และ Module</Text>
+            <Text style={s.cardHint}>Collection: {activeCollection?.name}</Text>
+            <Text style={s.pickerLbl}>Course</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {courses.map((c) => (
+              {courses.map(c => (
                 <TouchableOpacity
                   key={c._id}
-                  style={[styles.chip, selectedCourseId === c._id && styles.chipActive]}
+                  style={[s.chip, selectedCourseId === c._id && s.chipOn]}
                   onPress={() => onSelectCourse(c._id)}
                 >
-                  <Text style={[styles.chipText, selectedCourseId === c._id && styles.chipTextActive]}>
+                  <Text style={[s.chipTxt, selectedCourseId === c._id && s.chipTxtOn]}>
                     {c.title}
                   </Text>
                 </TouchableOpacity>
@@ -571,235 +384,168 @@ export default function BunnyImport() {
 
             {selectedCourseId ? (
               <>
-                <Text style={[styles.pickerLabel, { marginTop: SPACING.md }]}>Module</Text>
-                {loadingModules ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} style={{ margin: SPACING.sm }} />
-                ) : modules.length === 0 ? (
-                  <Text style={styles.noModulesText}>ไม่มีโมดูลในคอร์สนี้ กรุณาสร้างโมดูลก่อน</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {modules.map((m) => (
-                      <TouchableOpacity
-                        key={m._id}
-                        style={[styles.chip, selectedModuleId === m._id && styles.chipActive]}
-                        onPress={() => setSelectedModuleId(m._id)}
-                      >
-                        <Text style={[styles.chipText, selectedModuleId === m._id && styles.chipTextActive]}>
-                          {m.title}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
+                <Text style={[s.pickerLbl, {marginTop: SPACING.md}]}>Module</Text>
+                {loadingMods
+                  ? <ActivityIndicator size="small" color={COLORS.primary} style={{margin: SPACING.sm}} />
+                  : modules.length === 0
+                    ? <Text style={s.noMod}>ยังไม่มีโมดูล — กรุณาสร้างโมดูลก่อน</Text>
+                    : (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {modules.map(m => (
+                          <TouchableOpacity
+                            key={m._id}
+                            style={[s.chip, selectedModuleId === m._id && s.chipOn]}
+                            onPress={() => setSelModule(m._id)}
+                          >
+                            <Text style={[s.chipTxt, selectedModuleId === m._id && s.chipTxtOn]}>
+                              {m.title}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )
+                }
               </>
             ) : null}
           </View>
 
           {/* Title editor */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>✏️ ชื่อบทเรียน (แก้ไขได้)</Text>
-            <Text style={styles.sectionHint}>ชื่อถูกแปลงจากชื่อไฟล์ — แตะเพื่อแก้ไขก่อนสร้าง</Text>
-            {selectedRows
-              .slice()
-              .sort((a, b) => a.order - b.order || a.rawTitle.localeCompare(b.rawTitle))
-              .map(renderConfigRow)}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>✏️ ชื่อบทเรียน (แก้ไขได้)</Text>
+            <Text style={s.cardHint}>ชื่อแปลงจากชื่อไฟล์อัตโนมัติ — แตะเพื่อแก้ไข</Text>
+            {[...selectedRows]
+              .sort((a,b) => a.order - b.order || a.rawTitle.localeCompare(b.rawTitle))
+              .map(r => (
+                <View key={r.guid} style={s.cfgRow}>
+                  <View style={s.cfgNum}>
+                    <Text style={s.cfgNumTxt}>{r.order > 0 ? `#${r.order}` : '—'}</Text>
+                  </View>
+                  <View style={{flex:1}}>
+                    <TextInput
+                      style={s.cfgInput}
+                      value={r.cleanTitle}
+                      onChangeText={v => editTitle(r.guid, v)}
+                      returnKeyType="done"
+                    />
+                    <Text style={s.cfgRaw} numberOfLines={1}>{r.rawTitle}</Text>
+                  </View>
+                  {r.durationMin > 0 && <Text style={s.dur}>{r.durationMin}m</Text>}
+                </View>
+              ))
+            }
           </View>
 
-          {/* Create button */}
           <TouchableOpacity
-            style={[styles.createBtn, !selectedModuleId && styles.createBtnDisabled]}
+            style={[s.createBtn, !selectedModuleId && s.btnDisabled]}
             onPress={createLessons}
             disabled={!selectedModuleId}
           >
-            <Ionicons name="add-circle-outline" size={22} color="#FFF" />
-            <Text style={styles.createBtnText}>สร้าง {selectedRows.length} บทเรียน</Text>
+            <Ionicons name="add-circle-outline" size={22} color="#fff" />
+            <Text style={s.createBtnTxt}>สร้าง {selectedRows.length} บทเรียน</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 32 }} />
+          <View style={{height:32}} />
         </ScrollView>
       )}
     </View>
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.surface },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { flex:1, backgroundColor: COLORS.surface },
   headerSafe: { backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.background,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    flexDirection:'row', alignItems:'center', gap: SPACING.sm,
+    borderBottomWidth:1, borderBottomColor:'#E5E7EB',
   },
-  backButton: {
-    width: 36, height: 36,
-    borderRadius: RADIUS.full,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary },
-  headerSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
-  stepRow: { flexDirection: 'row', alignItems: 'center' },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
-  stepDotActive: { backgroundColor: COLORS.primary },
-  stepDotDone: { backgroundColor: COLORS.primary, opacity: 0.4 },
-  stepLine: { width: 10, height: 2, backgroundColor: '#D1D5DB', marginHorizontal: 2 },
+  backBtn: { width:36, height:36, borderRadius:18, justifyContent:'center', alignItems:'center' },
+  headerTitle: { fontSize:16, fontWeight:'700', color: COLORS.textPrimary },
+  headerSub:   { fontSize:12, color: COLORS.textSecondary, marginTop:1 },
+  dots: { flexDirection:'row', alignItems:'center', gap:5 },
+  dot:  { width:8, height:8, borderRadius:4, backgroundColor:'#D1D5DB' },
+  dotActive: { backgroundColor: COLORS.primary },
 
-  // Idle
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.xl, gap: SPACING.md },
-  heroEmoji: { fontSize: 56 },
-  heroTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
-  heroDesc: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
-  prereqNote: { fontSize: 12, color: COLORS.textTertiary, textAlign: 'center', lineHeight: 18 },
-  loadingMsg: { marginTop: SPACING.md, fontSize: 15, color: COLORS.textSecondary, textAlign: 'center' },
-  errorBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.xs,
-    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
-    borderRadius: RADIUS.sm, padding: SPACING.sm, width: '100%',
-  },
-  errorText: { flex: 1, fontSize: 13, color: '#DC2626', lineHeight: 18 },
+  center: { flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal: SPACING.xl, gap: SPACING.md },
+  heroTitle: { fontSize:22, fontWeight:'700', color: COLORS.textPrimary, textAlign:'center' },
+  heroDesc:  { fontSize:14, color: COLORS.textSecondary, textAlign:'center', lineHeight:22 },
+  loadTxt:   { marginTop: SPACING.md, fontSize:15, color: COLORS.textSecondary },
+  emptyTxt:  { textAlign:'center', color: COLORS.textTertiary, marginTop: SPACING.xl },
 
-  // Collection list
-  collectionList: { padding: SPACING.md },
-  listHint: { fontSize: 13, color: COLORS.textTertiary, marginBottom: SPACING.sm },
-  collectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    gap: SPACING.md,
-    ...SHADOWS.small,
+  listPad: { padding: SPACING.sm },
+
+  // Collections
+  colCard: {
+    flexDirection:'row', alignItems:'center', gap: SPACING.md,
+    backgroundColor: COLORS.background, borderRadius: RADIUS.md,
+    padding: SPACING.md, marginBottom: SPACING.sm, ...SHADOWS.small,
   },
-  collectionThumb: { width: 52, height: 52, borderRadius: RADIUS.sm, backgroundColor: '#F3F4F6' },
-  collectionThumbPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  collectionThumbEmoji: { fontSize: 24 },
-  collectionInfo: { flex: 1 },
-  collectionName: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  collectionCount: { fontSize: 12, color: COLORS.textTertiary, marginTop: 2 },
+  colIcon: {
+    width:52, height:52, borderRadius: RADIUS.md,
+    backgroundColor:'#EEF2FF', justifyContent:'center', alignItems:'center',
+  },
+  colName:  { fontSize:15, fontWeight:'600', color: COLORS.textPrimary },
+  colCount: { fontSize:12, color: COLORS.textSecondary, marginTop:2 },
 
   // Toolbar
   toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection:'row', alignItems:'center',
     backgroundColor: COLORS.background,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    borderBottomWidth:1, borderBottomColor:'#E5E7EB', gap: SPACING.sm,
   },
-  toolbarBtn: {
-    paddingHorizontal: SPACING.sm, paddingVertical: 6,
-    borderRadius: RADIUS.sm, backgroundColor: '#F3F4F6',
-  },
-  toolbarBtnSort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#EEF2FF' },
-  toolbarBtnText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '500' },
+  tbBtn:  { paddingHorizontal: SPACING.sm, paddingVertical:6, borderRadius: RADIUS.sm, backgroundColor:'#F3F4F6' },
+  tbSort: { marginLeft:'auto', flexDirection:'row', alignItems:'center', gap:4, backgroundColor:'#EEF2FF' },
+  tbTxt:  { fontSize:12, color: COLORS.textSecondary, fontWeight:'500' },
 
-  // Video list
-  listContent: { padding: SPACING.sm },
-  videoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    marginBottom: 4,
-    gap: SPACING.sm,
-    ...SHADOWS.small,
+  // Video rows
+  vidRow: {
+    flexDirection:'row', alignItems:'center', gap: SPACING.sm,
+    backgroundColor: COLORS.background, borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.md, paddingVertical:10, marginBottom:4, ...SHADOWS.small,
   },
-  videoRowSelected: { backgroundColor: '#EEF2FF', borderWidth: 1.5, borderColor: COLORS.primary },
-  checkbox: {
-    width: 22, height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5, borderColor: '#D1D5DB',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  checkboxChecked: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  videoInfo: { flex: 1 },
-  videoCleanTitle: { fontSize: 14, fontWeight: '500', color: COLORS.textPrimary },
-  videoRawTitle: { fontSize: 11, color: COLORS.textTertiary, marginTop: 1 },
-  videoMeta: { alignItems: 'flex-end', gap: 4 },
-  orderBubble: { backgroundColor: '#E0E7FF', borderRadius: RADIUS.full, paddingHorizontal: 7, paddingVertical: 2 },
-  orderBubbleText: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
-  durationText: { fontSize: 11, color: COLORS.textTertiary },
+  vidRowSel: { backgroundColor:'#EEF2FF', borderWidth:1.5, borderColor: COLORS.primary },
+  check:  { width:22, height:22, borderRadius:6, borderWidth:1.5, borderColor:'#D1D5DB', justifyContent:'center', alignItems:'center' },
+  checkOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  vidClean: { fontSize:14, fontWeight:'500', color: COLORS.textPrimary },
+  vidRaw:   { fontSize:11, color: COLORS.textTertiary, marginTop:1 },
+  badge:    { backgroundColor:'#E0E7FF', borderRadius:99, paddingHorizontal:7, paddingVertical:2 },
+  badgeTxt: { fontSize:11, fontWeight:'700', color:'#4F46E5' },
+  dur:      { fontSize:11, color: COLORS.textTertiary },
 
   // Footer
-  footer: {
-    backgroundColor: COLORS.background,
-    padding: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
+  footer: { backgroundColor: COLORS.background, padding: SPACING.md, borderTopWidth:1, borderTopColor:'#E5E7EB' },
+
+  // Buttons
   primaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.primary, paddingVertical: 14,
-    borderRadius: RADIUS.md, gap: SPACING.sm,
+    flexDirection:'row', alignItems:'center', justifyContent:'center',
+    backgroundColor: COLORS.primary, paddingVertical:14, borderRadius: RADIUS.md, gap: SPACING.sm,
   },
-  primaryBtnDisabled: { backgroundColor: '#D1D5DB' },
-  primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
+  primaryBtnTxt: { color:'#fff', fontSize:15, fontWeight:'600' },
+  createBtn: {
+    flexDirection:'row', alignItems:'center', justifyContent:'center',
+    backgroundColor: COLORS.primary, paddingVertical:16, borderRadius: RADIUS.md,
+    gap: SPACING.sm, marginTop: SPACING.sm,
+  },
+  createBtnTxt: { color:'#fff', fontSize:16, fontWeight:'700' },
+  btnDisabled:  { backgroundColor:'#D1D5DB' },
 
   // Configure
-  configContainer: { padding: SPACING.md, gap: SPACING.md },
-  sectionCard: {
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    ...SHADOWS.small,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 4 },
-  sectionHint: { fontSize: 12, color: COLORS.textTertiary, marginBottom: SPACING.sm },
-  pickerLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: SPACING.xs },
-  chip: {
-    paddingHorizontal: SPACING.md, paddingVertical: 8,
-    borderRadius: RADIUS.full,
-    borderWidth: 1.5, borderColor: '#D1D5DB',
-    marginRight: SPACING.sm,
-  },
-  chipActive: { borderColor: COLORS.primary, backgroundColor: '#EEF2FF' },
-  chipText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
-  chipTextActive: { color: COLORS.primary, fontWeight: '700' },
-  noModulesText: { fontSize: 13, color: COLORS.textTertiary, fontStyle: 'italic', paddingVertical: SPACING.sm },
-  configRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  configOrder: {
-    width: 34, height: 34,
-    borderRadius: RADIUS.full,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  configOrderText: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
-  configTitleWrap: { flex: 1 },
-  configTitleInput: {
-    fontSize: 14, fontWeight: '500',
-    color: COLORS.textPrimary,
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
-    paddingVertical: 4,
-  },
-  configRaw: { fontSize: 10, color: COLORS.textTertiary, marginTop: 2 },
-  configDuration: { fontSize: 12, color: COLORS.textTertiary, minWidth: 28, textAlign: 'right' },
-  createBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  createBtnDisabled: { backgroundColor: '#D1D5DB' },
-  createBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  configPad: { padding: SPACING.md, gap: SPACING.md },
+  card: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: SPACING.md, ...SHADOWS.small },
+  cardTitle: { fontSize:15, fontWeight:'700', color: COLORS.textPrimary, marginBottom:2 },
+  cardHint:  { fontSize:12, color: COLORS.textTertiary, marginBottom: SPACING.sm },
+  pickerLbl: { fontSize:13, fontWeight:'600', color: COLORS.textSecondary, marginBottom: SPACING.xs },
+  chip:    { paddingHorizontal: SPACING.md, paddingVertical:8, borderRadius:99, borderWidth:1.5, borderColor:'#D1D5DB', marginRight: SPACING.sm, backgroundColor: COLORS.background },
+  chipOn:  { borderColor: COLORS.primary, backgroundColor:'#EEF2FF' },
+  chipTxt: { fontSize:13, color: COLORS.textSecondary, fontWeight:'500' },
+  chipTxtOn: { color: COLORS.primary, fontWeight:'700' },
+  noMod:   { fontSize:13, color: COLORS.textTertiary, fontStyle:'italic', paddingVertical: SPACING.sm },
+  cfgRow:  { flexDirection:'row', alignItems:'center', gap: SPACING.sm, paddingVertical: SPACING.sm, borderBottomWidth:1, borderBottomColor:'#F3F4F6' },
+  cfgNum:  { width:34, height:34, borderRadius:17, backgroundColor:'#EEF2FF', justifyContent:'center', alignItems:'center' },
+  cfgNumTxt: { fontSize:11, fontWeight:'700', color:'#4F46E5' },
+  cfgInput: { fontSize:14, fontWeight:'500', color: COLORS.textPrimary, borderBottomWidth:1, borderBottomColor:'#E5E7EB', paddingVertical:4 },
+  cfgRaw:   { fontSize:10, color: COLORS.textTertiary, marginTop:2 },
 });
