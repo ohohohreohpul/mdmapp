@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -155,19 +156,32 @@ export default function LessonView() {
       </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Video Content — rendered via WebView for Bunny.net embed support */}
+        {/* Video Content — iframe on web, WebView on native (react-native-webview
+            does not run in browsers; Platform.OS === 'web' uses a plain iframe) */}
         {lesson.content_type === 'video' && (
           <View style={styles.videoContainer}>
             {lesson.video_url ? (
-              <WebView
-                source={{ uri: lesson.video_url }}
-                style={styles.video}
-                allowsFullscreenVideo
-                allowsInlineMediaPlayback
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled
-                domStorageEnabled
-              />
+              Platform.OS === 'web' ? (
+                // Web browser: render a native <iframe> — WebView is not supported here
+                // @ts-ignore – iframe is a valid HTML element on web via react-native-web
+                <iframe
+                  src={lesson.video_url}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                // iOS / Android: WebView renders Bunny.net embed URLs natively
+                <WebView
+                  source={{ uri: lesson.video_url }}
+                  style={styles.video}
+                  allowsFullscreenVideo
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                  javaScriptEnabled
+                  domStorageEnabled
+                />
+              )
             ) : (
               <View style={styles.placeholderContainer}>
                 <View style={[styles.placeholderIcon, { backgroundColor: COLORS.primary }]}>
