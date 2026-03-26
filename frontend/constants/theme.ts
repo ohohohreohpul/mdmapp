@@ -40,7 +40,7 @@ export const COLORS = {
   glassDark: 'rgba(31, 41, 55, 0.7)',
 };
 
-// Career Paths - Updated with Learning Designer
+// Career Paths - Updated with QA Tester (coming soon)
 export const CAREER_PATHS = [
   { id: 'all', name: 'ทั้งหมด', icon: '📚', color: '#6B7280' },
   { id: 'UX Design', name: 'UX/UI Design', icon: '🎨', color: '#EC4899' },
@@ -48,6 +48,7 @@ export const CAREER_PATHS = [
   { id: 'Digital Marketing', name: 'Digital Marketing', icon: '📱', color: '#F59E0B' },
   { id: 'Project Management', name: 'Project Management', icon: '📋', color: '#10B981' },
   { id: 'Learning Designer', name: 'Learning Designer', icon: '🎓', color: '#8B5CF6' },
+  { id: 'QA Tester', name: 'QA Tester', icon: '🧪', color: '#D946EF', isComingSoon: true },
   { id: 'General', name: 'ทั่วไป', icon: '💡', color: '#6B7280' },
 ];
 
