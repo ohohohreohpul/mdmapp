@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, RADIUS, CAREER_PATHS } from '../../constants/theme';
 import axios from 'axios';
@@ -402,6 +403,7 @@ function streakMilestoneMsg(streak: number): string {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -555,7 +557,7 @@ export default function HomeScreen() {
       >
 
         {/* ─────────────────────────────── HEADER ─────────────────────────────── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + SPACING.md }]}>
           {/* Top: avatar + greeting */}
           <View style={styles.headerTop}>
             <View style={styles.avatar}>

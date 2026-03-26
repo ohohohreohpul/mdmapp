@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import { useUser } from '../../contexts/UserContext';
 import axios from 'axios';
@@ -18,6 +19,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 export default function Explore() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
@@ -77,7 +79,7 @@ export default function Explore() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerSafeArea}>
+      <View style={[styles.headerSafeArea, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>สำรวจคอร์ส</Text>
           {isAdmin && (

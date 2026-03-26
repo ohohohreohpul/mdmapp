@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '../../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../constants/theme';
 import axios from 'axios';
@@ -16,6 +17,7 @@ import axios from 'axios';
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function Learning() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
@@ -50,7 +52,7 @@ export default function Learning() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <View style={styles.headerSafe}>
+        <View style={[styles.headerSafe, { paddingTop: insets.top }]}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
           </View>
@@ -76,7 +78,7 @@ export default function Learning() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + SPACING.lg }]}>
         <Text style={styles.headerTitle}>คอร์สเรียนของฉัน</Text>
       </View>
 
