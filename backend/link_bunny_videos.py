@@ -44,7 +44,7 @@ COLLECTION_MAP: Dict[str, tuple] = {
     "Data Python 2":
         ("วิเคราะห์ข้อมูลด้วย Python Part 2",  "Data Analysis",        None),
     "Creating Your Own Data Visualization":
-        ("Introduction to Data Storytelling",   "Data Analysis",        None),
+        ("Data Analysis and Visualization Capstone", "Data Analysis",   None),
     "Data Visualization":
         ("Introduction to Data Storytelling",   "Data Analysis",        None),
     "PM123":
