@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,9 @@ export default function Explore() {
   const router = useRouter();
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
+  const { width: screenWidth } = useWindowDimensions();
+  const CARD_GAP = 12;
+  const cardWidth = Math.floor((screenWidth - 40 - CARD_GAP) / 2); // 40 = 20 side padding * 2
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [courses, setCourses] = useState([]);
@@ -208,6 +212,7 @@ export default function Explore() {
                   key={course._id}
                   style={[
                     styles.gridCard,
+                    { width: cardWidth },
                     isLocked && styles.gridCardLocked,
                     isCompleted && styles.gridCardCompleted,
                     isComingSoon && styles.gridCardComingSoon,
@@ -564,11 +569,10 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: SPACING.md,
+    columnGap: 12,
+    rowGap: 12,
   },
   gridCard: {
-    width: '48%', // 2 columns on mobile/tablet
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
