@@ -283,7 +283,7 @@ export default function Explore() {
               );
             })}
             </View>
-          )
+          )}
         </View>
 
         {/* Bottom Padding */}
