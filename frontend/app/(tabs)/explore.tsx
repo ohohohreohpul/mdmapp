@@ -20,12 +20,12 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 const PATHS = [
-  { id: 'ux-design',          name: 'UX Design',        api: 'UX Design',         icon: 'color-palette-outline', color: '#6366F1' },
-  { id: 'data-analysis',      name: 'Data Analysis',    api: 'Data Analysis',     icon: 'bar-chart-outline',     color: '#10B981' },
-  { id: 'digital-marketing',  name: 'Digital Mkt',      api: 'Digital Marketing', icon: 'megaphone-outline',     color: '#F59E0B' },
-  { id: 'project-management', name: 'Project Mgmt',     api: 'Project Management',icon: 'briefcase-outline',     color: '#EF5EA8' },
-  { id: 'learning-designer',  name: 'Learning Design',  api: 'Learning Designer', icon: 'school-outline',        color: '#8B5CF6' },
-  { id: 'qa-tester',          name: 'QA Tester',        api: 'QA Tester',         icon: 'bug-outline',           color: '#D946EF' },
+  { id: 'ux-design',          name: 'UX Design',         api: 'UX Design',          icon: 'color-palette-outline', color: '#6366F1', bg: '#EEF2FF' },
+  { id: 'data-analysis',      name: 'Data Analysis',     api: 'Data Analysis',      icon: 'bar-chart-outline',     color: '#10B981', bg: '#ECFDF5' },
+  { id: 'digital-marketing',  name: 'Digital Marketing', api: 'Digital Marketing',  icon: 'megaphone-outline',     color: '#F59E0B', bg: '#FFFBEB' },
+  { id: 'project-management', name: 'Project Management',api: 'Project Management', icon: 'briefcase-outline',     color: '#EF5EA8', bg: '#FDF2F8' },
+  { id: 'learning-designer',  name: 'Learning Design',   api: 'Learning Designer',  icon: 'school-outline',        color: '#8B5CF6', bg: '#F5F3FF' },
+  { id: 'qa-tester',          name: 'QA Tester',         api: 'QA Tester',          icon: 'bug-outline',           color: '#D946EF', bg: '#FDF4FF' },
 ];
 
 export default function Explore() {
@@ -40,10 +40,8 @@ export default function Explore() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // card width: 2 columns with 12px gap inside 20px page padding
   const cardWidth = Math.floor((screenWidth - 40 - 12) / 2);
-  // path card: 3 columns with 10px gaps
-  const pathCardWidth = Math.floor((screenWidth - 40 - 20) / 3);
+  const pathCardWidth = Math.floor((screenWidth - 40 - 12) / 2);
 
   useEffect(() => { loadCourses(); }, [selectedPath]);
 
@@ -72,7 +70,7 @@ export default function Explore() {
   return (
     <View style={styles.container}>
 
-      {/* ── Sticky Header ── */}
+      {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>สำรวจคอร์ส</Text>
@@ -101,45 +99,52 @@ export default function Explore() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* ── Career Path Grid ── */}
+        {/* ── Career Paths — shown first, big 2-column grid ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>เส้นทางอาชีพ</Text>
+          <Text style={styles.sectionTitle}>เลือกเส้นทางอาชีพ</Text>
           <View style={styles.pathGrid}>
-
-            {/* All */}
-            <TouchableOpacity
-              style={[styles.pathCard, { width: pathCardWidth }, !selectedPath && styles.pathCardActive]}
-              onPress={() => setSelectedPath(null)}
-            >
-              <View style={[styles.pathIconWrap, { backgroundColor: !selectedPath ? COLORS.primary : '#F0F0F0' }]}>
-                <Ionicons name="grid-outline" size={20} color={!selectedPath ? '#FFF' : '#999'} />
-              </View>
-              <Text style={[styles.pathLabel, !selectedPath && { color: COLORS.primary, fontWeight: '700' }]}>
-                ทั้งหมด
-              </Text>
-            </TouchableOpacity>
-
             {PATHS.map(p => {
               const active = selectedPath === p.id;
               return (
                 <TouchableOpacity
                   key={p.id}
-                  style={[styles.pathCard, { width: pathCardWidth }, active && { borderColor: p.color }]}
+                  style={[
+                    styles.pathCard,
+                    { width: pathCardWidth, backgroundColor: active ? p.color : p.bg },
+                  ]}
                   onPress={() => setSelectedPath(active ? null : p.id)}
+                  activeOpacity={0.8}
                 >
-                  <View style={[styles.pathIconWrap, { backgroundColor: active ? p.color : p.color + '18' }]}>
-                    <Ionicons name={p.icon as any} size={20} color={active ? '#FFF' : p.color} />
+                  <View style={[styles.pathIconWrap, { backgroundColor: active ? 'rgba(255,255,255,0.25)' : '#FFFFFF' }]}>
+                    <Ionicons name={p.icon as any} size={24} color={active ? '#FFFFFF' : p.color} />
                   </View>
-                  <Text
-                    style={[styles.pathLabel, active && { color: p.color, fontWeight: '700' }]}
-                    numberOfLines={2}
-                  >
+                  <Text style={[styles.pathName, active && styles.pathNameActive]}>
                     {p.name}
                   </Text>
+                  {active && (
+                    <View style={styles.pathCheckWrap}>
+                      <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
+
+          {/* All courses pill — shown below grid */}
+          <TouchableOpacity
+            style={[styles.allPill, !selectedPath && styles.allPillActive]}
+            onPress={() => setSelectedPath(null)}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={16}
+              color={!selectedPath ? '#FFFFFF' : COLORS.textSecondary}
+            />
+            <Text style={[styles.allPillText, !selectedPath && styles.allPillTextActive]}>
+              ดูทั้งหมด
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Courses ── */}
@@ -163,7 +168,9 @@ export default function Explore() {
               {filtered.map((course: any) => {
                 const isLocked = course.is_locked === true;
                 const isCompleted = course.is_completed === true;
-                const pathColor = PATHS.find(p => p.api === course.career_path)?.color || COLORS.primary;
+                const pathData = PATHS.find(p => p.api === course.career_path);
+                const pathColor = pathData?.color || COLORS.primary;
+                const pathBg = pathData?.bg || COLORS.primary + '15';
 
                 return (
                   <TouchableOpacity
@@ -172,8 +179,7 @@ export default function Explore() {
                     onPress={() => router.push(`/course-detail?id=${course._id}`)}
                     activeOpacity={0.85}
                   >
-                    {/* Thumbnail */}
-                    <View style={[styles.thumb, { backgroundColor: isLocked ? '#F0F0F0' : pathColor + '18' }]}>
+                    <View style={[styles.thumb, { backgroundColor: isLocked ? '#F0F0F0' : pathBg }]}>
                       <Ionicons
                         name={isLocked ? 'lock-closed' : 'school'}
                         size={38}
@@ -184,14 +190,7 @@ export default function Explore() {
                           <Ionicons name="checkmark" size={11} color="#FFF" />
                         </View>
                       )}
-                      {isLocked && !isCompleted && (
-                        <View style={[styles.badge, styles.badgeLocked]}>
-                          <Ionicons name="lock-closed" size={10} color="#FFF" />
-                        </View>
-                      )}
                     </View>
-
-                    {/* Info */}
                     <View style={styles.cardBody}>
                       <Text style={[styles.cardTitle, isLocked && styles.cardTitleLocked]} numberOfLines={2}>
                         {course.title}
@@ -223,7 +222,6 @@ export default function Explore() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
 
-  // Header
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -254,33 +252,49 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15, color: '#1A1A2E' },
 
-  // Sections
   section: { paddingHorizontal: 20, marginTop: 20 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A2E', marginBottom: 12 },
 
-  // Path Grid
-  pathGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  // Path cards — 2 columns, tall, colorful
+  pathGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   pathCard: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    borderWidth: 1.5,
-    borderColor: '#EFEFEF',
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 90,
+    justifyContent: 'center',
+    position: 'relative',
   },
-  pathCardActive: { borderColor: COLORS.primary },
   pathIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 46, height: 46, borderRadius: 23,
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 7,
+    marginBottom: 8,
   },
-  pathLabel: {
-    fontSize: 11, fontWeight: '600',
-    color: '#888', textAlign: 'center', lineHeight: 14,
+  pathName: {
+    fontSize: 13, fontWeight: '700',
+    color: '#444', lineHeight: 18,
+  },
+  pathNameActive: { color: '#FFFFFF' },
+  pathCheckWrap: {
+    position: 'absolute', top: 10, right: 10,
   },
 
-  // Results row
+  // "All" pill below grid
+  allPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+  },
+  allPillActive: { backgroundColor: COLORS.primary },
+  allPillText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
+  allPillTextActive: { color: '#FFFFFF' },
+
+  // Results
   resultsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -289,7 +303,7 @@ const styles = StyleSheet.create({
   },
   resultCount: { fontSize: 13, color: '#AAA' },
 
-  // Course Grid
+  // Course grid
   courseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: {
     backgroundColor: '#FFFFFF',
@@ -299,30 +313,21 @@ const styles = StyleSheet.create({
     borderColor: '#EBEBEB',
   },
   cardLocked: { opacity: 0.6 },
-  thumb: {
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  thumb: { height: 120, justifyContent: 'center', alignItems: 'center' },
   badge: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: '#10B981',
     borderRadius: 10, width: 22, height: 22,
     justifyContent: 'center', alignItems: 'center',
   },
-  badgeLocked: { backgroundColor: '#BBBBBB' },
   cardBody: { padding: 12 },
-  cardTitle: {
-    fontSize: 13, fontWeight: '700',
-    color: '#1A1A2E', lineHeight: 18, marginBottom: 8,
-  },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A2E', lineHeight: 18, marginBottom: 8 },
   cardTitleLocked: { color: '#AAAAAA' },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   tag: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   tagText: { fontSize: 10, fontWeight: '700' },
   lessonCount: { fontSize: 10, color: '#AAA' },
 
-  // States
   loader: { marginTop: 48 },
   empty: { alignItems: 'center', paddingVertical: 40 },
   emptyText: { fontSize: 16, color: '#CCC', marginTop: 12 },
