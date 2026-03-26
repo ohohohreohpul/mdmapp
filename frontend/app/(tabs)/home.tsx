@@ -824,7 +824,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>💡 รวมเคล็ดลับ</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/blog')}>
                 <Text style={styles.seeAll}>ดูทั้งหมด →</Text>
               </TouchableOpacity>
             </View>
