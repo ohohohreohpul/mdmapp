@@ -38,7 +38,7 @@ export default function Explore() {
     { id: 'digital-marketing', title: 'Digital Marketing', icon: 'megaphone', color: '#F59E0B' },
     { id: 'project-management', title: 'Project Management', icon: 'briefcase', color: COLORS.primary },
     { id: 'learning-designer', title: 'Learning Designer', icon: 'school', color: '#EC4899' },
-    { id: 'qa-tester', title: 'QA Tester', icon: 'bug-outline', color: '#D946EF', isComingSoon: true },
+    { id: 'qa-tester', title: 'QA Tester', icon: 'bug-outline', color: '#D946EF' },
   ];
 
   useEffect(() => {
@@ -189,13 +189,6 @@ export default function Explore() {
               <Text style={styles.emptyText}>ไม่พบคอร์สที่ค้นหา</Text>
               <Text style={styles.emptySubtext}>ลองค้นหาด้วยคำอื่น</Text>
             </View>
-          ) : selectedPath && filteredCourses.length === 0 && careerPaths.find(p => p.id === selectedPath)?.isComingSoon ? (
-            // Coming soon empty state for QA Tester path
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={64} color={COLORS.primary} />
-              <Text style={styles.emptyText}>Coming Soon</Text>
-              <Text style={styles.emptySubtext}>QA Tester courses will be available in April 2026</Text>
-            </View>
           ) : (
             <View style={styles.gridContainer}>
               {filteredCourses.map((course: any) => {
@@ -206,6 +199,7 @@ export default function Explore() {
               const isComingSoon = course.is_coming_soon === true;
               const seqOrder = course.sequence_order;
               const isInteractive = pmCount > 0 && lessonCount === 0;
+              const isInteractiveLearning = (course.tags || []).includes('interactive_learning');
 
               return (
                 <TouchableOpacity
@@ -242,7 +236,7 @@ export default function Explore() {
                     )}
 
                     {/* Status Badge - Top right corner */}
-                    {(seqOrder || isCompleted || isComingSoon) && (
+                    {(seqOrder || isCompleted || isComingSoon || isInteractiveLearning) && (
                       <View style={styles.statusBadgeContainer}>
                         {isComingSoon ? (
                           <View style={styles.comingSoonGridBadge}>
@@ -256,6 +250,11 @@ export default function Explore() {
                         ) : seqOrder ? (
                           <View style={styles.seqGridBadge}>
                             <Text style={styles.seqBadgeText}>#{seqOrder}</Text>
+                          </View>
+                        ) : isInteractiveLearning ? (
+                          <View style={styles.interactiveLearningBadge}>
+                            <Ionicons name="flash" size={11} color="#FFFFFF" />
+                            <Text style={styles.badgeText}>Interactive</Text>
                           </View>
                         ) : null}
                       </View>
@@ -624,6 +623,15 @@ const styles = StyleSheet.create({
   },
   comingSoonGridBadge: {
     backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  interactiveLearningBadge: {
+    backgroundColor: '#7C3AED',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
