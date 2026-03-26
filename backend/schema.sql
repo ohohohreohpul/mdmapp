@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS courses (
 -- Migration: add new columns if upgrading an existing DB
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS sequence_order INTEGER;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS counts_for_certification BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_coming_soon BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ── Modules ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS modules (

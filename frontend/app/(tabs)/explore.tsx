@@ -33,6 +33,7 @@ export default function Explore() {
     { id: 'digital-marketing', title: 'Digital Marketing', icon: 'megaphone', color: '#F59E0B' },
     { id: 'project-management', title: 'Project Management', icon: 'briefcase', color: COLORS.primary },
     { id: 'learning-designer', title: 'Learning Designer', icon: 'school', color: '#EC4899' },
+    { id: 'qa-tester', title: 'QA Tester', icon: 'bug-outline', color: '#D946EF', isComingSoon: true },
   ];
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function Explore() {
           'digital-marketing': 'Digital Marketing',
           'project-management': 'Project Management',
           'learning-designer': 'Learning Designer',
+          'qa-tester': 'QA Tester',
         };
         params.career_path = pathNames[selectedPath];
       }
@@ -182,12 +184,25 @@ export default function Explore() {
               <Text style={styles.emptyText}>ไม่พบคอร์สที่ค้นหา</Text>
               <Text style={styles.emptySubtext}>ลองค้นหาด้วยคำอื่น</Text>
             </View>
+          ) : selectedPath && filteredCourses.length === 0 && careerPaths.find(p => p.id === selectedPath)?.isComingSoon ? (
+            // Coming soon empty state for QA Tester path
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={64} color={COLORS.primary} />
+              <Text style={styles.emptyText}>Coming Soon</Text>
+              <Text style={styles.emptySubtext}>QA Tester courses will be available in April 2026</Text>
+            </View>
           ) : (
             filteredCourses.map((course: any) => {
             const lessonCount = course.total_lessons || 0;
+            const pmCount = course.practice_module_count || 0;
             const isLocked = course.is_locked === true;
             const isCompleted = course.is_completed === true;
+            const isComingSoon = course.is_coming_soon === true;
             const seqOrder = course.sequence_order;
+            const isInteractive = pmCount > 0 && lessonCount === 0;
+            const metricValue = isInteractive ? pmCount : lessonCount;
+            const metricLabel = isInteractive ? 'โมดูล' : 'บทเรียน';
+
             return (
               <TouchableOpacity
                 key={course._id}
@@ -195,68 +210,81 @@ export default function Explore() {
                   styles.courseCard,
                   isLocked && styles.courseCardLocked,
                   isCompleted && styles.courseCardCompleted,
+                  isComingSoon && styles.courseCardComingSoon,
                 ]}
                 onPress={() => router.push(`/course-detail?id=${course._id}`)}
                 activeOpacity={0.9}
               >
+                {/* Thumbnail - Full width at top */}
                 <View style={[styles.courseThumbnail, {
-                  backgroundColor: isLocked ? '#E5E5E5' : COLORS.primary,
+                  backgroundColor: isComingSoon ? '#F0F0F0' : (isLocked ? '#E5E5E5' : COLORS.primary),
+                  width: '100%',
+                  marginRight: 0,
+                  marginBottom: SPACING.sm,
                 }]}>
                   <Ionicons
-                    name={isLocked ? 'lock-closed' : 'school'}
-                    size={28}
-                    color={isLocked ? '#AAAAAA' : '#FFFFFF'}
+                    name={isComingSoon ? 'calendar-outline' : (isLocked ? 'lock-closed' : 'school')}
+                    size={32}
+                    color={isComingSoon ? COLORS.primary : (isLocked ? '#AAAAAA' : '#FFFFFF')}
                   />
                 </View>
 
-                <View style={styles.courseInfo}>
-                  <View style={styles.courseTitleRow}>
-                    {seqOrder && (
+                {/* Content - Below thumbnail */}
+                <View style={styles.courseInfoVertical}>
+                  {/* Title with badges */}
+                  <View style={styles.courseTitleRowVertical}>
+                    {seqOrder && !isComingSoon && (
                       <Text style={[styles.seqBadge, isLocked && styles.seqBadgeLocked]}>#{seqOrder}</Text>
                     )}
-                    <Text style={[styles.courseTitle, isLocked && styles.courseTitleLocked]} numberOfLines={2}>
-                      {course.title}
-                    </Text>
+                    {isComingSoon && (
+                      <Text style={styles.comingSoonBadge}>Coming Soon – April</Text>
+                    )}
                     {isCompleted && (
                       <View style={styles.completedPill}>
                         <Ionicons name="checkmark-circle" size={14} color="#10B981" />
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.courseCareer, isLocked && { color: COLORS.textTertiary }]}>{course.career_path}</Text>
-                  {isLocked ? (
-                    <View style={styles.lockedRow}>
-                      <Ionicons name="lock-closed-outline" size={13} color={COLORS.textTertiary} />
-                      <Text style={styles.lockedText}>ต้องผ่านคอร์สก่อนหน้าก่อน</Text>
+
+                  {/* Title */}
+                  <Text style={[styles.courseTitle, isLocked && styles.courseTitleLocked]} numberOfLines={2}>
+                    {course.title}
+                  </Text>
+
+                  {/* Career Path */}
+                  <Text style={[styles.courseCareer, isLocked && { color: COLORS.textTertiary }]}>
+                    {course.career_path}
+                  </Text>
+
+                  {/* Single metric line (not locked/coming soon) */}
+                  {!isLocked && !isComingSoon && metricValue > 0 && (
+                    <View style={styles.singleMetricRow}>
+                      <Ionicons
+                        name={isInteractive ? 'flash-outline' : 'book-outline'}
+                        size={12}
+                        color={isInteractive ? COLORS.primary : COLORS.textSecondary}
+                      />
+                      <Text style={[styles.metaText, isInteractive && { color: COLORS.primary }]}>
+                        {metricValue} {metricLabel}
+                      </Text>
                     </View>
-                  ) : (
-                    <View style={styles.courseMeta}>
-                      {lessonCount > 0 && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="book-outline" size={14} color={COLORS.textSecondary} />
-                          <Text style={styles.metaText}>{lessonCount} บทเรียน</Text>
-                        </View>
-                      )}
-                      {pmCount > 0 && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="flash-outline" size={14} color={COLORS.primary} />
-                          <Text style={[styles.metaText, { color: COLORS.primary }]}>{pmCount} โมดูลฝึกหัด</Text>
-                        </View>
-                      )}
-                      {course.has_final_exam && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
-                          <Text style={[styles.metaText, { color: COLORS.success }]}>มีใบประกาศ</Text>
-                        </View>
-                      )}
+                  )}
+
+                  {/* Locked indicator */}
+                  {isLocked && (
+                    <View style={styles.lockedRow}>
+                      <Ionicons name="lock-closed-outline" size={12} color={COLORS.textTertiary} />
+                      <Text style={styles.lockedText}>ต้องผ่านคอร์สก่อนหน้าก่อน</Text>
                     </View>
                   )}
                 </View>
 
+                {/* Right side indicator */}
                 <Ionicons
-                  name={isLocked ? 'lock-closed-outline' : 'chevron-forward'}
+                  name={isComingSoon ? 'calendar-outline' : (isLocked ? 'lock-closed-outline' : 'chevron-forward')}
                   size={20}
-                  color={isLocked ? '#CCCCCC' : COLORS.textTertiary}
+                  color={isComingSoon ? COLORS.primary : (isLocked ? '#CCCCCC' : COLORS.textTertiary)}
+                  style={styles.rightIndicator}
                 />
               </TouchableOpacity>
             );
@@ -390,14 +418,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   courseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: SPACING.md,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    position: 'relative',
   },
   courseCardInteractive: {
     borderColor: COLORS.primary + '40',
@@ -412,12 +440,23 @@ const styles = StyleSheet.create({
     borderColor: '#10B98140',
     backgroundColor: '#F0FDF9',
   },
+  courseCardComingSoon: {
+    borderColor: COLORS.primary + '30',
+    backgroundColor: COLORS.primary + '08',
+  },
   courseTitleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
     flexWrap: 'wrap',
     marginBottom: 4,
+  },
+  courseTitleRowVertical: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
+    flexWrap: 'wrap',
   },
   seqBadge: {
     fontSize: 11,
@@ -465,27 +504,53 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   courseThumbnail: {
-    width: 56,
-    height: 56,
+    width: '100%',
+    height: 80,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: SPACING.sm,
   },
   courseInfo: {
     flex: 1,
   },
+  courseInfoVertical: {
+    flex: 1,
+    paddingHorizontal: SPACING.xs,
+  },
   courseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: COLORS.textPrimary,
-    flexShrink: 1,
+    marginBottom: SPACING.xs,
+    lineHeight: 22,
   },
   courseCareer: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.primary,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
+  },
+  comingSoonBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.primary,
+    backgroundColor: COLORS.primary + '15',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  singleMetricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: SPACING.xs,
+  },
+  rightIndicator: {
+    position: 'absolute',
+    top: SPACING.md,
+    right: SPACING.md,
   },
   courseMeta: {
     flexDirection: 'row',

@@ -682,6 +682,9 @@ CAREER_PATH_SEQUENCES: Dict[str, List[str]] = {
         "eeaa3d1c-db5b-4b34-85b1-c69a5519a443",  # The Complete Series of Project Management (1-3)
         "8e6e7a83-a691-412a-a01b-7a23c0f5b218",  # Project Leadership in the Digital Age (Part 4)
     ],
+    "QA Tester": [
+        # Coming soon - no courses yet
+    ],
 }
 
 

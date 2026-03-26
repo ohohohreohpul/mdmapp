@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../contexts/UserContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../constants/theme';
+import { ComingSoonModal } from './components/ComingSoonModal';
 import { stripHtml, getExcerpt } from '../utils/contentUtils';
 import axios from 'axios';
 
@@ -31,6 +32,7 @@ export default function CourseDetail() {
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [lessonsMap, setLessonsMap] = useState<{[key: string]: any[]}>({});
   const [practiceModules, setPracticeModules] = useState<any[]>([]);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const hasFetchedRef = useRef(false);
 
   // Load once on first focus. On return from lesson/quiz, user.progress is already updated
@@ -51,6 +53,10 @@ export default function CourseDetail() {
       ]);
 
       setCourse(courseRes.data);
+      // Show coming-soon modal if course is marked as coming soon
+      if (courseRes.data?.is_coming_soon === true) {
+        setShowComingSoonModal(true);
+      }
       setModules(modulesRes.data);
       
       // Load lessons for each module
@@ -173,6 +179,7 @@ export default function CourseDetail() {
   const isInteractive = practiceModules.length > 0 && modules.length === 0;
   const totalInteractiveQuestions = practiceModules.reduce((s, pm) => s + (pm.question_count || 0), 0);
   const isLocked = course.is_locked === true;
+  const isComingSoon = course.is_coming_soon === true;
   const seqOrder = course.sequence_order;
 
   return (
@@ -271,8 +278,20 @@ export default function CourseDetail() {
           </View>
         )}
 
-        {/* Start/Continue Button or Locked Banner */}
-        {isLocked ? (
+        {/* Start/Continue Button or Locked/Coming Soon Banner */}
+        {isComingSoon ? (
+          <View style={[styles.lockedBanner, styles.comingSoonBanner]}>
+            <View style={styles.comingSoonBannerIcon}>
+              <Ionicons name="calendar-outline" size={28} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.lockedBannerTitle, styles.comingSoonTitle]}>Coming Soon</Text>
+              <Text style={styles.lockedBannerSub}>
+                This course will be available in April 2026
+              </Text>
+            </View>
+          </View>
+        ) : isLocked ? (
           <View style={styles.lockedBanner}>
             <View style={styles.lockedBannerIcon}>
               <Ionicons name="lock-closed" size={28} color="#AAAAAA" />
@@ -543,6 +562,14 @@ export default function CourseDetail() {
         {/* Bottom Padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Coming Soon Modal */}
+      <ComingSoonModal
+        visible={showComingSoonModal}
+        onClose={() => setShowComingSoonModal(false)}
+        courseName={course?.title || ''}
+        releaseDate="April 2026"
+      />
     </View>
   );
 }
@@ -769,6 +796,21 @@ const styles = StyleSheet.create({
   lockedBannerSub: {
     fontSize: 13,
     color: '#AAAAAA',
+  },
+  comingSoonBanner: {
+    backgroundColor: COLORS.primary + '08',
+    borderColor: COLORS.primary + '30',
+  },
+  comingSoonBannerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  comingSoonTitle: {
+    color: COLORS.primary,
   },
   actionSection: {
     paddingHorizontal: SPACING.xl,
