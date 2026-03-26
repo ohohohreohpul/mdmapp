@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -192,103 +193,97 @@ export default function Explore() {
               <Text style={styles.emptySubtext}>QA Tester courses will be available in April 2026</Text>
             </View>
           ) : (
-            filteredCourses.map((course: any) => {
-            const lessonCount = course.total_lessons || 0;
-            const pmCount = course.practice_module_count || 0;
-            const isLocked = course.is_locked === true;
-            const isCompleted = course.is_completed === true;
-            const isComingSoon = course.is_coming_soon === true;
-            const seqOrder = course.sequence_order;
-            const isInteractive = pmCount > 0 && lessonCount === 0;
-            const metricValue = isInteractive ? pmCount : lessonCount;
-            const metricLabel = isInteractive ? 'โมดูล' : 'บทเรียน';
+            <View style={styles.gridContainer}>
+              {filteredCourses.map((course: any) => {
+              const lessonCount = course.total_lessons || 0;
+              const pmCount = course.practice_module_count || 0;
+              const isLocked = course.is_locked === true;
+              const isCompleted = course.is_completed === true;
+              const isComingSoon = course.is_coming_soon === true;
+              const seqOrder = course.sequence_order;
+              const isInteractive = pmCount > 0 && lessonCount === 0;
 
-            return (
-              <TouchableOpacity
-                key={course._id}
-                style={[
-                  styles.courseCard,
-                  isLocked && styles.courseCardLocked,
-                  isCompleted && styles.courseCardCompleted,
-                  isComingSoon && styles.courseCardComingSoon,
-                ]}
-                onPress={() => router.push(`/course-detail?id=${course._id}`)}
-                activeOpacity={0.9}
-              >
-                {/* Thumbnail - Full width at top */}
-                <View style={[styles.courseThumbnail, {
-                  backgroundColor: isComingSoon ? '#F0F0F0' : (isLocked ? '#E5E5E5' : COLORS.primary),
-                  width: '100%',
-                  marginRight: 0,
-                  marginBottom: SPACING.sm,
-                }]}>
-                  <Ionicons
-                    name={isComingSoon ? 'calendar-outline' : (isLocked ? 'lock-closed' : 'school')}
-                    size={32}
-                    color={isComingSoon ? COLORS.primary : (isLocked ? '#AAAAAA' : '#FFFFFF')}
-                  />
-                </View>
+              return (
+                <TouchableOpacity
+                  key={course._id}
+                  style={[
+                    styles.gridCard,
+                    isLocked && styles.gridCardLocked,
+                    isCompleted && styles.gridCardCompleted,
+                    isComingSoon && styles.gridCardComingSoon,
+                  ]}
+                  onPress={() => router.push(`/course-detail?id=${course._id}`)}
+                  activeOpacity={0.85}
+                >
+                  {/* Cover Image */}
+                  <View style={[
+                    styles.gridCardImage,
+                    {
+                      backgroundColor: isComingSoon ? '#F0F0F0' : (isLocked ? '#E5E5E5' : COLORS.primary),
+                    }
+                  ]}>
+                    {course.thumbnail ? (
+                      <Image
+                        source={{ uri: course.thumbnail }}
+                        style={styles.gridCardImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons
+                        name={isComingSoon ? 'calendar-outline' : (isLocked ? 'lock-closed' : 'school')}
+                        size={40}
+                        color={isComingSoon ? COLORS.primary : (isLocked ? '#AAAAAA' : '#FFFFFF')}
+                      />
+                    )}
 
-                {/* Content - Below thumbnail */}
-                <View style={styles.courseInfoVertical}>
-                  {/* Title with badges */}
-                  <View style={styles.courseTitleRowVertical}>
-                    {seqOrder && !isComingSoon && (
-                      <Text style={[styles.seqBadge, isLocked && styles.seqBadgeLocked]}>#{seqOrder}</Text>
+                    {/* Status Badge - Top right corner */}
+                    {(seqOrder || isCompleted || isComingSoon) && (
+                      <View style={styles.statusBadgeContainer}>
+                        {isComingSoon ? (
+                          <View style={styles.comingSoonGridBadge}>
+                            <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
+                            <Text style={styles.badgeText}>Soon</Text>
+                          </View>
+                        ) : isCompleted ? (
+                          <View style={styles.completedGridBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                          </View>
+                        ) : seqOrder ? (
+                          <View style={styles.seqGridBadge}>
+                            <Text style={styles.seqBadgeText}>#{seqOrder}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     )}
-                    {isComingSoon && (
-                      <Text style={styles.comingSoonBadge}>Coming Soon – April</Text>
-                    )}
-                    {isCompleted && (
-                      <View style={styles.completedPill}>
-                        <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+
+                    {/* Lock overlay */}
+                    {isLocked && (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.9)" />
                       </View>
                     )}
                   </View>
 
-                  {/* Title */}
-                  <Text style={[styles.courseTitle, isLocked && styles.courseTitleLocked]} numberOfLines={2}>
-                    {course.title}
-                  </Text>
+                  {/* Card content - Title and metadata */}
+                  <View style={styles.gridCardContent}>
+                    {/* Title */}
+                    <Text
+                      style={[styles.gridCardTitle, isLocked && styles.gridCardTitleLocked]}
+                      numberOfLines={2}
+                    >
+                      {course.title}
+                    </Text>
 
-                  {/* Career Path */}
-                  <Text style={[styles.courseCareer, isLocked && { color: COLORS.textTertiary }]}>
-                    {course.career_path}
-                  </Text>
-
-                  {/* Single metric line (not locked/coming soon) */}
-                  {!isLocked && !isComingSoon && metricValue > 0 && (
-                    <View style={styles.singleMetricRow}>
-                      <Ionicons
-                        name={isInteractive ? 'flash-outline' : 'book-outline'}
-                        size={12}
-                        color={isInteractive ? COLORS.primary : COLORS.textSecondary}
-                      />
-                      <Text style={[styles.metaText, isInteractive && { color: COLORS.primary }]}>
-                        {metricValue} {metricLabel}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Locked indicator */}
-                  {isLocked && (
-                    <View style={styles.lockedRow}>
-                      <Ionicons name="lock-closed-outline" size={12} color={COLORS.textTertiary} />
-                      <Text style={styles.lockedText}>ต้องผ่านคอร์สก่อนหน้าก่อน</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Right side indicator */}
-                <Ionicons
-                  name={isComingSoon ? 'calendar-outline' : (isLocked ? 'lock-closed-outline' : 'chevron-forward')}
-                  size={20}
-                  color={isComingSoon ? COLORS.primary : (isLocked ? '#CCCCCC' : COLORS.textTertiary)}
-                  style={styles.rightIndicator}
-                />
-              </TouchableOpacity>
-            );
-          })
+                    {/* Career Path */}
+                    <Text style={styles.gridCardPath} numberOfLines={1}>
+                      {course.career_path}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            </View>
+          )
           )}
         </View>
 
@@ -565,5 +560,105 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: COLORS.textSecondary,
+  },
+  // Grid Layout Styles
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+  },
+  gridCard: {
+    width: '48%', // 2 columns on mobile/tablet
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  gridCardLocked: {
+    borderColor: '#E5E5E5',
+    opacity: 0.7,
+  },
+  gridCardCompleted: {
+    borderColor: '#10B98140',
+  },
+  gridCardComingSoon: {
+    borderColor: COLORS.primary + '40',
+  },
+  gridCardImage: {
+    width: '100%',
+    height: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+  },
+  statusBadgeContainer: {
+    position: 'absolute',
+    top: SPACING.sm,
+    right: SPACING.sm,
+  },
+  seqGridBadge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  seqBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  completedGridBadge: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    padding: 4,
+  },
+  comingSoonGridBadge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridCardContent: {
+    padding: SPACING.md,
+  },
+  gridCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.xs,
+    lineHeight: 20,
+  },
+  gridCardTitleLocked: {
+    color: COLORS.textTertiary,
+  },
+  gridCardPath: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });
