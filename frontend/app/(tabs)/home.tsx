@@ -418,6 +418,7 @@ export default function HomeScreen() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkInXp, setCheckInXp] = useState(0);
   const [showXpPop, setShowXpPop] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // ── Animations ──────────────────────────────────────────────────────────────
   const checkInScale = useRef(new Animated.Value(1)).current;
@@ -456,7 +457,26 @@ export default function HomeScreen() {
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchData(); }, [user?._id]));
+  useFocusEffect(useCallback(() => {
+    fetchData();
+    // Check unread notifications
+    const checkUnread = async () => {
+      try {
+        const lastSeenKey = `notif_last_seen_${user?._id || 'guest'}`;
+        const lastSeen = await AsyncStorage.getItem(lastSeenKey);
+        const res = await axios.get(`${API_URL}/api/notifications`, {
+          params: user?._id ? { user_id: user._id } : {},
+        });
+        const notifs: any[] = res.data || [];
+        if (!lastSeen) {
+          setUnreadCount(notifs.length);
+        } else {
+          setUnreadCount(notifs.filter((n: any) => new Date(n.created_at) > new Date(lastSeen)).length);
+        }
+      } catch { setUnreadCount(0); }
+    };
+    checkUnread();
+  }, [user?._id]));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -569,9 +589,14 @@ export default function HomeScreen() {
               <Text style={styles.greetingSmall}>สวัสดี 👋</Text>
               <Text style={styles.greetingName} numberOfLines={1}>{firstName}</Text>
             </View>
-            <View style={styles.notifBtn}>
+            <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
               <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.85)" />
-            </View>
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Stats pills row */}
@@ -824,7 +849,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>💡 รวมเคล็ดลับ</Text>
-              <TouchableOpacity onPress={() => router.push('/blog')}>
+              <TouchableOpacity onPress={() => router.push('/articles')}>
                 <Text style={styles.seeAll}>ดูทั้งหมด →</Text>
               </TouchableOpacity>
             </View>
@@ -952,6 +977,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  notifBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   // Stats pills — horizontal row

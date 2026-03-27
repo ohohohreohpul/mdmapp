@@ -2522,6 +2522,48 @@ VIDEOS:
     return {"matches": enriched}
 
 
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+class NotificationCreate(BaseModel):
+    user_id: Optional[str] = None   # None = broadcast to all users
+    title: str
+    body: str
+    type: str = "announcement"      # announcement | achievement | course | system
+    action_url: Optional[str] = None
+    icon: Optional[str] = None      # emoji icon
+
+
+@api_router.get("/notifications")
+async def list_notifications(user_id: Optional[str] = None, limit: int = 50):
+    query = supabase.table("notifications").select("*").order("created_at", desc=True).limit(limit)
+    if user_id:
+        res = await supabase.table("notifications").select("*").or_(
+            f"user_id.eq.{user_id},user_id.is.null"
+        ).order("created_at", desc=True).limit(limit).execute()
+    else:
+        res = await query.is_("user_id", "null").execute()
+    return rows_with_id(res.data or [])
+
+
+@api_router.post("/notifications")
+async def create_notification(notif: NotificationCreate):
+    res = await supabase.table("notifications").insert({
+        "user_id": notif.user_id,
+        "title": notif.title,
+        "body": notif.body,
+        "type": notif.type,
+        "action_url": notif.action_url,
+        "icon": notif.icon,
+    }).execute()
+    return with_id(res.data[0])
+
+
+@api_router.delete("/notifications/{notif_id}")
+async def delete_notification(notif_id: str):
+    await supabase.table("notifications").delete().eq("id", notif_id).execute()
+    return {"ok": True}
+
+
 # ── Register router & middleware ──────────────────────────────
 app.include_router(api_router)
 
