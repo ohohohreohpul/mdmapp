@@ -424,6 +424,7 @@ export default function HomeScreen() {
   const checkInScale = useRef(new Animated.Value(1)).current;
   const xpPopOpacity = useRef(new Animated.Value(0)).current;
   const xpPopY = useRef(new Animated.Value(0)).current;
+  const checkInPulse = useRef(new Animated.Value(1)).current;
 
   const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`;
 
@@ -533,6 +534,15 @@ export default function HomeScreen() {
     if (!user || checkingIn || checkedInToday) return;
     animateCheckInPress();
     setCheckingIn(true);
+    // Pulse the button while waiting for API
+    checkInPulse.setValue(1);
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(checkInPulse, { toValue: 0.65, duration: 500, useNativeDriver: true }),
+        Animated.timing(checkInPulse, { toValue: 1,    duration: 500, useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.start();
     try {
       const res = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
       setCheckedInToday(true);
@@ -555,6 +565,8 @@ export default function HomeScreen() {
     } catch (_) {
       // silently fail
     } finally {
+      pulseLoop.stop();
+      checkInPulse.setValue(1);
       setCheckingIn(false);
     }
   };
@@ -681,7 +693,7 @@ export default function HomeScreen() {
               <View style={styles.checkInRight}>
                 {!checkedInToday ? (
                   <View>
-                    <Animated.View style={{ transform: [{ scale: checkInScale }] }}>
+                    <Animated.View style={{ transform: [{ scale: checkInScale }], opacity: checkingIn ? checkInPulse : 1 }}>
                       <TouchableOpacity
                         style={[styles.checkInBtn, checkingIn && styles.checkInBtnDisabled]}
                         onPress={handleCheckIn}
@@ -689,7 +701,7 @@ export default function HomeScreen() {
                         activeOpacity={0.85}
                       >
                         {checkingIn
-                          ? <ActivityIndicator size="small" color="#fff" />
+                          ? <><ActivityIndicator size="small" color="#fff" /><Text style={[styles.checkInBtnText, { marginLeft: 6 }]}>กำลังบันทึก...</Text></>
                           : (
                             <>
                               <Text style={styles.checkInBtnEmoji}>✅</Text>
