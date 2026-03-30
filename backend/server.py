@@ -461,11 +461,37 @@ async def _build_user_response(user: dict) -> dict:
 async def login(body: LoginRequest):
     """
     Authenticate a user.
-    - WordPress-migrated users: password verified against $wp$ bcrypt hash.
-    - Returns must_reset_password=True for first-time WP migrants.
+    - Primary: Supabase Auth email/password (for all users created via Supabase Auth)
+    - Fallback: custom bcrypt password_hash field (for WordPress-migrated users)
     """
-    # Use .limit(1) instead of .maybe_single() to avoid None response issues
-    res = await supabase.table("users").select("*").eq("email", body.email.lower().strip()).limit(1).execute()
+    email = body.email.lower().strip()
+
+    # ── 1. Try Supabase Auth first (covers the vast majority of users) ──────
+    try:
+        auth_res = await supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": body.password,
+        })
+        if auth_res and auth_res.user:
+            # Fetch the public.users profile row
+            res = await supabase.table("users").select("*").eq("email", email).limit(1).execute()
+            rows = res.data if res and res.data else []
+            if rows:
+                return await _build_user_response(dict(rows[0]))
+            # Profile row missing — auto-create minimal one
+            insert_res = await supabase.table("users").insert({
+                "email": email,
+                "username": email.split("@")[0],
+                "must_reset_password": False,
+                "certificates": [],
+            }).execute()
+            if insert_res and insert_res.data:
+                return await _build_user_response(dict(insert_res.data[0]))
+    except Exception:
+        pass  # Supabase Auth failed — try legacy password_hash below
+
+    # ── 2. Legacy: check password_hash column (WordPress-migrated users) ────
+    res = await supabase.table("users").select("*").eq("email", email).limit(1).execute()
     rows = res.data if res and res.data else []
     if not rows:
         raise HTTPException(status_code=401, detail="อีเมลหรือรหัสผ่านไม่ถูกต้อง")
@@ -474,7 +500,7 @@ async def login(body: LoginRequest):
     stored_hash = user.get("password_hash") or ""
 
     if not stored_hash:
-        raise HTTPException(status_code=401, detail="ยังไม่ได้ตั้งรหัสผ่าน กรุณาติดต่อผู้ดูแล")
+        raise HTTPException(status_code=401, detail="อีเมลหรือรหัสผ่านไม่ถูกต้อง")
 
     if not _verify_password(body.password, stored_hash):
         raise HTTPException(status_code=401, detail="อีเมลหรือรหัสผ่านไม่ถูกต้อง")
