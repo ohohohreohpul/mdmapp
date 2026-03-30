@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Any, List
 
 # Configuration
-BACKEND_URL = "https://career-quest-ai-1.preview.emergentagent.com"
+BACKEND_URL = "https://app-store-worthy.preview.emergentagent.com"
 API_BASE = f"{BACKEND_URL}/api"
 
 # Test data - using real IDs from seeded database
