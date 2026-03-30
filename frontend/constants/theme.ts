@@ -38,8 +38,8 @@ export const COLORS = {
   glassBorder: 'rgba(255, 255, 255, 0.45)',
   glassDark: 'rgba(28, 28, 30, 0.65)',
 
-  // Dividers / borders
-  border: 'rgba(60, 60, 67, 0.13)',
+  // Aliases for backward compatibility
+  text: '#1C1C1E',
   borderLight: 'rgba(0, 0, 0, 0.04)',
   separator: '#E5E5EA',
 

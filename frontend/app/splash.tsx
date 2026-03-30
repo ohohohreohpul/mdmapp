@@ -58,7 +58,7 @@ export default function Splash() {
             toValue: 1.15,
             duration: 1400,
             useNativeDriver: true,
-            easing: Easing.inOut(Easing.sine),
+            easing: Easing.inOut(Easing.quad),
           }),
           Animated.timing(ringOpacity, {
             toValue: 0,
