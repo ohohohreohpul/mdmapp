@@ -31,7 +31,7 @@ export default function Splash() {
           toValue: 1,
           duration: 480,
           useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
+          easing: Easing.out(Easing.poly(3)),
         }),
       ]),
       // Tagline slides up after logo appears

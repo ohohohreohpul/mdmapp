@@ -189,3 +189,5 @@ const styles = StyleSheet.create({
     color: COLORS.textInverse,
   },
 });
+
+export default ComingSoonModal;

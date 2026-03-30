@@ -97,7 +97,7 @@ export default function PWAInstallPrompt() {
     Animated.parallel([
       Animated.timing(sheetY, {
         toValue: 0, duration: 380,
-        easing: Easing.out(Easing.cubic),
+        easing: Easing.out(Easing.poly(3)),
         useNativeDriver: true,
       }),
       Animated.timing(backdropO, {
@@ -111,7 +111,7 @@ export default function PWAInstallPrompt() {
     Animated.parallel([
       Animated.timing(sheetY, {
         toValue: 500, duration: 280,
-        easing: Easing.in(Easing.cubic),
+        easing: Easing.in(Easing.poly(3)),
         useNativeDriver: true,
       }),
       Animated.timing(backdropO, {
