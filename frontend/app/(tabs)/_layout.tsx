@@ -1,11 +1,35 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { BlurView } from 'expo-blur';
+import { COLORS, SHADOWS } from '../../constants/theme';
+
+// Frosted glass tab bar background — real blur on iOS, fallback on Android/web
+function TabBarBackground() {
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView
+        intensity={85}
+        tint="systemUltraThinMaterialLight"
+        style={StyleSheet.absoluteFill}
+      />
+    );
+  }
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: 'rgba(255, 255, 255, 0.96)' },
+      ]}
+    />
+  );
+}
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -13,24 +37,28 @@ export default function TabLayout() {
         animation: 'shift',
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textTertiary,
+        tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
           position: 'absolute',
-          bottom: Math.max(25, insets.bottom + 8),
+          bottom: Math.max(20, insets.bottom + 6),
           left: 20,
           right: 20,
           elevation: 0,
-          backgroundColor: '#FFFFFF',
-          borderRadius: RADIUS.xl,
-          height: 70,
+          borderRadius: 9999,
+          height: 66,
           paddingBottom: 8,
           paddingTop: 8,
-          ...styles.tabBarShadow,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.55)',
+          overflow: 'hidden',
+          ...SHADOWS.tab,
         },
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 1,
+          letterSpacing: 0.1,
         },
       }}
     >
@@ -39,10 +67,10 @@ export default function TabLayout() {
         options={{
           title: 'หน้าแรก',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
               <Ionicons
                 name={focused ? 'home' : 'home-outline'}
-                size={22}
+                size={20}
                 color={focused ? '#FFFFFF' : color}
               />
             </View>
@@ -54,10 +82,10 @@ export default function TabLayout() {
         options={{
           title: 'สำรวจ',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
               <Ionicons
                 name={focused ? 'compass' : 'compass-outline'}
-                size={22}
+                size={20}
                 color={focused ? '#FFFFFF' : color}
               />
             </View>
@@ -69,10 +97,10 @@ export default function TabLayout() {
         options={{
           title: 'งาน',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
               <Ionicons
                 name={focused ? 'briefcase' : 'briefcase-outline'}
-                size={22}
+                size={20}
                 color={focused ? '#FFFFFF' : color}
               />
             </View>
@@ -84,10 +112,10 @@ export default function TabLayout() {
         options={{
           title: 'เรียน',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
               <Ionicons
                 name={focused ? 'book' : 'book-outline'}
-                size={22}
+                size={20}
                 color={focused ? '#FFFFFF' : color}
               />
             </View>
@@ -99,10 +127,10 @@ export default function TabLayout() {
         options={{
           title: 'โปรไฟล์',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
               <Ionicons
                 name={focused ? 'person' : 'person-outline'}
-                size={22}
+                size={20}
                 color={focused ? '#FFFFFF' : color}
               />
             </View>
@@ -114,24 +142,19 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBarShadow: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  iconContainer: {
-    width: 44,
-    height: 32,
-    borderRadius: 16,
+  iconWrap: {
+    width: 40,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconContainerActive: {
+  iconWrapActive: {
     backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });
