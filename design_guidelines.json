@@ -1,0 +1,119 @@
+{
+  "theme": "Light",
+  "archetype": "3 (Pastel & Soft) mixed with 4 (Swiss & High-Contrast) - iOS Clean Clarity",
+  "design_philosophy": "Optical Clarity & Tactile iOS. The UI must feel like a premium, native iOS App Store application (e.g. Health app, Settings). Absolute clean light mode, zero gradients, generous spacing, and crystal-clear glassmorphism.",
+  "colors": {
+    "primary": "#ef5ea8",
+    "primary_muted": "rgba(239, 94, 168, 0.1)",
+    "background": "#F2F2F7",
+    "surface": "#FFFFFF",
+    "text_primary": "#1C1C1E",
+    "text_secondary": "#8E8E93",
+    "text_tertiary": "#C7C7CC",
+    "border": "rgba(0, 0, 0, 0.05)",
+    "border_glass": "rgba(255, 255, 255, 0.4)",
+    "success": "#34C759",
+    "warning": "#FF9500",
+    "error": "#FF3B30",
+    "glass_bg": "rgba(255, 255, 255, 0.75)"
+  },
+  "typography": {
+    "font_family_headings": "System (SF Pro Display), fallback: Outfit, Plus Jakarta Sans",
+    "font_family_body": "System (SF Pro Text), fallback: Inter, system-ui",
+    "hierarchy": {
+      "h1_hero": { "size": "34px", "weight": "800", "tracking": "-0.04em", "line_height": "40px" },
+      "h2_section": { "size": "24px", "weight": "700", "tracking": "-0.02em", "line_height": "30px" },
+      "h3_card": { "size": "18px", "weight": "600", "tracking": "-0.01em", "line_height": "24px" },
+      "body_main": { "size": "16px", "weight": "400", "tracking": "0em", "line_height": "22px" },
+      "body_small": { "size": "14px", "weight": "400", "tracking": "0em", "line_height": "20px" },
+      "overline": { "size": "12px", "weight": "600", "tracking": "0.1em", "text_transform": "uppercase" }
+    }
+  },
+  "layout_and_spacing": {
+    "container_padding": "24px",
+    "section_gap": "32px",
+    "item_gap": "16px",
+    "border_radius": {
+      "small": "12px",
+      "medium": "16px",
+      "large": "24px",
+      "pill": "9999px"
+    },
+    "shadows": {
+      "card": "0px 8px 24px rgba(0, 0, 0, 0.04)",
+      "floating_pill": "0px 16px 32px rgba(239, 94, 168, 0.15)"
+    }
+  },
+  "components": {
+    "cards": {
+      "background": "#FFFFFF",
+      "border_radius": "24px",
+      "padding": "20px",
+      "shadow": "0px 8px 24px rgba(0, 0, 0, 0.04)",
+      "border": "1px solid rgba(0,0,0,0.03)"
+    },
+    "glassmorphism": {
+      "library": "expo-blur",
+      "rules": "Use BlurView with tint='light' and intensity={80}. Must include a 1px inner stroke of border_glass (rgba(255,255,255,0.4)) for optical clarity. Apply to Floating Tab Bar and Sticky Headers."
+    },
+    "buttons": {
+      "primary": {
+        "background": "#ef5ea8",
+        "text_color": "#FFFFFF",
+        "border_radius": "16px",
+        "padding": "16px 24px",
+        "font_weight": "700"
+      },
+      "secondary": {
+        "background": "rgba(239, 94, 168, 0.1)",
+        "text_color": "#ef5ea8",
+        "border_radius": "16px",
+        "padding": "16px 24px",
+        "font_weight": "600"
+      }
+    },
+    "tab_bar": {
+      "style": "Floating pill design",
+      "position": "Absolute, bottom 24px, left 24px, right 24px",
+      "background": "expo-blur light glass",
+      "border_radius": "9999px"
+    }
+  },
+  "media": {
+    "images": [
+      {
+        "category": "Course Thumbnail - UI/UX Design",
+        "url": "https://images.unsplash.com/photo-1681164316122-0611eb81b236?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHx1aSUyMHV4JTIwZGVzaWduJTIwbGFwdG9wfGVufDB8fHx8MTc3NDg2Mjg5Nnww&ixlib=rb-4.1.0&q=85",
+        "description": "Clean laptop desk setup for UI/UX course"
+      },
+      {
+        "category": "Course Thumbnail - Data Analysis",
+        "url": "https://images.pexels.com/photos/7413936/pexels-photo-7413936.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Business analytics charts for Data course"
+      },
+      {
+        "category": "Course Thumbnail - Digital Marketing",
+        "url": "https://images.unsplash.com/photo-1562577309-4932fdd64cd1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbWFya2V0aW5nJTIwc29jaWFsJTIwbWVkaWF8ZW58MHx8fHwxNzc0ODYyODk4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Social media icons/signage for Marketing course"
+      },
+      {
+        "category": "Profile Avatar",
+        "url": "https://images.unsplash.com/photo-1621398945253-00498f153e4b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwxfHx0aGFpJTIwc3R1ZGVudCUyMHBvcnRyYWl0fGVufDB8fHx8MTc3NDg2Mjg5OXww&ixlib=rb-4.1.0&q=85",
+        "description": "Thai student portrait for user profile"
+      }
+    ]
+  },
+  "animations": {
+    "interactions": "All pressable elements (buttons, cards) MUST have a scale down effect (e.g., scale: 0.97) on press-in using React Native Animated or Reanimated. Opacity change on press is insufficient for premium iOS feel.",
+    "page_transitions": "Smooth spring-based transitions."
+  },
+  "instructions_to_main_agent": [
+    "Strictly adhere to the Clean Light Mode. Do NOT implement a Dark Mode. The app must feel light, airy, and premium.",
+    "Do NOT use gradients anywhere. Backgrounds, buttons, and overlays must use solid colors or blur effects.",
+    "Utilize expo-blur's BlurView for authentic iOS glassmorphism. Specifically apply it to the floating tab navigation bar and screen headers.",
+    "Retain Mydemy Pink (#ef5ea8) as the primary action and accent color. Use #F2F2F7 for the main app background to allow pure white (#FFFFFF) cards to pop.",
+    "Implement iOS-style cards: white background, very subtle shadow (opacity 0.04), and large rounded corners (24px).",
+    "Use standard React Native styles/StyleSheet or NativeWind if configured. Ensure generous padding (e.g. 24px container margins).",
+    "Ensure all interactive elements have rich press states (scale down animations) and include `data-testid` attributes."
+  ]
+}
