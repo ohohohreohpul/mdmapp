@@ -48,10 +48,11 @@ export default function RootLayout() {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // PWA gate disabled — app accessible directly in browser
-  // if (Platform.OS === 'web' && !isStandalone) {
-  //   return <PWAInstallPrompt />;
-  // }
+  // ── Browser (not installed) → show full-screen install gate ──────────────
+  // Public paths like /verify/* are exempt so certificate links always work.
+  if (Platform.OS === 'web' && !isStandalone) {
+    return <PWAInstallPrompt />;
+  }
 
   // ── Installed PWA or native → normal app ─────────────────────────────────
   return (
