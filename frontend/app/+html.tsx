@@ -29,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body style={{ backgroundColor: "#ef5ea8" }}>{children}</body>
     </html>
   );
 }
