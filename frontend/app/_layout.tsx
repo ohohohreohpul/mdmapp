@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserProvider } from '../contexts/UserContext';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+
+// On web, the Stack navigator's built-in SafeAreaView adds paddingBottom equal
+// to env(safe-area-inset-bottom) (~34px on iPhone), leaving a white strip at
+// the bottom. Override bottom to 0 so the content fills the full screen.
+// Individual screens handle their own top insets via useSafeAreaInsets().
+function WebBottomInsetZero({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return (
+    <SafeAreaInsetsContext.Provider value={{ ...insets, bottom: 0 }}>
+      {children}
+    </SafeAreaInsetsContext.Provider>
+  );
+}
 
 /**
  * Public routes that must always be accessible in a browser without
@@ -57,15 +71,17 @@ export default function RootLayout() {
   // ── Installed PWA or native → normal app ─────────────────────────────────
   return (
     <SafeAreaProvider>
-      <UserProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-            animationDuration: 220,
-          }}
-        />
-      </UserProvider>
+      <WebBottomInsetZero>
+        <UserProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              animationDuration: 220,
+            }}
+          />
+        </UserProvider>
+      </WebBottomInsetZero>
     </SafeAreaProvider>
   );
 }
