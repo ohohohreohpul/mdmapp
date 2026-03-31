@@ -40,7 +40,7 @@ export default function TabLayout() {
         tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
           position: 'absolute',
-          bottom: Math.max(20, insets.bottom + 6),
+          bottom: insets.bottom + 6,
           left: 20,
           right: 20,
           elevation: 0,
