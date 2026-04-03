@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-primary: #ef5ea8;
+  --color-primary-dark: #d94d94;
+  --color-primary-light: #f7a8cd;
+  --color-primary-surface: rgba(239, 94, 168, 0.10);
+
+  /* Gamification */
+  --color-xp: #FF9500;
+  --color-streak: #FF3B30;
+  --color-level: #AF52DE;
+
+  /* iOS backgrounds */
+  --color-ios-bg: #F2F2F7;
+  --color-surface: #FFFFFF;
+
+  /* Text */
+  --color-text-primary: #1C1C1E;
+  --color-text-secondary: #636366;
+  --color-text-tertiary: #AEAEB2;
+
+  /* Semantic */
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-error: #FF3B30;
+  --color-info: #007AFF;
+
+  /* Separator */
+  --color-separator: #E5E5EA;
+
+  /* Border radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  background-color: #F2F2F7;
+  color: #1C1C1E;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* PWA safe area utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Mydemy",
+  "short_name": "Mydemy",
+  "description": "เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ef5ea8",
+  "theme_color": "#ef5ea8",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
