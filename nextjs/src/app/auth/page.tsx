@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 type Screen = 'login' | 'register' | 'reset-password' | 'first-login';
 
@@ -109,7 +109,7 @@ export default function AuthPage() {
 
   // ── Shared logo header ─────────────────────────────────────
   const LogoHeader = ({ subtitle }: { subtitle: string }) => (
-    <div className="bg-white border-b border-separator pt-11 pb-9 flex flex-col items-center">
+    <div className="bg-white border-b border-separator pt-safe pb-9 flex flex-col items-center" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2.75rem)' }}>
       <Image
         src="/images/logo-wordmark.png"
         alt="Mydemy"

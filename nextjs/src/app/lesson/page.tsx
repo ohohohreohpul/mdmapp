@@ -8,7 +8,7 @@ import { useUser } from '@/contexts/UserContext';
 import { stripHtml } from '@shared/contentUtils';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 function LessonPageInner() {
   const router = useRouter();

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
 const PATHS = [
