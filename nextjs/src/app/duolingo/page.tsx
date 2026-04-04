@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { X, ChevronRight, CheckCircle, XCircle, Loader2, Zap } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
@@ -9,7 +9,7 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const SESSION_SIZE = 60;
 
-export default function DuolingoPage() {
+function DuolingoPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const moduleId = params.get('moduleId') ?? '';
@@ -343,4 +343,8 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
       })}
     </div>
   );
+}
+
+export default function DuolingoPage() {
+  return <Suspense><DuolingoPageInner /></Suspense>;
 }

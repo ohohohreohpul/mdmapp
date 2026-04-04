@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle, PlayCircle, Headphones, FileText, Clock, Info, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export default function LessonPage() {
+function LessonPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const lessonId = params.get('id') ?? '';
@@ -187,4 +187,8 @@ export default function LessonPage() {
       </div>
     </div>
   );
+}
+
+export default function LessonPage() {
+  return <Suspense><LessonPageInner /></Suspense>;
 }

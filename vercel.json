@@ -2,6 +2,7 @@
   "buildCommand": "cd nextjs && npm install && npm run build",
   "outputDirectory": "nextjs/out",
   "rewrites": [
+    { "source": "/verify/:code", "destination": "/verify/_/" },
     { "source": "/(.*)", "destination": "/" }
   ],
   "headers": [

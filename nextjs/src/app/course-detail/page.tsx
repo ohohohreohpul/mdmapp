@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Share2, BookOpen, Layers, Ribbon, Zap, Lock,
@@ -14,7 +14,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export default function CourseDetailPage() {
+function CourseDetailPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const courseId = params.get('id') ?? '';
@@ -365,4 +365,8 @@ function StatChip({ icon, label }: { icon: React.ReactNode; label: string }) {
       <span className="text-white/90 text-[12px] font-semibold">{label}</span>
     </div>
   );
+}
+
+export default function CourseDetailPage() {
+  return <Suspense><CourseDetailPageInner /></Suspense>;
 }

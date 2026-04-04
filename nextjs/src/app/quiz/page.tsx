@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Clock, CheckCircle, XCircle, RefreshCw, Loader2, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export default function QuizPage() {
+function QuizPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const lessonId = params.get('lessonId') ?? '';
@@ -258,4 +258,8 @@ export default function QuizPage() {
       </div>
     </div>
   );
+}
+
+export default function QuizPage() {
+  return <Suspense><QuizPageInner /></Suspense>;
 }
