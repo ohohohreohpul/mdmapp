@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Search, Settings, ChevronRight, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
@@ -54,54 +54,45 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-ios-bg">
-      {/* Header */}
-      <header className="bg-white border-b border-separator px-5 pt-safe">
-        <div className="flex items-center justify-between py-4">
-          <h1 className="text-[22px] font-extrabold text-text-primary">สำรวจคอร์ส</h1>
-          {isAdmin && (
-            <Link href="/admin" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
-              <Settings size={20} className="text-text-secondary" />
-            </Link>
-          )}
-        </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2.5 bg-ios-bg rounded-2xl px-4 py-2.5 mb-4">
-          <Search size={18} className="text-text-tertiary shrink-0" />
-          <input
-            type="text"
-            placeholder="ค้นหาคอร์ส..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
-          />
+      {/* ── Sticky header ─────────────────────────────────── */}
+      <div
+        className="bg-white border-b border-separator sticky top-0 z-10"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        <div className="max-w-lg mx-auto">
+          {/* Title row */}
+          <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+            <h1 className="text-[22px] font-extrabold text-text-primary">สำรวจคอร์ส</h1>
+            {isAdmin && (
+              <Link href="/admin" className="w-9 h-9 flex items-center justify-center rounded-full bg-ios-bg hover:bg-separator transition-colors">
+                <Settings size={18} className="text-text-secondary" />
+              </Link>
+            )}
+          </div>
+          {/* Search */}
+          <div className="flex items-center gap-2.5 mx-4 mb-3 bg-ios-bg rounded-2xl px-3.5 py-2.5">
+            <Search size={16} className="text-text-tertiary shrink-0" />
+            <input
+              type="text"
+              placeholder="ค้นหาคอร์ส..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
+            />
+          </div>
         </div>
-      </header>
+      </div>
 
+      {/* ── Content ───────────────────────────────────────── */}
       <div className="max-w-lg mx-auto px-4 py-4">
-        {/* Path filters — show when no path selected */}
-        {!selectedPath ? (
-          <>
-            <h2 className="text-[15px] font-bold text-text-primary mb-3">เลือก Career Path</h2>
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              {PATHS.map(path => (
-                <button
-                  key={path.id}
-                  onClick={() => setSelectedPath(path.id)}
-                  className="rounded-2xl p-4 text-left hover:scale-[1.02] transition-transform active:scale-[0.98]"
-                  style={{ backgroundColor: path.bg }}
-                >
-                  <span className="text-2xl mb-2 block">{path.emoji}</span>
-                  <p className="text-[13px] font-bold" style={{ color: path.color }}>{path.name}</p>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
+
+        {/* Path filter breadcrumb */}
+        {selectedPath && (
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setSelectedPath(null)}
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+              className="text-[13px] text-text-secondary hover:text-text-primary transition-colors"
             >
               ← ทั้งหมด
             </button>
@@ -114,42 +105,66 @@ export default function ExplorePage() {
           </div>
         )}
 
+        {/* Career path grid */}
+        {!selectedPath && (
+          <>
+            <p className="text-[13px] font-bold text-text-secondary uppercase tracking-wider mb-3">เลือก Career Path</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {PATHS.map(path => (
+                <button
+                  key={path.id}
+                  onClick={() => setSelectedPath(path.id)}
+                  className="rounded-2xl p-4 text-left active:scale-[0.97] transition-transform"
+                  style={{ backgroundColor: path.bg }}
+                >
+                  <span className="text-[28px] mb-2 block">{path.emoji}</span>
+                  <p className="text-[13px] font-bold leading-snug" style={{ color: path.color }}>{path.name}</p>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Course list */}
         {loading ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-16">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center text-center py-10 text-text-secondary">
-            <BookOpen size={40} className="mb-3 text-text-tertiary" />
-            <p className="text-sm">ไม่พบคอร์สที่ตรงกัน</p>
+          <div className="flex flex-col items-center text-center py-16 gap-3">
+            <div className="w-16 h-16 bg-ios-bg rounded-2xl flex items-center justify-center">
+              <BookOpen size={32} className="text-text-tertiary" />
+            </div>
+            <p className="text-[14px] font-semibold text-text-secondary">ไม่พบคอร์สที่ตรงกัน</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {!selectedPath && <p className="text-sm text-text-secondary">คอร์สทั้งหมด {filtered.length} คอร์ส</p>}
+            {!selectedPath && (
+              <p className="text-[13px] text-text-secondary">คอร์สทั้งหมด {filtered.length} คอร์ส</p>
+            )}
             {filtered.map((course: any) => {
               const path = PATHS.find(p => p.api === course.career_path);
               return (
                 <Link
                   key={course._id}
                   href={`/course-detail?id=${course._id}`}
-                  className="bg-white rounded-2xl p-4 border border-separator flex items-start gap-3 hover:border-primary/30 transition-colors"
+                  className="bg-white rounded-2xl p-4 border border-separator/60 flex items-start gap-3 hover:border-primary/30 active:scale-[0.98] transition-all shadow-sm"
                 >
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0"
                     style={{ backgroundColor: path?.bg ?? '#F2F2F7' }}
                   >
                     {path?.emoji ?? '📚'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1"
-                      style={{ backgroundColor: (path?.color ?? '#636366') + '15', color: path?.color ?? '#636366' }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1.5"
+                      style={{ backgroundColor: (path?.color ?? '#636366') + '18', color: path?.color ?? '#636366' }}
                     >
                       {course.career_path}
                     </span>
                     <p className="text-[14px] font-bold text-text-primary line-clamp-2">{course.title}</p>
-                    <p className="text-[12px] text-text-secondary mt-0.5">{course.total_lessons} บทเรียน</p>
+                    <p className="text-[12px] text-text-tertiary mt-0.5">{course.total_lessons ?? 0} บทเรียน</p>
                   </div>
                   <ChevronRight size={18} className="text-text-tertiary shrink-0 mt-1" />
                 </Link>

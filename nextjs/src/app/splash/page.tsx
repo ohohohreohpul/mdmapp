@@ -10,67 +10,72 @@ export default function SplashPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      if (stored) {
-        router.replace('/home');
-      } else {
-        router.replace('/auth');
-      }
-    }, 2200);
+      router.replace(stored ? '/home' : '/auth');
+    }, 2400);
     return () => clearTimeout(timer);
   }, [router]);
 
   return (
-    <div className="fixed inset-0 bg-primary flex flex-col items-center justify-center overflow-hidden">
-      {/* Soft glow */}
+    <div className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(160deg, #f472b6 0%, #ef5ea8 50%, #db2777 100%)' }}>
+
+      {/* Radial glow behind mascot */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[120vw] h-[120vw] rounded-full bg-white/[0.07]" />
+        <div className="w-[70vw] h-[70vw] rounded-full" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)' }} />
       </div>
 
       {/* Breathing ring */}
-      <div className="absolute w-[180px] h-[180px] rounded-full border-2 border-white/35 animate-[breathe_1.4s_ease-in-out_infinite]" />
+      <div
+        className="absolute w-[200px] h-[200px] rounded-full border border-white/30"
+        style={{ animation: 'breathe 1.6s ease-in-out infinite' }}
+      />
+      <div
+        className="absolute w-[240px] h-[240px] rounded-full border border-white/15"
+        style={{ animation: 'breathe 1.6s ease-in-out 0.3s infinite' }}
+      />
 
       {/* Mascot */}
-      <div className="relative z-10 animate-[fadeScaleIn_0.5s_ease-out_forwards] opacity-0 mb-6">
+      <div
+        className="relative z-10 mb-5"
+        style={{ animation: 'fadeScaleIn 0.5s ease-out forwards', opacity: 0 }}
+      >
         <Image
           src="/images/mascot.png"
-          alt="Mydemy mascot"
-          width={220}
-          height={220}
-          className="rounded-[48px]"
+          alt="Mydemy"
+          width={160}
+          height={160}
+          className="rounded-[36px] shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
           priority
         />
       </div>
 
-      {/* Tagline */}
-      <p className="relative z-10 text-white/85 text-[15px] animate-[slideUpFade_0.38s_ease-out_0.5s_forwards] opacity-0">
-        เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน
-      </p>
-
-      {/* Progress bar */}
-      <div className="absolute bottom-14 left-12 right-12 animate-[slideUpFade_0.38s_ease-out_0.5s_forwards] opacity-0">
-        <div className="h-[3px] rounded-full bg-white/25 overflow-hidden">
-          <div className="h-full bg-white rounded-full animate-[progressFill_2s_ease-out_0.4s_forwards] w-0" />
-        </div>
+      {/* Wordmark */}
+      <div
+        className="relative z-10 flex flex-col items-center gap-1"
+        style={{ animation: 'slideUpFade 0.4s ease-out 0.45s forwards', opacity: 0 }}
+      >
+        <Image
+          src="/images/logo-wordmark.png"
+          alt="Mydemy"
+          width={130}
+          height={42}
+          className="object-contain h-[40px] w-auto brightness-0 invert"
+          priority
+        />
+        <p className="text-white/70 text-[13px] tracking-wide">เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
       </div>
 
-      <style>{`
-        @keyframes breathe {
-          0%, 100% { transform: scale(0.85); opacity: 0.6; }
-          50% { transform: scale(1.15); opacity: 0; }
-        }
-        @keyframes fadeScaleIn {
-          from { opacity: 0; transform: scale(0.7); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes slideUpFade {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes progressFill {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
-      `}</style>
+      {/* Progress bar */}
+      <div
+        className="absolute left-12 right-12"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 24px) + 24px)', animation: 'slideUpFade 0.4s ease-out 0.5s forwards', opacity: 0 }}
+      >
+        <div className="h-[3px] bg-white/20 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-white/90 rounded-full"
+            style={{ animation: 'progressFill 2.1s ease-out 0.45s forwards', width: 0 }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
