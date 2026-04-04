@@ -66,12 +66,14 @@ export default function CertificatesPage() {
 
   return (
     <div className="min-h-screen bg-ios-bg">
-      <header className="bg-white border-b border-separator px-4 pt-safe flex items-center justify-between py-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-[17px] font-bold text-text-primary">ใบประกาศนียบัตร</h1>
-        <div className="w-11" />
+      <header className="bg-white border-b border-separator sticky top-0 z-10" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="px-4 py-3 flex items-center justify-between">
+          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="text-[17px] font-bold text-text-primary">ใบประกาศนียบัตร</h1>
+          <div className="w-10" />
+        </div>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-5 pb-10">

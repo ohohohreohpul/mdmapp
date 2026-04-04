@@ -148,7 +148,10 @@ function CourseDetailPageInner() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Floating back button */}
-        <div className="absolute top-0 left-0 right-0 pt-safe px-4 pt-3 flex items-center justify-between">
+        <div
+          className="absolute top-0 left-0 right-0 px-4 flex items-center justify-between"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+        >
           <button onClick={() => router.back()} className="w-10 h-10 bg-black/30 rounded-full flex items-center justify-center backdrop-blur-sm">
             <ArrowLeft size={22} className="text-white" />
           </button>

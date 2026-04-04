@@ -79,12 +79,14 @@ export default function ResumePreviewPage() {
   if (!resume || resume.resume_type !== 'created') {
     return (
       <div className="min-h-screen bg-ios-bg flex flex-col">
-        <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center justify-between sticky top-0 z-10">
-          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-            <ChevronLeft size={22} className="text-text-primary" />
-          </button>
-          <h1 className="text-[17px] font-bold text-text-primary">Resume</h1>
-          <div className="w-10" />
+        <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+              <ChevronLeft size={22} className="text-text-primary" />
+            </button>
+            <h1 className="text-[17px] font-bold text-text-primary">Resume</h1>
+            <div className="w-10" />
+          </div>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <FileText size={52} className="text-text-tertiary" />
@@ -107,18 +109,20 @@ export default function ResumePreviewPage() {
   return (
     <div className="min-h-screen bg-[#F0F2F5]">
       {/* Toolbar */}
-      <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-          <ChevronLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-[18px] font-bold text-text-primary">Resume</h1>
-        <button
-          onClick={handleExportPDF}
-          disabled={exporting}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-        >
-          {exporting ? <Loader2 size={20} className="animate-spin text-primary" /> : <Download size={20} className="text-primary" />}
-        </button>
+      <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+            <ChevronLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="text-[17px] font-bold text-text-primary">Resume</h1>
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors disabled:opacity-50"
+          >
+            {exporting ? <Loader2 size={20} className="animate-spin text-primary" /> : <Download size={20} className="text-primary" />}
+          </button>
+        </div>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-4 pb-16">

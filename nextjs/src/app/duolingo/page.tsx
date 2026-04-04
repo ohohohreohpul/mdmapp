@@ -149,8 +149,9 @@ function DuolingoPageInner() {
   return (
     <div className="min-h-screen bg-ios-bg flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+      <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+        <div className="px-4 py-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
           <X size={20} className="text-text-primary" />
         </button>
         {/* Progress bar */}
@@ -164,6 +165,7 @@ function DuolingoPageInner() {
           ))}
         </div>
         <span className="text-primary font-bold text-sm">+{xpEarned} XP</span>
+        </div>
       </header>
 
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-5 flex flex-col gap-4">

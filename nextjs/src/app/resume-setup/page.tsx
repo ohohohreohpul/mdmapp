@@ -142,12 +142,14 @@ export default function ResumeSetupPage() {
   // ── Choice screen ─────────────────────────────────────────────
   if (step === 'choice') return (
     <div className="min-h-screen bg-ios-bg">
-      <header className="bg-white border-b border-separator px-4 pt-safe py-4 flex items-center justify-between">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-[17px] font-bold text-text-primary">สร้าง Resume</h1>
-        <button onClick={handleSkip} className="text-sm text-text-secondary hover:text-text-primary">ข้ามก่อน</button>
+      <header className="bg-white border-b border-separator header-safe">
+        <div className="px-4 py-4 flex items-center justify-between">
+          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="text-[17px] font-bold text-text-primary">สร้าง Resume</h1>
+          <button onClick={handleSkip} className="text-sm text-text-secondary hover:text-text-primary">ข้ามก่อน</button>
+        </div>
       </header>
       <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-4">
         <p className="text-center text-text-secondary text-sm mb-2">เลือกวิธีสร้าง Resume ของคุณ</p>
@@ -176,11 +178,13 @@ export default function ResumeSetupPage() {
   // ── Upload screen ─────────────────────────────────────────────
   if (step === 'upload') return (
     <div className="min-h-screen bg-ios-bg">
-      <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center gap-3">
-        <button onClick={() => setStep('choice')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="text-[17px] font-bold text-text-primary">อัปโหลด Resume</h1>
+      <header className="bg-white border-b border-separator header-safe">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button onClick={() => setStep('choice')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="text-[17px] font-bold text-text-primary">อัปโหลด Resume</h1>
+        </div>
       </header>
       <div className="max-w-lg mx-auto px-4 py-8 flex flex-col gap-5">
         <label className="border-2 border-dashed border-separator rounded-2xl p-8 flex flex-col items-center gap-3 cursor-pointer hover:border-primary transition-colors bg-white">
@@ -207,14 +211,16 @@ export default function ResumeSetupPage() {
 
   return (
     <div className="min-h-screen bg-ios-bg flex flex-col">
-      <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={() => formStep > 1 ? setFormStep(f => f - 1) : setStep('choice')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <div className="flex-1">
-          <p className="text-[13px] text-text-secondary">ขั้นตอน {formStep}/{totalSteps}</p>
-          <div className="h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${stepPct}%` }} />
+      <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button onClick={() => formStep > 1 ? setFormStep(f => f - 1) : setStep('choice')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <div className="flex-1">
+            <p className="text-[13px] text-text-secondary">ขั้นตอน {formStep}/{totalSteps}</p>
+            <div className="h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${stepPct}%` }} />
+            </div>
           </div>
         </div>
       </header>

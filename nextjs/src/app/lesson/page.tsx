@@ -79,12 +79,14 @@ function LessonPageInner() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-separator px-4 py-3 flex items-center gap-3 sticky top-0 z-10 pt-safe">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0">
-          <ArrowLeft size={22} className="text-text-primary" />
-        </button>
-        <h1 className="flex-1 text-[16px] font-bold text-text-primary truncate">{lesson.title}</h1>
-        {isCompleted && <CheckCircle size={24} className="text-[#10B981] shrink-0" />}
+      <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors shrink-0">
+            <ArrowLeft size={22} className="text-text-primary" />
+          </button>
+          <h1 className="flex-1 text-[16px] font-bold text-text-primary truncate">{lesson.title}</h1>
+          {isCompleted && <CheckCircle size={24} className="text-[#10B981] shrink-0" />}
+        </div>
       </header>
 
       <div className="max-w-lg mx-auto pb-10">

@@ -4,11 +4,11 @@ export default function JobsPage() {
   return (
     <div className="min-h-screen bg-ios-bg">
       {/* Header */}
-      <header className="bg-white border-b border-separator px-5 pt-safe">
-        <div className="py-4">
+      <div className="bg-white border-b border-separator" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="max-w-lg mx-auto px-4 py-3.5">
           <h1 className="text-[22px] font-extrabold text-text-primary">Job Board</h1>
         </div>
-      </header>
+      </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 pb-10">
         {/* Coming soon hero */}

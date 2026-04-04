@@ -55,11 +55,20 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* PWA safe area utilities */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
-.pl-safe { padding-left: env(safe-area-inset-left, 0px); }
-.pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+/* PWA safe area utilities — !important ensures they win over py-N shorthand */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px) !important; }
+.pl-safe { padding-left: env(safe-area-inset-left, 0px) !important; }
+.pr-safe { padding-right: env(safe-area-inset-right, 0px) !important; }
+
+/*
+ * Header safe-area helper: use as a wrapper div around a sticky header.
+ * Sets only the top padding so the browser status bar is cleared;
+ * inner content provides its own vertical padding via py-N.
+ */
+.header-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 
 /* Scrollbar hide */
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }

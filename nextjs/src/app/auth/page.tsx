@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Mail, Lock, User, Eye, EyeOff, UserCircle, Info } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, UserCircle, Info, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
 import axios from 'axios';
@@ -49,9 +49,7 @@ export default function AuthPage() {
       } else {
         toast.error(detail || error.message || 'เกิดข้อผิดพลาด');
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   // ── Register ───────────────────────────────────────────────
@@ -64,9 +62,7 @@ export default function AuthPage() {
       router.replace('/resume-setup');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   // ── First-login (WP migrants) ──────────────────────────────
@@ -78,19 +74,16 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const res = await axios.post(`${API_URL}/api/auth/setup-password`, {
-        email: email.trim(),
-        new_password: newPassword,
+        email: email.trim(), new_password: newPassword,
       });
       loginWithData(res.data);
       router.replace(res.data?.has_resume_setup ? '/home' : '/resume-setup');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  // ── Reset-password (must_reset_password=true) ──────────────
+  // ── Reset-password ─────────────────────────────────────────
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) { toast.error('กรุณากรอกรหัสผ่านใหม่'); return; }
     if (newPassword.length < 8) { toast.error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
@@ -102,73 +95,93 @@ export default function AuthPage() {
       router.replace(user?.has_resume_setup ? '/home' : '/resume-setup');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  // ── Shared logo header ─────────────────────────────────────
-  const LogoHeader = ({ subtitle }: { subtitle: string }) => (
-    <div className="bg-white border-b border-separator pt-safe pb-9 flex flex-col items-center" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2.75rem)' }}>
+  // ── Hero strip ─────────────────────────────────────────────
+  const Hero = ({ subtitle }: { subtitle: string }) => (
+    <div
+      className="flex flex-col items-center pb-8 px-6"
+      style={{
+        background: 'linear-gradient(160deg, #f472b6 0%, #ef5ea8 55%, #db2777 100%)',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 32px)',
+      }}
+    >
       <Image
         src="/images/logo-wordmark.png"
         alt="Mydemy"
-        width={160}
-        height={52}
-        className="object-contain h-[52px] w-auto"
+        width={140}
+        height={46}
+        className="object-contain h-[44px] w-auto brightness-0 invert mb-2"
+        priority
       />
-      <p className="text-[16px] text-text-secondary mt-2.5">{subtitle}</p>
+      <p className="text-white/80 text-[14px]">{subtitle}</p>
     </div>
   );
 
   // ── First-login screen ─────────────────────────────────────
   if (screen === 'first-login') {
     return (
-      <div className="min-h-screen bg-ios-bg">
-        <LogoHeader subtitle="ตั้งรหัสผ่านสำหรับบัญชีของคุณ" />
-        <div className="max-w-md mx-auto px-6 py-6">
-          <InfoBox icon={<UserCircle size={22} className="text-primary shrink-0 mt-0.5" />}>
+      <AuthShell>
+        <Hero subtitle="ตั้งรหัสผ่านสำหรับบัญชีของคุณ" />
+        <FormBody>
+          <InfoBanner icon={<UserCircle size={20} className="text-primary shrink-0" />}>
             บัญชีของคุณถูกโอนมาจากระบบ Mydemy เดิม<br />กรุณากรอกอีเมลและตั้งรหัสผ่านใหม่
-          </InfoBox>
-          <InputField label="อีเมล" icon={<Mail size={20} />} type="email" value={email} onChange={setEmail} placeholder="อีเมลที่ลงทะเบียนไว้" />
-          <PasswordField label="รหัสผ่านใหม่" value={newPassword} onChange={setNewPassword} show={showNewPassword} onToggle={() => setShowNewPassword(!showNewPassword)} placeholder="อย่างน้อย 8 ตัวอักษร" />
-          <PasswordField label="ยืนยันรหัสผ่าน" value={confirmPassword} onChange={setConfirmPassword} show={showNewPassword} placeholder="กรอกรหัสผ่านอีกครั้ง" />
-          <SubmitButton loading={loading} onPress={handleFirstLogin} label="ตั้งรหัสผ่านและเข้าสู่ระบบ" loadingLabel="กำลังบันทึก..." />
-          <button onClick={() => setScreen('login')} className="flex items-center justify-center gap-1.5 w-full mt-5 text-sm text-text-secondary hover:text-text-primary">
+          </InfoBanner>
+          <Field label="อีเมล" icon={<Mail size={18} />} type="email" value={email} onChange={setEmail} placeholder="อีเมลที่ลงทะเบียนไว้" />
+          <PwField label="รหัสผ่านใหม่" value={newPassword} onChange={setNewPassword} show={showNewPassword} onToggle={() => setShowNewPassword(!showNewPassword)} placeholder="อย่างน้อย 8 ตัวอักษร" />
+          <PwField label="ยืนยันรหัสผ่าน" value={confirmPassword} onChange={setConfirmPassword} show={showNewPassword} placeholder="กรอกรหัสผ่านอีกครั้ง" />
+          <SubmitBtn loading={loading} onPress={handleFirstLogin} label="ตั้งรหัสผ่านและเข้าสู่ระบบ" />
+          <button onClick={() => setScreen('login')} className="w-full text-center py-3 text-[14px] text-text-secondary hover:text-text-primary transition-colors">
             ← กลับหน้าเข้าสู่ระบบ
           </button>
-        </div>
-      </div>
+        </FormBody>
+      </AuthShell>
     );
   }
 
   // ── Reset-password screen ──────────────────────────────────
   if (screen === 'reset-password') {
     return (
-      <div className="min-h-screen bg-ios-bg">
-        <LogoHeader subtitle="ตั้งรหัสผ่านใหม่" />
-        <div className="max-w-md mx-auto px-6 py-6">
-          <InfoBox icon={<Info size={20} className="text-primary shrink-0 mt-0.5" />}>
+      <AuthShell>
+        <Hero subtitle="ตั้งรหัสผ่านใหม่" />
+        <FormBody>
+          <InfoBanner icon={<Info size={20} className="text-primary shrink-0" />}>
             กรุณาตั้งรหัสผ่านใหม่เพื่อความปลอดภัยของบัญชีคุณ
-          </InfoBox>
-          <PasswordField label="รหัสผ่านใหม่" value={newPassword} onChange={setNewPassword} show={showNewPassword} onToggle={() => setShowNewPassword(!showNewPassword)} placeholder="อย่างน้อย 8 ตัวอักษร" />
-          <PasswordField label="ยืนยันรหัสผ่านใหม่" value={confirmPassword} onChange={setConfirmPassword} show={showNewPassword} placeholder="กรอกรหัสผ่านอีกครั้ง" />
-          <SubmitButton loading={loading} onPress={handleResetPassword} label="บันทึกรหัสผ่านใหม่" loadingLabel="กำลังบันทึก..." />
-        </div>
-      </div>
+          </InfoBanner>
+          <PwField label="รหัสผ่านใหม่" value={newPassword} onChange={setNewPassword} show={showNewPassword} onToggle={() => setShowNewPassword(!showNewPassword)} placeholder="อย่างน้อย 8 ตัวอักษร" />
+          <PwField label="ยืนยันรหัสผ่านใหม่" value={confirmPassword} onChange={setConfirmPassword} show={showNewPassword} placeholder="กรอกรหัสผ่านอีกครั้ง" />
+          <SubmitBtn loading={loading} onPress={handleResetPassword} label="บันทึกรหัสผ่านใหม่" />
+        </FormBody>
+      </AuthShell>
     );
   }
 
   // ── Login / Register ───────────────────────────────────────
   return (
-    <div className="min-h-screen bg-ios-bg">
-      <LogoHeader subtitle={screen === 'login' ? 'ยินดีต้อนรับกลับมา!' : 'สร้างบัญชีใหม่'} />
-      <div className="max-w-md mx-auto px-6 py-6">
+    <AuthShell>
+      <Hero subtitle={screen === 'login' ? 'ยินดีต้อนรับกลับมา 👋' : 'สร้างบัญชีใหม่ฟรี'} />
+      <FormBody>
+        {/* Tab switcher */}
+        <div className="flex bg-ios-bg rounded-2xl p-1 mb-5">
+          {(['login', 'register'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setScreen(s)}
+              className={`flex-1 py-2.5 rounded-xl text-[14px] font-bold transition-all ${
+                screen === s ? 'bg-white text-text-primary shadow-sm' : 'text-text-tertiary'
+              }`}
+            >
+              {s === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
+            </button>
+          ))}
+        </div>
+
         {screen === 'register' && (
-          <InputField label="ชื่อผู้ใช้" icon={<User size={20} />} type="text" value={username} onChange={setUsername} placeholder="ชื่อที่ต้องการแสดง" />
+          <Field label="ชื่อผู้ใช้" icon={<User size={18} />} type="text" value={username} onChange={setUsername} placeholder="ชื่อที่ต้องการแสดง" />
         )}
-        <InputField label="อีเมล" icon={<Mail size={20} />} type="email" value={email} onChange={setEmail} placeholder="example@email.com" />
-        <PasswordField
+        <Field label="อีเมล" icon={<Mail size={18} />} type="email" value={email} onChange={setEmail} placeholder="example@email.com" />
+        <PwField
           label="รหัสผ่าน"
           value={password}
           onChange={setPassword}
@@ -178,66 +191,76 @@ export default function AuthPage() {
         />
 
         {screen === 'login' && (
-          <div className="flex justify-between items-center mb-6">
-            <button onClick={() => { setNewPassword(''); setConfirmPassword(''); setScreen('first-login'); }} className="text-sm text-text-secondary font-medium hover:text-text-primary">
+          <div className="flex items-center justify-between mb-5 -mt-1">
+            <button
+              onClick={() => { setNewPassword(''); setConfirmPassword(''); setScreen('first-login'); }}
+              className="text-[13px] text-text-secondary hover:text-text-primary transition-colors"
+            >
               เข้าสู่ระบบครั้งแรก?
             </button>
-            <button className="text-sm text-primary font-semibold">ลืมรหัสผ่าน?</button>
+            <button className="text-[13px] text-primary font-semibold">ลืมรหัสผ่าน?</button>
           </div>
         )}
 
-        <SubmitButton
+        <SubmitBtn
           loading={loading}
           onPress={screen === 'login' ? handleLogin : handleRegister}
           label={screen === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
-          loadingLabel="กำลังดำเนินการ..."
         />
 
-        <div className="flex justify-center items-center gap-1 mt-6">
-          <span className="text-[15px] text-text-secondary">
-            {screen === 'login' ? 'ยังไม่มีบัญชี?' : 'มีบัญชีอยู่แล้ว?'}
-          </span>
-          <button
-            onClick={() => setScreen(screen === 'login' ? 'register' : 'login')}
-            className="text-[15px] text-primary font-bold"
-          >
-            {screen === 'login' ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-          </button>
-        </div>
-
-        <button onClick={() => router.replace('/home')} className="w-full text-center mt-4 py-3 text-sm text-[#AEAEB2] hover:text-text-secondary">
+        <button
+          onClick={() => router.replace('/home')}
+          className="w-full text-center py-3 text-[13px] text-text-tertiary hover:text-text-secondary transition-colors mt-1"
+        >
           ข้ามไปก่อน
         </button>
-      </div>
+      </FormBody>
+    </AuthShell>
+  );
+}
+
+// ── Layout shells ──────────────────────────────────────────
+function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-ios-bg">
+      {children}
+    </div>
+  );
+}
+
+function FormBody({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="max-w-md mx-auto px-5 py-6">
+      {children}
     </div>
   );
 }
 
 // ── Sub-components ─────────────────────────────────────────
-function InfoBox({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function InfoBanner({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 bg-primary/[0.06] border border-primary/15 rounded-2xl p-4 mb-6">
+    <div className="flex items-start gap-2.5 bg-primary/[0.07] border border-primary/15 rounded-2xl p-4 mb-5">
       {icon}
-      <p className="text-sm text-pink-900 leading-relaxed">{children}</p>
+      <p className="text-[13px] text-pink-900 leading-relaxed">{children}</p>
     </div>
   );
 }
 
-function InputField({ label, icon, type, value, onChange, placeholder }: {
+function Field({ label, icon, type, value, onChange, placeholder }: {
   label: string; icon: React.ReactNode; type: string;
   value: string; onChange: (v: string) => void; placeholder: string;
 }) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-semibold text-text-primary mb-2">{label}</label>
-      <div className="flex items-center bg-white border-[1.5px] border-separator rounded-2xl px-4 py-3.5 gap-3 shadow-[0_1px_6px_rgba(0,0,0,0.04)] focus-within:border-primary transition-colors">
-        <span className="text-text-secondary">{icon}</span>
+      <label className="block text-[13px] font-semibold text-text-primary mb-1.5">{label}</label>
+      <div className="flex items-center bg-white border border-separator rounded-2xl px-4 py-3.5 gap-3 focus-within:border-primary transition-colors shadow-sm">
+        <span className="text-text-tertiary shrink-0">{icon}</span>
         <input
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 text-[16px] text-text-primary bg-transparent outline-none placeholder:text-[#9CA3AF]"
+          className="flex-1 text-[15px] text-text-primary bg-transparent outline-none placeholder:text-text-tertiary"
           autoCapitalize="none"
         />
       </div>
@@ -245,25 +268,26 @@ function InputField({ label, icon, type, value, onChange, placeholder }: {
   );
 }
 
-function PasswordField({ label, value, onChange, show, onToggle, placeholder }: {
+function PwField({ label, value, onChange, show, onToggle, placeholder }: {
   label: string; value: string; onChange?: (v: string) => void;
   show: boolean; onToggle?: () => void; placeholder: string;
 }) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-semibold text-text-primary mb-2">{label}</label>
-      <div className="flex items-center bg-white border-[1.5px] border-separator rounded-2xl px-4 py-3.5 gap-3 shadow-[0_1px_6px_rgba(0,0,0,0.04)] focus-within:border-primary transition-colors">
-        <Lock size={20} className="text-text-secondary shrink-0" />
+      <label className="block text-[13px] font-semibold text-text-primary mb-1.5">{label}</label>
+      <div className="flex items-center bg-white border border-separator rounded-2xl px-4 py-3.5 gap-3 focus-within:border-primary transition-colors shadow-sm">
+        <Lock size={18} className="text-text-tertiary shrink-0" />
         <input
           type={show ? 'text' : 'password'}
           value={value}
           onChange={e => onChange?.(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 text-[16px] text-text-primary bg-transparent outline-none placeholder:text-[#9CA3AF]"
+          className="flex-1 text-[15px] text-text-primary bg-transparent outline-none placeholder:text-text-tertiary"
+          autoCapitalize="none"
         />
         {onToggle && (
-          <button type="button" onClick={onToggle} className="text-text-secondary hover:text-text-primary">
-            {show ? <EyeOff size={20} /> : <Eye size={20} />}
+          <button type="button" onClick={onToggle} className="text-text-tertiary hover:text-text-secondary transition-colors">
+            {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
       </div>
@@ -271,16 +295,15 @@ function PasswordField({ label, value, onChange, show, onToggle, placeholder }: 
   );
 }
 
-function SubmitButton({ loading, onPress, label, loadingLabel }: {
-  loading: boolean; onPress: () => void; label: string; loadingLabel: string;
-}) {
+function SubmitBtn({ loading, onPress, label }: { loading: boolean; onPress: () => void; label: string }) {
   return (
     <button
       onClick={onPress}
       disabled={loading}
-      className="w-full bg-primary text-white font-bold text-[17px] py-[17px] rounded-2xl shadow-[0_6px_14px_rgba(239,94,168,0.3)] disabled:opacity-65 hover:opacity-90 transition-opacity mt-2"
+      className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-4 rounded-2xl mt-2 mb-3 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-[0_6px_20px_rgba(239,94,168,0.35)]"
     >
-      {loading ? loadingLabel : label}
+      {loading && <Loader2 size={18} className="animate-spin" />}
+      {label}
     </button>
   );
 }

@@ -119,8 +119,10 @@ function QuizPageInner() {
     const passed = results.passed;
     return (
       <div className="min-h-screen bg-ios-bg">
-        <header className="bg-white border-b border-separator px-4 pt-safe flex items-center justify-center py-4">
-          <h1 className="text-[17px] font-bold text-text-primary">ผลการทดสอบ</h1>
+        <header className="bg-white border-b border-separator header-safe">
+          <div className="px-4 py-4 flex items-center justify-center">
+            <h1 className="text-[17px] font-bold text-text-primary">ผลการทดสอบ</h1>
+          </div>
         </header>
         <div className="max-w-lg mx-auto px-4 py-8 flex flex-col items-center text-center gap-5">
           <div className={`rounded-3xl p-8 w-full flex flex-col items-center gap-3 ${passed ? 'bg-[#10B981]/10' : 'bg-red-50'}`}>
@@ -161,8 +163,9 @@ function QuizPageInner() {
   return (
     <div className="min-h-screen bg-ios-bg flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-separator px-4 pt-safe flex items-center gap-3 py-3 sticky top-0 z-10">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0">
+      <header className="bg-white border-b border-separator sticky top-0 z-10 header-safe">
+        <div className="px-4 py-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ios-bg transition-colors shrink-0">
           <ArrowLeft size={22} className="text-text-primary" />
         </button>
         <h1 className="flex-1 text-[15px] font-bold text-text-primary truncate">{quiz.title}</h1>
@@ -172,6 +175,7 @@ function QuizPageInner() {
             {formatTime(timeLeft)}
           </div>
         )}
+        </div>
       </header>
 
       {/* Progress bar */}
