@@ -24,7 +24,7 @@ export function NavHeader({
 }: { title: string; right?: ReactNode; onBack?: () => void }) {
   const router = useRouter();
   return (
-    <header className="bg-surface border-b border-rim sticky top-0 z-20 header-shell">
+    <header className="bg-surface sticky top-0 z-20 header-shell" style={{ boxShadow: '0 1px 0 #e8e8f0, 0 2px 8px rgba(0,0,0,0.04)' }}>
       <div className="flex items-center gap-1 px-3 h-[54px] max-w-lg mx-auto">
         <button
           onClick={onBack ?? (() => router.back())}
@@ -44,7 +44,7 @@ export function TabHeader({
   title, right,
 }: { title: string; right?: ReactNode }) {
   return (
-    <div className="bg-surface border-b border-rim sticky top-0 z-20 header-shell">
+    <div className="bg-surface sticky top-0 z-20 header-shell" style={{ boxShadow: '0 1px 0 #e8e8f0, 0 2px 8px rgba(0,0,0,0.04)' }}>
       <div className="flex items-center justify-between px-4 h-[54px] max-w-lg mx-auto">
         <h1 className="text-[22px] font-extrabold text-ink">{title}</h1>
         {right && <div>{right}</div>}

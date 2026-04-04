@@ -86,8 +86,8 @@ html, body {
 /* ─────────────────────────────────────────────────────────────
    CARD SHADOW
    ───────────────────────────────────────────────────────────── */
-.card-shadow { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07); }
-.card-shadow-lg { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10); }
+.card-shadow    { box-shadow: 0 1px 0 #e8e8f0, 0 4px 16px rgba(0,0,0,0.08); }
+.card-shadow-lg { box-shadow: 0 1px 0 #e8e8f0, 0 8px 28px rgba(0,0,0,0.12); }
 
 /* ─────────────────────────────────────────────────────────────
    ANIMATIONS
