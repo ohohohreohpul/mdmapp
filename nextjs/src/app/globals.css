@@ -1,103 +1,131 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   ───────────────────────────────────────────────────────────── */
 @theme {
   /* Brand */
-  --color-primary: #ef5ea8;
-  --color-primary-dark: #d94d94;
-  --color-primary-light: #f7a8cd;
-  --color-primary-surface: rgba(239, 94, 168, 0.10);
+  --color-brand:          #e8409b;
+  --color-brand-dark:     #c7357f;
+  --color-brand-light:    #fce7f3;
+  --color-brand-surface:  rgba(232, 64, 155, 0.09);
 
   /* Gamification */
-  --color-xp: #FF9500;
-  --color-streak: #FF3B30;
-  --color-level: #AF52DE;
+  --color-xp:      #f97316;
+  --color-streak:  #ef4444;
+  --color-level:   #8b5cf6;
 
-  /* iOS backgrounds */
-  --color-ios-bg: #F2F2F7;
-  --color-surface: #FFFFFF;
+  /* Surfaces */
+  --color-bg:      #f3f3f8;
+  --color-surface: #ffffff;
+  --color-raised:  #f9f9fc;
 
-  /* Text */
-  --color-text-primary: #1C1C1E;
-  --color-text-secondary: #636366;
-  --color-text-tertiary: #AEAEB2;
+  /* Ink (text) */
+  --color-ink:   #0d0d14;
+  --color-ink-2: #58587a;
+  --color-ink-3: #a5a5c0;
+
+  /* UI chrome */
+  --color-rim:  #e8e8f0;
 
   /* Semantic */
-  --color-success: #34C759;
-  --color-warning: #FF9500;
-  --color-error: #FF3B30;
-  --color-info: #007AFF;
+  --color-ok:   #16a34a;
+  --color-bad:  #dc2626;
+  --color-warn: #d97706;
+  --color-info: #2563eb;
 
-  /* Separator */
-  --color-separator: #E5E5EA;
-
-  /* Border radius */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
-  --radius-full: 9999px;
+  /* ── Legacy aliases so existing admin pages don't break ── */
+  --color-primary:         #e8409b;
+  --color-primary-dark:    #c7357f;
+  --color-primary-light:   #fce7f3;
+  --color-primary-surface: rgba(232, 64, 155, 0.09);
+  --color-ios-bg:          #f3f3f8;
+  --color-text-primary:    #0d0d14;
+  --color-text-secondary:  #58587a;
+  --color-text-tertiary:   #a5a5c0;
+  --color-separator:       #e8e8f0;
+  --color-success:         #16a34a;
+  --color-error:           #dc2626;
+  --color-warning:         #d97706;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ─────────────────────────────────────────────────────────────
+   RESET & BASE
+   ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html,
-body {
+html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-  background-color: #F2F2F7;
-  color: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  background: #f3f3f8;
+  color: #0d0d14;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
-/* PWA safe area utilities — !important ensures they win over py-N shorthand */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
-.pt-safe { padding-top: env(safe-area-inset-top, 0px) !important; }
-.pl-safe { padding-left: env(safe-area-inset-left, 0px) !important; }
-.pr-safe { padding-right: env(safe-area-inset-right, 0px) !important; }
+/* ─────────────────────────────────────────────────────────────
+   SAFE AREA UTILITIES
+   ───────────────────────────────────────────────────────────── */
+.safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-/*
- * Header safe-area helper: use as a wrapper div around a sticky header.
- * Sets only the top padding so the browser status bar is cleared;
- * inner content provides its own vertical padding via py-N.
- */
-.header-safe {
+/* Header wrapper: adds safe-area-top so inner content uses normal py-N */
+.header-shell {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Scrollbar hide */
-.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
-.scrollbar-hide::-webkit-scrollbar { display: none; }
+/* ─────────────────────────────────────────────────────────────
+   SCROLL UTILITIES
+   ───────────────────────────────────────────────────────────── */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Page section header — standard page side padding */
-.page-x { padding-left: 16px; padding-right: 16px; }
+/* ─────────────────────────────────────────────────────────────
+   CARD SHADOW
+   ───────────────────────────────────────────────────────────── */
+.card-shadow { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07); }
+.card-shadow-lg { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10); }
 
-/* Animations */
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(12px); }
+/* ─────────────────────────────────────────────────────────────
+   ANIMATIONS
+   ───────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes slideUpPop {
-  from { opacity: 1; transform: translateX(-50%) translateY(0); }
-  to   { opacity: 0; transform: translateX(-50%) translateY(-40px); }
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
 }
-@keyframes fadeScaleIn {
-  from { opacity: 0; transform: scale(0.8); }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.82); }
   to   { opacity: 1; transform: scale(1); }
 }
 @keyframes breathe {
-  0%, 100% { transform: scale(0.88); opacity: 0.5; }
+  0%, 100% { transform: scale(0.88); opacity: 0.45; }
   50%       { transform: scale(1.12); opacity: 0; }
 }
-@keyframes progressFill {
-  from { width: 0%; }
-  to   { width: 100%; }
+@keyframes fillBar {
+  from { width: 0%; } to { width: 100%; }
+}
+@keyframes popUp {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-36px); }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+.animate-fade-up   { animation: fadeUp  0.35s ease-out both; }
+.animate-fade-in   { animation: fadeIn  0.25s ease-out both; }
+.animate-scale-in  { animation: scaleIn 0.4s  ease-out both; }
+.animate-breathe   { animation: breathe 1.6s  ease-in-out infinite; }
+.animate-fill-bar  { animation: fillBar 2s    ease-out forwards; }
+.animate-pop-up    { animation: popUp  1.4s   ease-out forwards; }
+.animate-pulse-slow { animation: pulse 1.8s   ease-in-out infinite; }

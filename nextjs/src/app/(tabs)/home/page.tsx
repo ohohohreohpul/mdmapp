@@ -1,239 +1,212 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Bell, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle, Loader2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { ARTICLES } from '@/lib/articles';
+import { GradHero, HScroll, SectionHead, ProgressBar, Skel } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
-const MOCK_ANNOUNCEMENTS = [
-  { id: '1', title: 'ยินดีต้อนรับสู่ Mydemy! 🎉', body: 'เราพร้อมช่วยคุณพัฒนาทักษะด้วยคอร์สออนไลน์คุณภาพสูง', color: '#ef5ea8', icon: '📣' },
-  { id: '2', title: 'คอร์สใหม่มาแล้ว!', body: 'เปิดตัวคอร์ส UX/UI Design ฉบับสมบูรณ์ สมัครได้เลยวันนี้', color: '#d94d94', icon: '🆕' },
-];
-
-const CAREER_PATHS = [
+const PATHS = [
   { id: 'ux-design',          icon: '🎨', color: '#6366F1', bg: '#EEF2FF', label: 'UX Design' },
   { id: 'data-analysis',      icon: '📊', color: '#10B981', bg: '#ECFDF5', label: 'Data Analysis' },
-  { id: 'digital-marketing',  icon: '📣', color: '#F59E0B', bg: '#FFFBEB', label: 'Digital Marketing' },
-  { id: 'project-management', icon: '📋', color: '#EF5EA8', bg: '#FDF2F8', label: 'Project Mgmt' },
+  { id: 'digital-marketing',  icon: '📣', color: '#F59E0B', bg: '#FFFBEB', label: 'Digital Mktg' },
+  { id: 'project-management', icon: '📋', color: '#e8409b', bg: '#fce7f3', label: 'Project Mgmt' },
   { id: 'learning-designer',  icon: '🎓', color: '#8B5CF6', bg: '#F5F3FF', label: 'Learning Design' },
   { id: 'qa-tester',          icon: '🐛', color: '#D946EF', bg: '#FDF4FF', label: 'QA Tester' },
 ];
 
-function streakMsg(streak: number): string {
-  if (streak >= 30) return `🌟 ${streak} วันติดต่อกัน! สุดยอดมาก!`;
-  if (streak >= 14) return `💎 ${streak} วัน กำลังไปได้ดีมาก!`;
-  if (streak >= 7)  return `🔥 ${streak} วัน! ครบสัปดาห์แรกแล้ว!`;
-  if (streak >= 3)  return `⚡ ${streak} วันติดต่อกัน ไปต่อเลย!`;
-  if (streak === 2) return `✨ 2 วันติดต่อกัน! รักษาไว้นะ`;
-  if (streak === 1) return `🌱 วันแรก เริ่มต้นที่ดี!`;
+const ANNOUNCEMENTS = [
+  { id: '1', title: 'ยินดีต้อนรับสู่ Mydemy! 🎉', body: 'เราพร้อมช่วยคุณพัฒนาทักษะด้วยคอร์สออนไลน์คุณภาพสูง', grad: 'from-[#e8409b] to-[#c7357f]' },
+  { id: '2', title: 'คอร์สใหม่มาแล้ว! 🆕', body: 'เปิดตัวคอร์ส UX/UI Design ฉบับสมบูรณ์ สมัครได้เลย', grad: 'from-[#8b5cf6] to-[#6d28d9]' },
+];
+
+function streakMsg(n: number) {
+  if (n >= 30) return `🌟 ${n} วัน! สุดยอดมาก`;
+  if (n >= 14) return `💎 ${n} วัน กำลังไปได้ดีมาก`;
+  if (n >= 7)  return `🔥 ${n} วัน! ครบสัปดาห์แล้ว`;
+  if (n >= 3)  return `⚡ ${n} วันต่อเนื่อง ไปต่อเลย`;
+  if (n === 2) return `✨ 2 วันต่อเนื่อง รักษาไว้นะ`;
+  if (n === 1) return `🌱 วันแรก เริ่มต้นที่ดี`;
   return `🎯 เช็คอินวันนี้เพื่อเริ่ม streak`;
 }
 
 export default function HomePage() {
   const { user } = useUser();
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [dash, setDash] = useState<any>(null);
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [checkedInToday, setCheckedInToday] = useState(false);
+  const [checkedIn, setCheckedIn] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
-  const [checkInXp, setCheckInXp] = useState(0);
-  const [showXpPop, setShowXpPop] = useState(false);
+  const [xpPop, setXpPop] = useState(0);
+  const [showPop, setShowPop] = useState(false);
 
-  const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`;
+  const todayKey = `ci_${new Date().toISOString().slice(0, 10)}`;
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/courses?published_only=true`);
-      const all = Array.isArray(res.data) ? res.data : [];
+      const r = await axios.get(`${API_URL}/api/courses?published_only=true`);
+      const all = Array.isArray(r.data) ? r.data : [];
       setCourses([...all].sort(() => 0.5 - Math.random()).slice(0, 6));
       if (user?._id) {
         axios.get(`${API_URL}/api/gamification/dashboard/${user._id}`)
-          .then(r => setDashboard(r.data)).catch(() => {});
+          .then(r => setDash(r.data)).catch(() => {});
       }
-      const done = typeof window !== 'undefined' ? localStorage.getItem(todayKey) : null;
-      setCheckedInToday(done === 'true');
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
+      setCheckedIn(localStorage.getItem(todayKey) === 'true');
+    } catch { /* silent */ } finally { setLoading(false); }
   }, [user?._id, todayKey]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleCheckIn = async () => {
-    if (!user || checkingIn || checkedInToday) return;
+  const doCheckIn = async () => {
+    if (!user || checkingIn || checkedIn) return;
     setCheckingIn(true);
     try {
-      const res = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
-      setCheckedInToday(true);
-      if (typeof window !== 'undefined') localStorage.setItem(todayKey, 'true');
-      if (!res.data.already_checked_in) {
-        const awarded = res.data.xp_awarded ?? 20;
-        setCheckInXp(awarded);
-        setShowXpPop(true);
-        setTimeout(() => setShowXpPop(false), 1400);
-        setDashboard((prev: any) => prev ? {
-          ...prev,
-          today_xp: (prev.today_xp ?? 0) + awarded,
-          daily_progress_percent: Math.min(100, Math.round(((prev.today_xp ?? 0) + awarded) / (prev.daily_goal || 30) * 100)),
-          current_streak: res.data.streak ?? prev.current_streak,
-        } : prev);
+      const r = await axios.post(`${API_URL}/api/gamification/daily-checkin`, { user_id: user._id });
+      setCheckedIn(true);
+      localStorage.setItem(todayKey, 'true');
+      if (!r.data.already_checked_in) {
+        const xp = r.data.xp_awarded ?? 20;
+        setXpPop(xp); setShowPop(true);
+        setTimeout(() => setShowPop(false), 1400);
+        setDash((p: any) => p ? {
+          ...p,
+          today_xp: (p.today_xp ?? 0) + xp,
+          daily_progress_percent: Math.min(100, Math.round(((p.today_xp ?? 0) + xp) / (p.daily_goal || 30) * 100)),
+          current_streak: r.data.streak ?? p.current_streak,
+        } : p);
       }
-    } catch { /* silently fail */ } finally { setCheckingIn(false); }
+    } catch { /* silent */ } finally { setCheckingIn(false); }
   };
 
-  const streak   = dashboard?.current_streak ?? 0;
-  const level    = dashboard?.level_info?.level ?? 1;
-  const levelPct = dashboard?.level_info?.progress_percent ?? 0;
-  const goalPct  = Math.min(dashboard?.daily_progress_percent ?? 0, 100);
-  const todayXp  = dashboard?.today_xp ?? 0;
-  const dailyGoal = dashboard?.daily_goal ?? 30;
-  const xpTotal  = dashboard?.xp_total ?? 0;
-  const firstName = (user?.display_name || user?.username || 'คุณ').split(' ')[0];
-  const initial   = (user?.display_name || user?.username || '?')[0].toUpperCase();
+  const streak  = dash?.current_streak ?? 0;
+  const level   = dash?.level_info?.level ?? 1;
+  const lvlPct  = dash?.level_info?.progress_percent ?? 0;
+  const goalPct = Math.min(dash?.daily_progress_percent ?? 0, 100);
+  const todayXp = dash?.today_xp ?? 0;
+  const goal    = dash?.daily_goal ?? 30;
+  const xpTotal = dash?.xp_total ?? 0;
+  const name    = (user?.display_name || user?.username || 'คุณ').split(' ')[0];
+  const initial = (user?.display_name || user?.username || '?')[0].toUpperCase();
 
   return (
-    <div className="min-h-screen bg-ios-bg">
+    <div className="min-h-screen bg-bg">
       <div className="max-w-lg mx-auto">
 
-        {/* ── Header ─────────────────────────────────────────── */}
-        <div
-          className="px-4 pb-5"
-          style={{
-            background: 'linear-gradient(160deg, #f472b6 0%, #ef5ea8 55%, #db2777 100%)',
-            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)',
-          }}
-        >
-          {/* Top row */}
+        {/* ── Hero header ─────────────────────────────────── */}
+        <GradHero>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0 border border-white/30">
+            <div className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-[15px]">{initial}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white/70 text-[11px] font-medium">สวัสดี 👋</p>
-              <p className="text-white font-bold text-[16px] truncate leading-tight">{firstName}</p>
+              <p className="text-white/65 text-[11px] font-medium leading-none mb-0.5">สวัสดี 👋</p>
+              <p className="text-white font-bold text-[16px] truncate leading-tight">{name}</p>
             </div>
-            <Link href="/notifications" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors relative">
-              <Bell size={20} className="text-white/90" />
+            <Link href="/notifications" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
+              <Bell size={20} className="text-white/85" />
             </Link>
           </div>
 
-          {/* Stats pills */}
+          {/* Stat pills */}
           <div className="flex gap-2 mb-3">
-            <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 border border-white/10">
-              <span className="text-[13px]">🔥</span>
-              <span className="text-[13px] font-bold text-white">{streak}</span>
-              <span className="text-[11px] text-white/65">วัน</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 border border-white/10">
-              <span className="text-[13px]">⚡</span>
-              <span className="text-[13px] font-bold text-white">{xpTotal}</span>
-              <span className="text-[11px] text-white/65">XP</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 border border-white/10">
-              <span className="text-[13px]">👑</span>
-              <span className="text-[13px] font-bold text-yellow-300">Lv.{level}</span>
-            </div>
+            {[
+              { e: '🔥', v: streak,         s: 'วัน' },
+              { e: '⚡', v: xpTotal,        s: 'XP' },
+              { e: '👑', v: `Lv.${level}`,  s: '', gold: true },
+            ].map((s, i) => (
+              <div key={i} className="flex items-center gap-1.5 bg-white/15 border border-white/10 rounded-full px-3 py-1.5">
+                <span className="text-[13px]">{s.e}</span>
+                <span className={`text-[13px] font-bold ${s.gold ? 'text-yellow-300' : 'text-white'}`}>{s.v}</span>
+                {s.s && <span className="text-[11px] text-white/60">{s.s}</span>}
+              </div>
+            ))}
           </div>
 
-          {/* Level progress */}
+          {/* Level bar */}
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-full bg-white/80 rounded-full transition-all duration-700" style={{ width: `${levelPct}%` }} />
+              <div className="h-full bg-white/75 rounded-full transition-all duration-700" style={{ width: `${lvlPct}%` }} />
             </div>
-            <span className="text-[10px] text-white/60 shrink-0">{levelPct}% → Lv.{level + 1}</span>
+            <span className="text-[10px] text-white/55 shrink-0">{lvlPct}% → Lv.{level + 1}</span>
           </div>
-        </div>
+        </GradHero>
 
         <div className="px-4 py-4 flex flex-col gap-5">
 
           {/* ── Daily card ──────────────────────────────────── */}
-          <div className="bg-white rounded-3xl p-4 shadow-sm border border-separator/50">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-surface rounded-2xl p-4 card-shadow">
+            <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="text-[14px] font-bold text-text-primary">🎯 เป้าหมายวันนี้</p>
-                <p className="text-[12px] text-text-secondary mt-0.5">
-                  {goalPct >= 100 ? '🎉 บรรลุเป้าหมายแล้ว!' : `เหลืออีก ${Math.max(0, dailyGoal - todayXp)} XP`}
+                <p className="text-[14px] font-bold text-ink">🎯 เป้าหมายวันนี้</p>
+                <p className="text-[12px] text-ink-3 mt-0.5">
+                  {goalPct >= 100 ? '🎉 บรรลุเป้าหมายแล้ว!' : `เหลืออีก ${Math.max(0, goal - todayXp)} XP`}
                 </p>
               </div>
-              <div className="text-right">
-                <span className="text-[22px] font-extrabold text-text-primary">{todayXp}</span>
-                <span className="text-[12px] text-text-tertiary">/{dailyGoal}</span>
-              </div>
+              <span className="text-[22px] font-extrabold text-ink leading-none">
+                {todayXp}<span className="text-[12px] font-normal text-ink-3">/{goal}</span>
+              </span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
-              <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${goalPct}%` }} />
-            </div>
+            <ProgressBar pct={goalPct} className="mb-4" />
 
-            <div className="h-px bg-separator mb-4" />
+            <div className="h-px bg-rim mb-4" />
 
             {user ? (
               <div className="flex items-center gap-3">
-                {/* Streak counter */}
+                {/* Streak */}
                 <div className="flex flex-col items-center w-12 shrink-0">
-                  <span className="text-[26px] leading-none">{checkedInToday ? '🔥' : '💤'}</span>
-                  <span className="text-[20px] font-extrabold text-text-primary leading-none mt-0.5">{streak}</span>
-                  <span className="text-[10px] text-text-secondary">วัน</span>
+                  <span className="text-[26px] leading-none">{checkedIn ? '🔥' : '💤'}</span>
+                  <span className="text-[20px] font-extrabold text-ink leading-none mt-0.5">{streak}</span>
+                  <span className="text-[10px] text-ink-3">วัน</span>
                 </div>
 
                 {/* Week dots */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-semibold text-text-primary mb-2 truncate">{streakMsg(streak)}</p>
+                  <p className="text-[12px] font-semibold text-ink mb-2 truncate">{streakMsg(streak)}</p>
                   <div className="flex gap-1">
-                    {[1,2,3,4,5,6,7].map(day => (
-                      <div key={day} className="flex flex-col items-center gap-0.5">
-                        <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center text-[11px] ${
-                          day <= streak ? 'bg-orange-100' : 'bg-gray-100'
-                        }`}>
-                          {day <= streak ? '🔥' : ''}
+                    {[1,2,3,4,5,6,7].map(d => (
+                      <div key={d} className="flex flex-col items-center gap-0.5">
+                        <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center text-[11px] ${d <= streak ? 'bg-orange-100' : 'bg-raised'}`}>
+                          {d <= streak ? '🔥' : ''}
                         </div>
-                        <span className="text-[9px] text-text-tertiary">{day}</span>
+                        <span className="text-[9px] text-ink-3">{d}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Check-in button */}
+                {/* Check-in btn */}
                 <div className="relative shrink-0">
-                  {!checkedInToday ? (
+                  {!checkedIn ? (
                     <button
-                      onClick={handleCheckIn}
+                      onClick={doCheckIn}
                       disabled={checkingIn}
-                      className="flex flex-col items-center bg-primary text-white rounded-2xl px-3 py-2.5 disabled:opacity-50 hover:opacity-90 active:scale-95 transition-all"
+                      className="flex flex-col items-center bg-brand text-white rounded-2xl px-3 py-2.5 disabled:opacity-50 active:scale-95 transition-all"
                     >
                       {checkingIn
                         ? <Loader2 size={18} className="animate-spin" />
-                        : <>
-                          <span className="text-[18px] leading-none">✅</span>
-                          <span className="text-[11px] font-bold mt-1">เช็คอิน</span>
-                          <span className="text-[10px] opacity-75">+20 XP</span>
-                        </>}
+                        : <><span className="text-[18px] leading-none">✅</span>
+                           <span className="text-[11px] font-bold mt-1">เช็คอิน</span>
+                           <span className="text-[10px] opacity-70">+20 XP</span></>}
                     </button>
                   ) : (
                     <div className="flex flex-col items-center gap-0.5">
-                      <CheckCircle size={30} className="text-success" />
-                      <span className="text-[10px] text-success font-bold">เช็คอินแล้ว</span>
-                      {checkInXp > 0 && <span className="text-[10px] text-text-secondary">+{checkInXp} XP</span>}
+                      <CheckCircle size={30} className="text-ok" />
+                      <span className="text-[10px] text-ok font-bold">เช็คอินแล้ว</span>
                     </div>
                   )}
-                  {showXpPop && (
-                    <div
-                      className="absolute -top-8 left-1/2 text-[13px] font-bold text-primary whitespace-nowrap"
-                      style={{ transform: 'translateX(-50%)', animation: 'slideUpPop 1.4s ease-out forwards' }}
-                    >
-                      +{checkInXp} XP 🎉
-                    </div>
+                  {showPop && (
+                    <span className="absolute -top-8 left-1/2 text-[13px] font-bold text-brand whitespace-nowrap animate-pop-up">
+                      +{xpPop} XP 🎉
+                    </span>
                   )}
                 </div>
               </div>
             ) : (
-              <Link href="/auth" className="flex items-center justify-center gap-2 bg-primary/10 rounded-2xl py-3 text-[14px] font-bold text-primary">
+              <Link href="/auth" className="flex items-center justify-center gap-2 bg-brand-surface rounded-xl py-3 text-[14px] font-bold text-brand">
                 เข้าสู่ระบบเพื่อติดตามความคืบหน้า
               </Link>
             )}
@@ -241,88 +214,81 @@ export default function HomePage() {
 
           {/* ── Announcements ────────────────────────────────── */}
           <div>
-            <SectionHeader title="📢 ประกาศ" />
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-              {MOCK_ANNOUNCEMENTS.map(a => (
-                <div
-                  key={a.id}
-                  className="rounded-2xl p-4 min-w-[260px] shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${a.color}ee, ${a.color})` }}
-                >
-                  <p className="text-white font-bold text-[14px] mb-1">{a.icon} {a.title}</p>
-                  <p className="text-white/80 text-[12px] leading-relaxed">{a.body}</p>
+            <SectionHead title="📢 ประกาศ" />
+            <HScroll>
+              {ANNOUNCEMENTS.map(a => (
+                <div key={a.id} className={`rounded-2xl p-4 min-w-[260px] shrink-0 bg-gradient-to-br ${a.grad}`}>
+                  <p className="text-white font-bold text-[14px] mb-1">{a.title}</p>
+                  <p className="text-white/75 text-[12px] leading-relaxed">{a.body}</p>
                 </div>
               ))}
-            </div>
+            </HScroll>
           </div>
 
           {/* ── Career Paths ──────────────────────────────────── */}
           <div>
-            <SectionHeader title="🗺️ Career Paths" href="/explore" />
-            <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
-              {CAREER_PATHS.map(p => (
+            <SectionHead title="🗺️ Career Paths" href="/explore" />
+            <HScroll>
+              {PATHS.map(p => (
                 <Link
-                  key={p.id}
-                  href="/explore"
-                  className="rounded-2xl p-3.5 min-w-[92px] shrink-0 flex flex-col items-center gap-1.5 hover:scale-105 active:scale-95 transition-transform"
+                  key={p.id} href="/explore"
+                  className="rounded-2xl p-3.5 min-w-[90px] shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
                   style={{ backgroundColor: p.bg }}
                 >
                   <span className="text-[24px] leading-none">{p.icon}</span>
                   <span className="text-[11px] font-bold text-center leading-tight" style={{ color: p.color }}>{p.label}</span>
                 </Link>
               ))}
-            </div>
+            </HScroll>
           </div>
 
-          {/* ── Recommended Courses ───────────────────────────── */}
-          {courses.length > 0 && (
+          {/* ── Recommended courses ───────────────────────────── */}
+          {(loading || courses.length > 0) && (
             <div>
-              <SectionHeader title="✨ แนะนำสำหรับคุณ" href="/explore" />
-              <div className="grid grid-cols-2 gap-2.5">
-                {courses.slice(0, 6).map((course: any) => {
-                  const path = CAREER_PATHS.find(p => course.career_path?.toLowerCase().includes(p.id.split('-')[0]));
-                  return (
-                    <Link
-                      key={course._id}
-                      href={`/course-detail?id=${course._id}`}
-                      className="bg-white rounded-2xl p-3 border border-separator/60 flex flex-col gap-2 hover:border-primary/30 active:scale-[0.98] transition-all shadow-sm"
-                    >
-                      <div
-                        className="w-full h-[60px] rounded-xl flex items-center justify-center text-[26px]"
-                        style={{ backgroundColor: path?.bg ?? '#F2F2F7' }}
+              <SectionHead title="✨ แนะนำสำหรับคุณ" href="/explore" />
+              {loading ? (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[1,2,3,4].map(i => <Skel key={i} className="h-[130px] rounded-2xl" />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {courses.map((c: any) => {
+                    const p = PATHS.find(p => c.career_path?.toLowerCase().includes(p.id.split('-')[0]));
+                    return (
+                      <Link
+                        key={c._id}
+                        href={`/course-detail?id=${c._id}`}
+                        className="bg-surface rounded-2xl p-3 card-shadow flex flex-col gap-2 active:scale-[0.97] transition-transform"
                       >
-                        {path?.icon ?? '📚'}
-                      </div>
-                      <p className="text-[13px] font-bold text-text-primary line-clamp-2 leading-snug">{course.title}</p>
-                      <p className="text-[11px] text-text-tertiary">{course.total_lessons ?? 0} บทเรียน</p>
-                    </Link>
-                  );
-                })}
-              </div>
+                        <div className="w-full h-[56px] rounded-xl flex items-center justify-center text-[26px]"
+                             style={{ backgroundColor: p?.bg ?? '#f3f3f8' }}>{p?.icon ?? '📚'}</div>
+                        <p className="text-[13px] font-bold text-ink line-clamp-2 leading-snug">{c.title}</p>
+                        <p className="text-[11px] text-ink-3">{c.total_lessons ?? 0} บทเรียน</p>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* ── Articles ──────────────────────────────────────── */}
           <div>
-            <SectionHeader title="📖 บทความแนะนำ" href="/articles" />
+            <SectionHead title="📖 บทความแนะนำ" href="/articles" />
             <div className="flex flex-col gap-2.5">
-              {ARTICLES.slice(0, 3).map(article => (
+              {ARTICLES.slice(0, 3).map(a => (
                 <Link
-                  key={article.id}
-                  href={`/articles/${article.id}`}
-                  className="bg-white rounded-2xl p-3.5 flex items-center gap-3 border border-separator/60 hover:border-primary/30 transition-colors shadow-sm"
+                  key={a.id}
+                  href={`/articles/${a.id}`}
+                  className="bg-surface rounded-2xl p-3.5 flex items-center gap-3 card-shadow active:scale-[0.98] transition-transform"
                 >
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0"
-                    style={{ backgroundColor: article.cover_color + '20' }}
-                  >
-                    {article.cover_emoji}
-                  </div>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0"
+                       style={{ backgroundColor: a.cover_color + '22' }}>{a.cover_emoji}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-bold text-text-primary line-clamp-2 leading-snug">{article.title}</p>
-                    <p className="text-[11px] text-text-tertiary mt-0.5">{article.read_time} นาที · {article.category}</p>
+                    <p className="text-[13px] font-bold text-ink line-clamp-2 leading-snug">{a.title}</p>
+                    <p className="text-[11px] text-ink-3 mt-0.5">{a.read_time} นาที · {a.category}</p>
                   </div>
-                  <ChevronRight size={16} className="text-text-tertiary shrink-0" />
+                  <ChevronRight size={16} className="text-ink-3 shrink-0" />
                 </Link>
               ))}
             </div>
@@ -330,19 +296,6 @@ export default function HomePage() {
 
         </div>
       </div>
-    </div>
-  );
-}
-
-function SectionHeader({ title, href }: { title: string; href?: string }) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <p className="text-[15px] font-bold text-text-primary">{title}</p>
-      {href && (
-        <Link href={href} className="text-[13px] text-primary font-semibold flex items-center gap-0.5">
-          ดูทั้งหมด <ChevronRight size={14} />
-        </Link>
-      )}
     </div>
   );
 }

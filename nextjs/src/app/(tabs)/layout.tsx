@@ -5,47 +5,49 @@ import { usePathname } from 'next/navigation';
 import { Home, Compass, Briefcase, BookOpen, User } from 'lucide-react';
 
 const TABS = [
-  { href: '/home',     label: 'หน้าแรก', icon: Home },
-  { href: '/explore',  label: 'สำรวจ',    icon: Compass },
-  { href: '/jobs',     label: 'งาน',      icon: Briefcase },
-  { href: '/learning', label: 'เรียน',    icon: BookOpen },
-  { href: '/profile',  label: 'โปรไฟล์',  icon: User },
+  { href: '/home',     label: 'หน้าแรก', Icon: Home },
+  { href: '/explore',  label: 'สำรวจ',    Icon: Compass },
+  { href: '/jobs',     label: 'งาน',      Icon: Briefcase },
+  { href: '/learning', label: 'เรียน',    Icon: BookOpen },
+  { href: '/profile',  label: 'โปรไฟล์',  Icon: User },
 ];
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col min-h-screen bg-ios-bg">
-      {/* Page content */}
-      <main className="flex-1" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)' }}>
+    <div className="flex flex-col min-h-screen bg-bg">
+      {/* Scrollable content — padded above the tab bar */}
+      <main className="flex-1" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)' }}>
         {children}
       </main>
 
-      {/* Bottom tab bar */}
+      {/* ── Bottom tab bar ─────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-separator"
+        className="fixed inset-x-0 bottom-0 z-50 bg-surface/95 backdrop-blur-md border-t border-rim"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-stretch h-[56px] max-w-lg mx-auto px-2">
-          {TABS.map(({ href, label, icon: Icon }) => {
+        <div className="flex h-16 max-w-lg mx-auto px-1">
+          {TABS.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link
                 key={href}
                 href={href}
-                className="flex-1 flex flex-col items-center justify-center gap-[3px] py-1"
+                className="flex-1 flex flex-col items-center justify-center gap-[3px] transition-opacity"
               >
-                <div className={`w-[44px] h-[28px] rounded-full flex items-center justify-center transition-all duration-200 ${
-                  active ? 'bg-primary' : ''
-                }`}>
+                <div
+                  className={`w-11 h-7 rounded-full flex items-center justify-center transition-colors ${
+                    active ? 'bg-brand' : ''
+                  }`}
+                >
                   <Icon
                     size={18}
                     strokeWidth={active ? 2.5 : 1.8}
-                    className={active ? 'text-white' : 'text-text-tertiary'}
+                    className={active ? 'text-white' : 'text-ink-3'}
                   />
                 </div>
-                <span className={`text-[10px] font-semibold leading-none ${active ? 'text-primary' : 'text-text-tertiary'}`}>
+                <span className={`text-[10px] font-semibold leading-none ${active ? 'text-brand' : 'text-ink-3'}`}>
                   {label}
                 </span>
               </Link>
