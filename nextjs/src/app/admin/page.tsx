@@ -96,6 +96,8 @@ export default function AdminPage() {
     { id: 'materials', emoji: '📄', title: 'เนื้อหาบทเรียน', desc: 'อัปโหลดและจัดการเนื้อหา', href: '/admin/materials' },
     { id: 'users', emoji: '👥', title: 'ผู้ใช้งาน', desc: 'ดูรายชื่อและสถานะผู้เรียน', href: '/admin/users' },
     { id: 'bunny', emoji: '🐰', title: 'Import from Bunny.net', desc: 'สร้างบทเรียนจากวิดีโอใน Bunny', href: '/admin/bunny-import' },
+    { id: 'matcher', emoji: '🎯', title: 'Bunny Matcher', desc: 'จับคู่วิดีโอกับบทเรียนอัตโนมัติ', href: '/admin/bunny-matcher' },
+    { id: 'quiz', emoji: '✨', title: 'สร้างแบบทดสอบด้วย AI', desc: 'Generate quiz จากเนื้อหาบทเรียน', href: '/admin/quiz-generator' },
     { id: 'settings', emoji: '⚙️', title: 'ตั้งค่าระบบ', desc: 'AI keys, ElevenLabs และการตั้งค่าอื่นๆ', action: () => setShowModal(true) },
   ];
 
