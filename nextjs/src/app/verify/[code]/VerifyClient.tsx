@@ -53,8 +53,8 @@ export default function VerifyClient() {
       <main className="max-w-lg mx-auto px-4 py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-text-secondary text-sm">กำลังตรวจสอบ...</p>
+            <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+            <p className="text-ink-2 text-sm">กำลังตรวจสอบ...</p>
           </div>
         ) : notFound ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-6">
@@ -62,7 +62,7 @@ export default function VerifyClient() {
               <XCircle size={52} className="text-red-500" />
             </div>
             <h2 className="text-xl font-bold text-gray-800">ไม่พบใบประกาศ</h2>
-            <p className="text-sm text-text-secondary leading-relaxed">
+            <p className="text-sm text-ink-2 leading-relaxed">
               รหัส {code} ไม่ตรงกับใบประกาศใดๆ ในระบบ<br />
               อาจพิมพ์ผิด หรือใบประกาศนี้ไม่มีอยู่จริง
             </p>
@@ -75,25 +75,25 @@ export default function VerifyClient() {
             </div>
 
             <div className={`rounded-3xl overflow-hidden shadow-lg border ${isCareer ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-100'}`}>
-              <div className={`h-1.5 ${isCareer ? 'bg-amber-400' : 'bg-primary'}`} />
+              <div className={`h-1.5 ${isCareer ? 'bg-amber-400' : 'bg-brand'}`} />
               <div className="p-6">
                 <div className={isCareer ? 'inline-block bg-white rounded-xl px-3 py-1.5 mb-4' : 'mb-4'}>
                   <Image src="/images/mascot.png" alt="Mydemy" width={80} height={28} className="object-contain h-7 w-auto" />
                 </div>
-                <p className={`text-[11px] font-extrabold tracking-[0.15em] mb-4 ${isCareer ? 'text-amber-400' : 'text-primary'}`}>
+                <p className={`text-[11px] font-extrabold tracking-[0.15em] mb-4 ${isCareer ? 'text-amber-400' : 'text-brand'}`}>
                   {isCareer ? 'CAREER CERTIFICATION' : 'CERTIFICATE OF COMPLETION'}
                 </p>
                 <div className={`h-px mb-4 ${isCareer ? 'bg-gray-700' : 'bg-gray-100'}`} />
-                <p className={`text-sm mb-1 ${isCareer ? 'text-white/50' : 'text-text-secondary'}`}>
+                <p className={`text-sm mb-1 ${isCareer ? 'text-white/50' : 'text-ink-2'}`}>
                   {isCareer ? 'มอบให้แก่' : 'ขอมอบเกียรติบัตรนี้แก่'}
                 </p>
                 <h2 className={`text-2xl font-black tracking-tight leading-tight mb-4 ${isCareer ? 'text-white' : 'text-gray-800'}`}>
                   {cert.user_display_name}
                 </h2>
-                <p className={`text-sm mb-1 ${isCareer ? 'text-white/50' : 'text-text-secondary'}`}>
+                <p className={`text-sm mb-1 ${isCareer ? 'text-white/50' : 'text-ink-2'}`}>
                   {isCareer ? 'สำเร็จหลักสูตร' : 'เพื่อแสดงว่าสำเร็จการศึกษาคอร์ส'}
                 </p>
-                <p className={`text-[15px] font-bold leading-snug ${isCareer ? 'text-amber-400' : 'text-primary'}`}>
+                <p className={`text-[15px] font-bold leading-snug ${isCareer ? 'text-amber-400' : 'text-brand'}`}>
                   {isCareer ? cert.career_path : cert.course_title}
                 </p>
                 {isCareer && cert.career_courses?.length > 0 && (
@@ -105,12 +105,12 @@ export default function VerifyClient() {
                   </div>
                 )}
                 <div className={`h-px my-4 ${isCareer ? 'bg-gray-700' : 'bg-gray-100'}`} />
-                <p className={`text-xs mb-3 ${isCareer ? 'text-white/50' : 'text-text-secondary'}`}>
+                <p className={`text-xs mb-3 ${isCareer ? 'text-white/50' : 'text-ink-2'}`}>
                   ออกให้ ณ วันที่ {formatThaiDate(cert)}
                 </p>
                 <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl ${isCareer ? 'bg-amber-400/10' : 'bg-pink-50'}`}>
-                  <ShieldCheck size={14} className={isCareer ? 'text-amber-400' : 'text-primary'} />
-                  <span className={`text-[13px] font-bold font-mono ${isCareer ? 'text-yellow-300' : 'text-primary'}`}>
+                  <ShieldCheck size={14} className={isCareer ? 'text-amber-400' : 'text-brand'} />
+                  <span className={`text-[13px] font-bold font-mono ${isCareer ? 'text-yellow-300' : 'text-brand'}`}>
                     {cert.verification_code}
                   </span>
                 </div>
@@ -119,7 +119,7 @@ export default function VerifyClient() {
 
             <Link href="/" className="mt-6 flex items-center justify-center gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
               <Image src="/images/mascot.png" alt="Mydemy" width={80} height={28} className="object-contain h-7 w-auto" />
-              <span className="text-sm font-bold text-primary">เรียนที่ Mydemy →</span>
+              <span className="text-sm font-bold text-brand">เรียนที่ Mydemy →</span>
             </Link>
           </>
         )}
