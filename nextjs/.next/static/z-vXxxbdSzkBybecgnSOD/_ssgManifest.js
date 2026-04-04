@@ -1,1 +1,0 @@
-self.__SSG_MANIFEST=new Set(["\u002Farticles\u002F[id]","\u002Fverify\u002F[code]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()
