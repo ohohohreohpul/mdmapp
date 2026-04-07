@@ -133,53 +133,50 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-6 pt-5 flex flex-col gap-5">
+      <div className="max-w-lg mx-auto px-6 pt-4 flex flex-col gap-4">
 
         {/* ── Hero greeting ──────────────────────────────── */}
         <div>
-          <p className="text-[13px] font-semibold uppercase tracking-widest mb-1" style={{ color: C.primary }}>
-            Mydemy
-          </p>
           <h1
             className="leading-tight"
-            style={{ fontSize: '34px', fontWeight: 800, color: C.ink, letterSpacing: '-0.04em', lineHeight: '40px' }}
+            style={{ fontSize: '26px', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: '32px' }}
           >
-            เรียนรู้ทุกวัน<br />ก้าวไปข้างหน้า
+            เรียนรู้ทุกวัน ก้าวไปข้างหน้า 🚀
           </h1>
         </div>
 
         {/* ── Stats row ─────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           {[
-            { icon: '🔥', val: streak,        sub: 'วัน streak' },
-            { icon: '⚡', val: xpTotal,        sub: 'XP รวม'    },
-            { icon: '👑', val: `Lv.${level}`,  sub: 'ระดับ'     },
+            { icon: '🔥', val: streak,        sub: 'Streak' },
+            { icon: '⚡', val: xpTotal,        sub: 'XP รวม' },
+            { icon: '👑', val: `Lv.${level}`,  sub: 'ระดับ'  },
           ].map((s, i) => (
             <div
               key={i}
-              className="flex flex-col items-center justify-center gap-1 py-4 rounded-[20px]"
+              className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-[18px]"
               style={{ backgroundColor: C.surface, ...C.card }}
             >
-              <span className="text-[24px]">{s.icon}</span>
-              <p className="text-[18px] font-bold" style={{ color: C.ink }}>{s.val}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.ink3 }}>{s.sub}</p>
+              <span className="text-[20px]">{s.icon}</span>
+              <p className="text-[15px] font-bold" style={{ color: C.ink }}>{s.val}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: C.ink3 }}>{s.sub}</p>
             </div>
           ))}
         </div>
 
         {/* ── Daily Goal card ───────────────────────────── */}
         <div
-          className="rounded-[24px] p-5"
+          className="rounded-[20px] p-4"
           style={{ backgroundColor: C.surface, ...C.card }}
         >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[17px] font-bold" style={{ color: C.ink }}>🎯 เป้าหมายวันนี้</p>
-            <span className="text-[15px] font-bold" style={{ color: C.primary }}>
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[15px] font-bold" style={{ color: C.ink }}>🎯 เป้าหมายวันนี้</p>
+            <span className="text-[14px] font-bold" style={{ color: C.primary }}>
               {todayXp}
               <span className="text-[11px] font-normal" style={{ color: C.ink3 }}>/{goal} XP</span>
             </span>
           </div>
-          <ProgressBar pct={goalPct} className="mb-4" />
+          <ProgressBar pct={goalPct} className="mb-3" />
 
           {user ? (
             <div className="flex items-center gap-4">
@@ -245,19 +242,19 @@ export default function HomePage() {
 
         {/* ── Level progress ──────────────────────────────── */}
         <div
-          className="rounded-[20px] p-4 flex items-center gap-3"
+          className="rounded-[18px] p-3.5 flex items-center gap-3"
           style={{ backgroundColor: C.surface, ...C.card }}
         >
           <div
-            className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-[22px]"
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[18px]"
             style={{ backgroundColor: 'rgba(139,92,246,0.12)' }}
           >
             👑
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center mb-1.5">
-              <p className="text-[14px] font-bold" style={{ color: C.ink }}>Level {level}</p>
-              <p className="text-[12px]" style={{ color: C.ink2 }}>{lvlPct}% → Lv.{level + 1}</p>
+              <p className="text-[13px] font-bold" style={{ color: C.ink }}>Level {level}</p>
+              <p className="text-[11px]" style={{ color: C.ink2 }}>{lvlPct}% → Lv.{level + 1}</p>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
               <div className="h-full rounded-full transition-all duration-700" style={{ width: `${lvlPct}%`, backgroundColor: '#8B5CF6' }} />
@@ -275,13 +272,13 @@ export default function HomePage() {
             ].map((a, i) => (
               <div
                 key={i}
-                className="rounded-[20px] p-4 min-w-[240px] shrink-0 flex gap-3 items-start"
+                className="rounded-[18px] p-3 min-w-[220px] shrink-0 flex gap-2.5 items-start"
                 style={{ backgroundColor: a.bg, border: `1px solid ${a.color}22` }}
               >
-                <span className="text-[26px] mt-0.5 shrink-0">{a.icon}</span>
+                <span className="text-[22px] mt-0.5 shrink-0">{a.icon}</span>
                 <div>
-                  <p className="font-bold text-[14px] mb-1" style={{ color: C.ink }}>{a.title}</p>
-                  <p className="text-[12px] leading-relaxed" style={{ color: C.ink2 }}>{a.body}</p>
+                  <p className="font-bold text-[13px] mb-0.5" style={{ color: C.ink }}>{a.title}</p>
+                  <p className="text-[11px] leading-relaxed" style={{ color: C.ink2 }}>{a.body}</p>
                 </div>
               </div>
             ))}
@@ -293,7 +290,7 @@ export default function HomePage() {
           <SectionHead title="📚 เริ่มเรียนเลย" href="/explore" />
           {loading ? (
             <HScroll>
-              {[1,2,3].map(i => <Skel key={i} className="w-[160px] h-[180px] shrink-0 rounded-[20px]" />)}
+              {[1,2,3].map(i => <Skel key={i} className="w-[140px] h-[160px] shrink-0 rounded-[18px]" />)}
             </HScroll>
           ) : (
             <HScroll>
@@ -303,19 +300,19 @@ export default function HomePage() {
                   <Link
                     key={c._id}
                     href={`/course-detail?id=${c._id}`}
-                    className="shrink-0 w-[160px] active:scale-[0.97] transition-transform overflow-hidden rounded-[20px]"
+                    className="shrink-0 w-[140px] active:scale-[0.97] transition-transform overflow-hidden rounded-[18px]"
                     style={{ backgroundColor: C.surface, ...C.card }}
                   >
                     <div
-                      className="w-full h-[90px] flex items-center justify-center text-[36px]"
+                      className="w-full h-[76px] flex items-center justify-center text-[30px]"
                       style={{ backgroundColor: p?.bg ?? '#F3F0FF' }}
                     >
                       {p?.icon ?? '📚'}
                     </div>
-                    <div className="p-3">
-                      <p className="text-[12px] font-bold line-clamp-2 leading-snug mb-1.5" style={{ color: C.ink }}>{c.title}</p>
+                    <div className="p-2.5">
+                      <p className="text-[11px] font-bold line-clamp-2 leading-snug mb-1" style={{ color: C.ink }}>{c.title}</p>
                       <div className="flex items-center gap-1">
-                        <BookOpen size={10} style={{ color: C.ink3 }} />
+                        <BookOpen size={9} style={{ color: C.ink3 }} />
                         <p className="text-[10px]" style={{ color: C.ink3 }}>{c.total_lessons ?? 0} บทเรียน</p>
                       </div>
                     </div>
