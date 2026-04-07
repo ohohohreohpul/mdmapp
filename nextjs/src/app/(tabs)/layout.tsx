@@ -25,7 +25,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       {/* ── Floating pill tab bar ─────────────────────────── */}
       <nav
         className="fixed inset-x-0 bottom-0 z-50 flex justify-center"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)', paddingLeft: '24px', paddingRight: '24px' }}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)', paddingLeft: '24px', paddingRight: '24px' }}
       >
         {/* The pill itself */}
         <div

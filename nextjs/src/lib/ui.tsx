@@ -18,8 +18,8 @@ const C = {
   ink2:     '#8E8E93',
   ink3:     '#C7C7CC',
   rim:      'rgba(0,0,0,0.08)',
-  cardBorder: 'rgba(0,0,0,0.03)',
-  cardShadow: '0px 8px 24px rgba(0,0,0,0.04)',
+  cardBorder: 'rgba(0,0,0,0.06)',
+  cardShadow: '0px 2px 12px rgba(0,0,0,0.08)',
   glassBg:  'rgba(255,255,255,0.75)',
   glassBorder: 'rgba(255,255,255,0.40)',
 };
@@ -37,10 +37,10 @@ export function NavHeader({
     <header
       className="sticky top-0 z-20 header-shell"
       style={{
-        background: 'rgba(242,242,247,0.85)',
+        background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        borderBottom: '0.5px solid rgba(0,0,0,0.10)',
+        borderBottom: '1px solid rgba(0,0,0,0.10)',
       }}
     >
       <div className="flex items-center gap-1 px-3 h-[54px] max-w-lg mx-auto">
@@ -69,10 +69,10 @@ export function TabHeader({ title, right }: { title: string; right?: ReactNode }
     <div
       className="sticky top-0 z-20 header-shell"
       style={{
-        background: 'rgba(242,242,247,0.85)',
+        background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        borderBottom: '0.5px solid rgba(0,0,0,0.10)',
+        borderBottom: '1px solid rgba(0,0,0,0.10)',
       }}
     >
       <div className="flex items-center justify-between px-6 h-[54px] max-w-lg mx-auto">

@@ -17,7 +17,7 @@ const C = {
   ink:     '#1C1C1E',
   ink2:    '#8E8E93',
   ink3:    '#C7C7CC',
-  card:    { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  card:    { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
 };
 
 const PATHS = [
@@ -67,10 +67,10 @@ export default function ExplorePage() {
       <div
         className="sticky top-0 z-20 header-shell"
         style={{
-          background: 'rgba(242,242,247,0.85)',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: '0.5px solid rgba(0,0,0,0.10)',
+          borderBottom: '1px solid rgba(0,0,0,0.10)',
         }}
       >
         <div className="max-w-lg mx-auto px-6 pt-3 pb-3">
@@ -138,10 +138,10 @@ export default function ExplorePage() {
                 <button
                   key={path.id}
                   onClick={() => setSelectedPath(path.id)}
-                  className="rounded-[20px] p-5 text-left active:scale-[0.97] transition-transform"
+                  className="rounded-[20px] p-4 text-left active:scale-[0.97] transition-transform"
                   style={{ backgroundColor: path.bg, border: '1px solid rgba(0,0,0,0.04)' }}
                 >
-                  <span className="text-[32px] mb-3 block">{path.emoji}</span>
+                  <span className="text-[24px] mb-2 block">{path.emoji}</span>
                   <p className="text-[14px] font-bold leading-snug" style={{ color: path.color }}>{path.name}</p>
                 </button>
               ))}

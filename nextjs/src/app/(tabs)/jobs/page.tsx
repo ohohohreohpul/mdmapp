@@ -8,7 +8,7 @@ const C = {
   ink2:    '#8E8E93',
   ink3:    '#C7C7CC',
   primary: '#ef5ea8',
-  card:    { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  card:    { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
 };
 
 const FEATURES = [
@@ -25,7 +25,7 @@ export default function JobsPage() {
       {/* ── Glass header ──────────────────────────────── */}
       <div
         className="sticky top-0 z-20 header-shell"
-        style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
+        style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.10)' }}
       >
         <div className="flex items-center px-6 h-[54px] max-w-lg mx-auto">
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>Job Board</h1>

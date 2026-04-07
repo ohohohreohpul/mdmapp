@@ -18,7 +18,7 @@ const C = {
   ink:      '#1C1C1E',
   ink2:     '#8E8E93',
   ink3:     '#C7C7CC',
-  card:     { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  card:     { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
   rim:      'rgba(0,0,0,0.06)',
 };
 
@@ -45,7 +45,7 @@ export default function ProfilePage() {
       <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
         <div
           className="sticky top-0 z-20 header-shell"
-          style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
+          style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.10)' }}
         >
           <div className="flex items-center px-6 h-[54px]">
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>โปรไฟล์</h1>
@@ -81,7 +81,7 @@ export default function ProfilePage() {
       {/* ── Glass header ─────────────────────────────────── */}
       <div
         className="sticky top-0 z-20 header-shell"
-        style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
+        style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.10)' }}
       >
         <div className="flex items-center px-6 h-[54px]">
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>โปรไฟล์</h1>
@@ -204,7 +204,7 @@ function MenuSection({ title, children }: { title: string; children: React.React
       </p>
       <div
         className="rounded-[20px] overflow-hidden"
-        style={{ backgroundColor: '#FFFFFF', boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' }}
+        style={{ backgroundColor: '#FFFFFF', boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' }}
       >
         {children}
       </div>

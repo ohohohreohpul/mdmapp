@@ -16,7 +16,7 @@ const C = {
   ink:      '#1C1C1E',
   ink2:     '#8E8E93',
   ink3:     '#C7C7CC',
-  card:     { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  card:     { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
 };
 
 const PATH_META: Record<string, { emoji: string; color: string; bg: string }> = {
@@ -57,7 +57,7 @@ export default function LearningPage() {
   const Header = () => (
     <div
       className="sticky top-0 z-20 header-shell"
-      style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
+      style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.10)' }}
     >
       <div className="flex items-center px-6 h-[54px] max-w-lg mx-auto">
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>คอร์สเรียนของฉัน</h1>
@@ -142,7 +142,7 @@ export default function LearningPage() {
             {enrolledCourses.map((course: any) => {
               const progress  = user?.progress?.[course._id];
               const completed = progress?.completed_lessons?.length ?? 0;
-              const total     = course.total_lessons ?? 1;
+              const total     = (course.total_lessons || 0) > 0 ? course.total_lessons : 1;
               const pct       = Math.round((completed / total) * 100);
               const meta      = pathMeta(course.career_path);
 

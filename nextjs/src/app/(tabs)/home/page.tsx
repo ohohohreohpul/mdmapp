@@ -18,7 +18,7 @@ const C = {
   ink:      '#1C1C1E',
   ink2:     '#8E8E93',
   ink3:     '#C7C7CC',
-  card:     { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  card:     { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
 };
 
 const PATHS = [
@@ -103,10 +103,10 @@ export default function HomePage() {
       <header
         className="sticky top-0 z-20 header-shell"
         style={{
-          background: 'rgba(242,242,247,0.85)',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: '0.5px solid rgba(0,0,0,0.10)',
+          borderBottom: '1px solid rgba(0,0,0,0.10)',
         }}
       >
         <div className="flex items-center justify-between px-6 h-[54px] max-w-lg mx-auto">
@@ -133,7 +133,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-6 pt-5 flex flex-col gap-8">
+      <div className="max-w-lg mx-auto px-6 pt-5 flex flex-col gap-5">
 
         {/* ── Hero greeting ──────────────────────────────── */}
         <div>
