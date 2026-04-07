@@ -6,48 +6,63 @@ import { Home, Compass, Briefcase, BookOpen, User } from 'lucide-react';
 
 const TABS = [
   { href: '/home',     label: 'หน้าแรก', Icon: Home },
-  { href: '/explore',  label: 'สำรวจ',    Icon: Compass },
-  { href: '/jobs',     label: 'งาน',      Icon: Briefcase },
-  { href: '/learning', label: 'เรียน',    Icon: BookOpen },
-  { href: '/profile',  label: 'โปรไฟล์',  Icon: User },
+  { href: '/explore',  label: 'สำรวจ',   Icon: Compass },
+  { href: '/jobs',     label: 'งาน',     Icon: Briefcase },
+  { href: '/learning', label: 'เรียน',   Icon: BookOpen },
+  { href: '/profile',  label: 'โปรไฟล์', Icon: User },
 ];
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg">
-      {/* Scrollable content — padded above the tab bar */}
-      <main className="flex-1" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 64px)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#F2F2F7' }}>
+      {/* Scrollable content — padded above floating tab bar */}
+      <main style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
         {children}
       </main>
 
-      {/* ── Bottom tab bar ─────────────────────────────────── */}
+      {/* ── Floating pill tab bar ─────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 bg-surface/95 backdrop-blur-md border-t border-rim"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="fixed inset-x-0 bottom-0 z-50 flex justify-center"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)', paddingLeft: '24px', paddingRight: '24px' }}
       >
-        <div className="flex h-16 max-w-lg mx-auto px-1">
+        {/* The pill itself */}
+        <div
+          className="w-full max-w-sm flex items-center justify-around"
+          style={{
+            background: 'rgba(255, 255, 255, 0.82)',
+            backdropFilter: 'saturate(180%) blur(20px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.60)',
+            borderRadius: '9999px',
+            height: '64px',
+            padding: '0 8px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset',
+          }}
+        >
           {TABS.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link
                 key={href}
                 href={href}
-                className="flex-1 flex flex-col items-center justify-center gap-[3px] transition-opacity"
+                className="flex flex-col items-center justify-center gap-[3px] transition-all active:scale-90 flex-1"
               >
                 <div
-                  className={`w-11 h-7 rounded-full flex items-center justify-center transition-colors ${
-                    active ? 'bg-brand' : ''
-                  }`}
+                  className="w-10 h-8 rounded-full flex items-center justify-center transition-all"
+                  style={active ? { backgroundColor: '#ef5ea8' } : {}}
                 >
                   <Icon
                     size={18}
                     strokeWidth={active ? 2.5 : 1.8}
-                    className={active ? 'text-white' : 'text-ink-3'}
+                    style={{ color: active ? '#ffffff' : '#8E8E93' }}
                   />
                 </div>
-                <span className={`text-[10px] font-semibold leading-none ${active ? 'text-brand' : 'text-ink-3'}`}>
+                <span
+                  className="text-[10px] font-semibold leading-none"
+                  style={{ color: active ? '#ef5ea8' : '#C7C7CC' }}
+                >
                   {label}
                 </span>
               </Link>

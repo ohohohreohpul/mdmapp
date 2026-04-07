@@ -2,14 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Ribbon, Trophy, Bookmark, FileText, Settings, HelpCircle, ShieldCheck, LogOut } from 'lucide-react';
+import { Ribbon, Trophy, Bookmark, FileText, Settings, HelpCircle, ShieldCheck, LogOut, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
-import { TabHeader, PrimaryBtn, Card } from '@/lib/ui';
+import { PrimaryBtn } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
+
+const C = {
+  primary:  '#ef5ea8',
+  bg:       '#F2F2F7',
+  surface:  '#FFFFFF',
+  ink:      '#1C1C1E',
+  ink2:     '#8E8E93',
+  ink3:     '#C7C7CC',
+  card:     { boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' },
+  rim:      'rgba(0,0,0,0.06)',
+};
 
 interface GamDashboard { xp_total: number; level_info: { level: number }; current_streak: number; }
 
@@ -28,18 +39,31 @@ export default function ProfilePage() {
 
   const handleLogout = () => { logout(); router.replace('/auth'); };
 
+  /* ── Not logged in ─────────────────────────────────────── */
   if (!user) {
     return (
-      <div className="min-h-screen bg-bg">
-        <TabHeader title="โปรไฟล์" />
-        <div className="flex flex-col items-center text-center px-8 py-20 gap-4">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center"
-               style={{ background: 'linear-gradient(135deg, #f06bba, #e8409b)' }}>
-            <span className="text-3xl font-bold text-white">?</span>
+      <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
+        <div
+          className="sticky top-0 z-20 header-shell"
+          style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
+        >
+          <div className="flex items-center px-6 h-[54px]">
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>โปรไฟล์</h1>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center text-center px-6 py-16 gap-6 max-w-lg mx-auto">
+          <div
+            className="w-24 h-24 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(239,94,168,0.10)' }}
+          >
+            <span className="text-[40px]">👤</span>
           </div>
           <div>
-            <h2 className="text-[20px] font-bold text-ink mb-1">เข้าสู่ระบบ</h2>
-            <p className="text-[13px] text-ink-2 leading-relaxed">
+            <h2 style={{ fontSize: '24px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }} className="mb-2">
+              เข้าสู่ระบบ
+            </h2>
+            <p style={{ fontSize: '15px', color: C.ink2, lineHeight: '1.55' }}>
               บันทึกความคืบหน้า ดูคะแนน<br/>และรับใบประกาศนียบัตร
             </p>
           </div>
@@ -52,52 +76,80 @@ export default function ProfilePage() {
   const initial = (user.username?.charAt(0) || 'U').toUpperCase();
 
   return (
-    <div className="min-h-screen bg-bg">
-      {/* Gradient profile hero — handles safe-area internally */}
+    <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
+
+      {/* ── Glass header ─────────────────────────────────── */}
       <div
-        className="px-4 pb-6 header-shell"
-        style={{ background: 'linear-gradient(160deg, #f06bba 0%, #e8409b 55%, #c7357f 100%)' }}
+        className="sticky top-0 z-20 header-shell"
+        style={{ background: 'rgba(242,242,247,0.85)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '0.5px solid rgba(0,0,0,0.10)' }}
       >
-        <div className="pt-3.5 flex flex-col items-center">
-          <div className="w-[72px] h-[72px] rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center mb-3 shadow-sm">
-            <span className="text-[28px] font-extrabold text-white">{initial}</span>
+        <div className="flex items-center px-6 h-[54px]">
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>โปรไฟล์</h1>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-6 py-5 flex flex-col gap-4 pb-8">
+
+        {/* ── Profile card ─────────────────────────────── */}
+        <div
+          className="rounded-[24px] p-6 flex flex-col items-center text-center"
+          style={{ backgroundColor: C.surface, ...C.card }}
+        >
+          <div
+            className="w-[80px] h-[80px] rounded-full flex items-center justify-center mb-3"
+            style={{ backgroundColor: 'rgba(239,94,168,0.12)' }}
+          >
+            <span
+              style={{ fontSize: '32px', fontWeight: 800, color: C.primary }}
+            >
+              {initial}
+            </span>
           </div>
-          <h2 className="text-[20px] font-extrabold text-white leading-tight">
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>
             {user.display_name || user.username || 'User'}
           </h2>
-          <p className="text-white/65 text-[13px] mb-4">{user.email}</p>
+          <p className="mt-0.5 mb-5" style={{ fontSize: '14px', color: C.ink2 }}>{user.email}</p>
 
-          <div className="flex bg-white/15 rounded-2xl overflow-hidden border border-white/10 w-full max-w-[280px]">
+          {/* Stats strip */}
+          <div
+            className="flex w-full rounded-[16px] overflow-hidden"
+            style={{ border: `1px solid ${C.rim}` }}
+          >
             {[
-              { value: gam?.xp_total ?? 0,                   label: '⚡ XP' },
-              { value: `Lv.${gam?.level_info?.level ?? 1}`,  label: '👑 ระดับ' },
-              { value: gam?.current_streak ?? 0,              label: '🔥 Streak' },
+              { value: gam?.xp_total ?? 0,                label: '⚡ XP' },
+              { value: `Lv.${gam?.level_info?.level ?? 1}`, label: '👑 ระดับ' },
+              { value: gam?.current_streak ?? 0,          label: '🔥 Streak' },
             ].map((stat, i) => (
-              <div key={i} className={`flex-1 flex flex-col items-center py-3 ${i < 2 ? 'border-r border-white/15' : ''}`}>
-                <span className="text-[17px] font-extrabold text-white leading-none">{stat.value}</span>
-                <span className="text-[10px] text-white/65 mt-0.5">{stat.label}</span>
+              <div
+                key={i}
+                className={`flex-1 flex flex-col items-center py-3 ${i < 2 ? 'border-r' : ''}`}
+                style={{ borderColor: C.rim }}
+              >
+                <span style={{ fontSize: '18px', fontWeight: 700, color: C.ink, lineHeight: 1 }}>{stat.value}</span>
+                <span style={{ fontSize: '11px', color: C.ink3, marginTop: '2px' }}>{stat.label}</span>
               </div>
             ))}
           </div>
         </div>
-      </div>
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-8">
+        {/* ── Learning ─────────────────────────────────── */}
         <MenuSection title="การเรียนรู้">
-          <MenuItem href="/certificates" icon={<Ribbon size={20} className="text-white" />}   iconBg="bg-brand"       title="ใบประกาศนียบัตร"  subtitle="ดาวน์โหลดใบประกาศ" />
-          <MenuItem href="/achievements" icon={<Trophy size={20} className="text-white" />}    iconBg="bg-[#10B981]"   title="ความสำเร็จ"       subtitle="ดู badges และ achievements" />
-          <MenuItem href="/saved"        icon={<Bookmark size={20} className="text-white" />}  iconBg="bg-[#F59E0B]"   title="บันทึกไว้"       subtitle="คอร์สที่บันทึกไว้" />
+          <MenuItem href="/certificates" emoji="🏅" bg="#FFF0F7" title="ใบประกาศนียบัตร"   subtitle="ดาวน์โหลดใบประกาศ" />
+          <MenuItem href="/achievements" emoji="🏆" bg="#FFFBEB" title="ความสำเร็จ"         subtitle="Badges และ achievements" />
+          <MenuItem href="/saved"        emoji="🔖" bg="#EEF2FF" title="บันทึกไว้"          subtitle="คอร์สที่บันทึกไว้" />
         </MenuSection>
 
+        {/* ── Career ───────────────────────────────────── */}
         <MenuSection title="อาชีพ">
-          <MenuItem href="/resume"       icon={<FileText size={20} className="text-white" />}  iconBg="bg-[#3B82F6]"   title="Resume & Career"  subtitle="จัดการ Resume และ Cover Letter" />
+          <MenuItem href="/resume" emoji="📄" bg="#ECFDF5" title="Resume & Career" subtitle="จัดการ Resume และ Cover Letter" />
         </MenuSection>
 
+        {/* ── Settings ────────────────────────────────── */}
         <MenuSection title="การตั้งค่า">
-          <MenuItem href="/settings"     icon={<Settings size={20} className="text-ink-2" />}  iconBg="bg-rim"         title="การตั้งค่า"       subtitle="การแจ้งเตือน, ภาษา" />
-          <MenuItem href="/help"         icon={<HelpCircle size={20} className="text-ink-2" />} iconBg="bg-rim"        title="ช่วยเหลือ"        subtitle="FAQ และติดต่อเรา" />
+          <MenuItem href="/settings" emoji="⚙️" bg="#F2F2F7" title="การตั้งค่า"  subtitle="การแจ้งเตือน, ภาษา" />
+          <MenuItem href="/help"     emoji="❓" bg="#F2F2F7" title="ช่วยเหลือ"   subtitle="FAQ และติดต่อเรา" />
           {isAdmin && (
-            <MenuItem href="/admin"      icon={<ShieldCheck size={20} className="text-ink-2" />} iconBg="bg-rim"       title="Admin Panel"      subtitle="จัดการคอร์สและระบบ" />
+            <MenuItem href="/admin"  emoji="🛡️" bg="#F2F2F7" title="Admin Panel" subtitle="จัดการคอร์สและระบบ" />
           )}
         </MenuSection>
 
@@ -106,23 +158,36 @@ export default function ProfilePage() {
           href="https://ko-fi.com/J3J11WBY0S"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 bg-surface rounded-2xl p-4 mb-3 card-shadow active:scale-[0.98] transition-transform"
+          className="rounded-[20px] p-4 flex items-center gap-3 active:scale-[0.97] transition-transform"
+          style={{ backgroundColor: C.surface, ...C.card }}
         >
-          <div className="w-10 h-10 bg-[#FF5E5B]/10 rounded-xl flex items-center justify-center shrink-0 text-[20px]">☕</div>
-          <div className="flex-1">
-            <p className="text-[14px] font-semibold text-ink">ช่วยซัพพอร์ต Mydemy</p>
-            <p className="text-[12px] text-ink-2">ซื้อกาแฟให้ทีมพัฒนาสักแก้ว 🩷</p>
+          <div
+            className="w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0 text-[22px]"
+            style={{ backgroundColor: '#FFF1F1' }}
+          >
+            ☕
           </div>
-          <span className="bg-[#FF5E5B] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">Ko-fi</span>
+          <div className="flex-1">
+            <p className="text-[14px] font-semibold" style={{ color: C.ink }}>ช่วยซัพพอร์ต Mydemy</p>
+            <p className="text-[12px]" style={{ color: C.ink2 }}>ซื้อกาแฟให้ทีมพัฒนาสักแก้ว 🩷</p>
+          </div>
+          <span
+            className="text-[11px] font-bold px-2.5 py-1 rounded-[10px] text-white"
+            style={{ backgroundColor: '#FF5E5B' }}
+          >
+            Ko-fi
+          </span>
         </a>
 
         <button
           onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full bg-surface rounded-2xl p-4 text-[#EF4444] font-semibold card-shadow active:scale-[0.98] transition-transform"
+          className="rounded-[20px] p-4 flex items-center justify-center gap-2 active:scale-[0.97] transition-transform"
+          style={{ backgroundColor: C.surface, ...C.card, color: '#FF3B30', fontWeight: 600, fontSize: '15px' }}
         >
           <LogOut size={18} />
           ออกจากระบบ
         </button>
+
       </div>
     </div>
   );
@@ -130,29 +195,43 @@ export default function ProfilePage() {
 
 function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mb-5">
-      <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider px-1 mb-2">{title}</p>
-      <div className="flex flex-col gap-2">{children}</div>
+    <div>
+      <p
+        className="px-1 mb-2 text-[12px] font-bold uppercase tracking-widest"
+        style={{ color: '#C7C7CC' }}
+      >
+        {title}
+      </p>
+      <div
+        className="rounded-[20px] overflow-hidden"
+        style={{ backgroundColor: '#FFFFFF', boxShadow: '0px 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.03)' }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
-function MenuItem({ href, icon, iconBg, title, subtitle }: {
-  href: string; icon: React.ReactNode; iconBg: string; title: string; subtitle: string;
+function MenuItem({ href, emoji, bg, title, subtitle }: {
+  href: string; emoji: string; bg: string; title: string; subtitle: string;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 bg-surface rounded-2xl p-3.5 card-shadow active:scale-[0.98] transition-transform"
+      className="flex items-center gap-3 px-4 py-3.5 active:opacity-70 transition-opacity border-b"
+      style={{ borderColor: 'rgba(0,0,0,0.04)' }}
     >
-      <div className={`w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center shrink-0`}>
-        {icon}
+      <div
+        className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 text-[20px]"
+        style={{ backgroundColor: bg }}
+      >
+        {emoji}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold text-ink">{title}</p>
-        <p className="text-[12px] text-ink-2">{subtitle}</p>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: '#1C1C1E' }}>{title}</p>
+        <p style={{ fontSize: '12px', color: '#8E8E93' }}>{subtitle}</p>
       </div>
-      <span className="text-ink-3">›</span>
+      <ChevronRight size={18} style={{ color: '#C7C7CC' }} className="shrink-0" />
     </Link>
   );
 }

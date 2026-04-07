@@ -18,7 +18,7 @@ export default function SplashPage() {
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{ background: 'linear-gradient(170deg, #f06bba 0%, #e8409b 45%, #c7357f 100%)' }}
+      style={{ backgroundColor: '#ef5ea8' }}
     >
       {/* Ambient glow circles */}
       <div className="absolute w-[300px] h-[300px] rounded-full animate-breathe"

@@ -11,28 +11,37 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 type Screen = 'login' | 'register' | 'reset-password' | 'first-login';
 
-/* ── input field ─────────────────────────────────── */
-function Field({
-  icon, label, type, value, onChange, placeholder, right,
-}: {
+const C = {
+  primary:  '#ef5ea8',
+  bg:       '#F2F2F7',
+  surface:  '#FFFFFF',
+  ink:      '#1C1C1E',
+  ink2:     '#8E8E93',
+  ink3:     '#C7C7CC',
+  rim:      'rgba(0,0,0,0.08)',
+};
+
+/* ── Input field ──────────────────────────────── */
+function Field({ icon, label, type, value, onChange, placeholder, right }: {
   icon: React.ReactNode; label: string; type: string;
   value: string; onChange: (v: string) => void;
   placeholder: string; right?: React.ReactNode;
 }) {
   return (
     <div className="mb-4">
-      <p className="text-[12px] font-bold text-ink-2 mb-1.5 tracking-wide">{label}</p>
+      <p className="text-[12px] font-bold uppercase tracking-widest mb-2" style={{ color: C.ink2 }}>{label}</p>
       <div
-        className="flex items-center gap-3 bg-bg rounded-2xl px-4 py-3.5 border border-rim"
-        style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.04)' }}
+        className="flex items-center gap-3 rounded-[14px] px-4 py-3.5"
+        style={{ backgroundColor: C.bg, border: '1px solid rgba(0,0,0,0.08)' }}
       >
-        <span className="text-ink-3 shrink-0">{icon}</span>
+        <span style={{ color: C.ink3 }} className="shrink-0">{icon}</span>
         <input
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 text-[15px] text-ink bg-transparent outline-none placeholder:text-ink-3"
+          className="flex-1 bg-transparent outline-none"
+          style={{ fontSize: '15px', color: C.ink }}
           autoCapitalize="none"
           autoCorrect="off"
         />
@@ -42,7 +51,23 @@ function Field({
   );
 }
 
-/* ── main component ──────────────────────────────── */
+/* ── Primary button ────────────────────────────── */
+function Btn({ onClick, children, loading }: { onClick: () => void; children: React.ReactNode; loading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-2 rounded-[16px] font-bold text-white active:scale-[0.97] transition-transform disabled:opacity-50 mt-2"
+      style={{ backgroundColor: C.primary, padding: '16px 24px', fontSize: '16px', boxShadow: '0px 16px 32px rgba(239,94,168,0.20)' }}
+    >
+      {loading
+        ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        : children}
+    </button>
+  );
+}
+
+/* ── Main ──────────────────────────────────────── */
 export default function AuthPage() {
   const router = useRouter();
   const { login, loginWithData, register, changePassword, user } = useUser();
@@ -117,53 +142,37 @@ export default function AuthPage() {
     } finally { setLoading(false); }
   };
 
-  /* ── Primary button ─────────────────────────────── */
-  const Btn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="w-full py-4 rounded-2xl text-white font-bold text-[16px] flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-all mt-2"
-      style={{ background: 'linear-gradient(135deg, #f472b6 0%, #e8409b 60%, #c7357f 100%)', boxShadow: '0 8px 24px rgba(232,64,155,0.35)' }}
-    >
-      {loading
-        ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        : children}
-    </button>
-  );
-
-  /* ── Layout shell ──────────────────────────────── */
+  /* ── Shared page wrapper ───────────────────────── */
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-bg flex flex-col">
-      {/* Hero */}
-      <div
-        className="flex flex-col items-center justify-center"
-        style={{
-          background: 'linear-gradient(170deg, #f472b6 0%, #e8409b 50%, #c7357f 100%)',
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 48px)',
-          paddingBottom: '56px',
-        }}
-      >
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: C.bg, paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
+      {/* Brand header */}
+      <div className="flex flex-col items-center pt-14 pb-8 px-6">
         <Image
           src="/images/mascot.png"
           alt="Mydemy"
-          width={80} height={80}
-          className="rounded-[22px] mb-4 shadow-[0_12px_32px_rgba(0,0,0,0.20)]"
+          width={72} height={72}
+          className="rounded-[20px] mb-4"
+          style={{ boxShadow: '0px 8px 24px rgba(0,0,0,0.12)' }}
           priority
         />
         <Image
           src="/images/logo-wordmark.png"
           alt="Mydemy"
-          width={120} height={38}
-          className="object-contain brightness-0 invert mb-1.5 h-[34px] w-auto"
+          width={110} height={34}
+          className="object-contain h-[30px] w-auto mb-1"
+          style={{ filter: 'brightness(0) saturate(100%) invert(44%) sepia(77%) saturate(1032%) hue-rotate(295deg) brightness(98%) contrast(95%)' }}
           priority
         />
-        <p className="text-white/65 text-[13px] tracking-wide">เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
+        <p style={{ fontSize: '14px', color: C.ink2 }}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
       </div>
 
-      {/* Floating card pulled over hero */}
+      {/* Form card */}
       <div
-        className="flex-1 rounded-t-[28px] bg-surface px-5 pt-7 pb-10"
-        style={{ marginTop: '-24px', boxShadow: '0 -4px 24px rgba(0,0,0,0.08)' }}
+        className="flex-1 mx-4 mb-4 rounded-[28px] p-6"
+        style={{ backgroundColor: C.surface, boxShadow: '0px 8px 32px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}
       >
         <div className="max-w-md mx-auto">
           {children}
@@ -172,109 +181,92 @@ export default function AuthPage() {
     </div>
   );
 
-  /* ── First-login screen ─────────────────────────── */
+  /* ── First-login ───────────────────────────────── */
   if (screen === 'first-login') return (
     <Shell>
-      <h2 className="text-[20px] font-extrabold text-ink mb-1">ตั้งรหัสผ่านใหม่</h2>
-      <p className="text-[13px] text-ink-2 mb-5">สำหรับผู้ใช้ที่ย้ายจากระบบ Mydemy เดิม</p>
-      <div className="flex items-start gap-2.5 bg-brand/5 border border-brand/15 rounded-2xl p-4 mb-5">
-        <UserCircle size={18} className="text-brand shrink-0 mt-0.5" />
-        <p className="text-[13px] text-brand leading-relaxed">กรอกอีเมลที่ลงทะเบียนไว้ และตั้งรหัสผ่านใหม่</p>
+      <h2 className="mb-1" style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>ตั้งรหัสผ่านใหม่</h2>
+      <p className="mb-5" style={{ fontSize: '14px', color: C.ink2 }}>สำหรับผู้ใช้จากระบบ Mydemy เดิม</p>
+      <div className="flex items-start gap-2.5 rounded-[14px] p-3.5 mb-5" style={{ backgroundColor: 'rgba(239,94,168,0.08)', border: '1px solid rgba(239,94,168,0.15)' }}>
+        <UserCircle size={18} style={{ color: C.primary }} className="shrink-0 mt-0.5" />
+        <p style={{ fontSize: '13px', color: C.primary, lineHeight: '1.5' }}>กรอกอีเมลที่ลงทะเบียนไว้ และตั้งรหัสผ่านใหม่</p>
       </div>
       <Field icon={<Mail size={18} />} label="อีเมล" type="email" value={email} onChange={setEmail} placeholder="อีเมลที่ลงทะเบียนไว้" />
-      <Field
-        icon={<Lock size={18} />} label="รหัสผ่านใหม่" type={showNew ? 'text' : 'password'}
-        value={newPassword} onChange={setNewPassword} placeholder="อย่างน้อย 8 ตัวอักษร"
-        right={<button type="button" onClick={() => setShowNew(!showNew)} className="text-ink-3">{showNew ? <EyeOff size={17}/> : <Eye size={17}/>}</button>}
-      />
+      <Field icon={<Lock size={18} />} label="รหัสผ่านใหม่" type={showNew ? 'text' : 'password'} value={newPassword} onChange={setNewPassword} placeholder="อย่างน้อย 8 ตัวอักษร"
+        right={<button type="button" onClick={() => setShowNew(!showNew)} style={{ color: C.ink3 }}>{showNew ? <EyeOff size={16}/> : <Eye size={16}/>}</button>} />
       <Field icon={<Lock size={18} />} label="ยืนยันรหัสผ่าน" type={showNew ? 'text' : 'password'} value={confirmPw} onChange={setConfirmPw} placeholder="กรอกอีกครั้ง" />
-      <Btn onClick={handleFirstLogin}>ตั้งรหัสผ่านและเข้าสู่ระบบ</Btn>
-      <button onClick={() => setScreen('login')} className="w-full text-center py-4 text-[13px] text-ink-3">← กลับ</button>
+      <Btn onClick={handleFirstLogin} loading={loading}>ตั้งรหัสผ่านและเข้าสู่ระบบ</Btn>
+      <button onClick={() => setScreen('login')} className="w-full text-center py-4" style={{ fontSize: '13px', color: C.ink3 }}>← กลับ</button>
     </Shell>
   );
 
-  /* ── Reset-password screen ──────────────────────── */
+  /* ── Reset password ────────────────────────────── */
   if (screen === 'reset-password') return (
     <Shell>
-      <h2 className="text-[20px] font-extrabold text-ink mb-1">ตั้งรหัสผ่านใหม่</h2>
-      <p className="text-[13px] text-ink-2 mb-5">เพื่อความปลอดภัยของบัญชีคุณ</p>
-      <div className="flex items-start gap-2.5 bg-brand/5 border border-brand/15 rounded-2xl p-4 mb-5">
-        <Info size={18} className="text-brand shrink-0 mt-0.5" />
-        <p className="text-[13px] text-brand leading-relaxed">กรุณาตั้งรหัสผ่านใหม่เพื่อเข้าใช้งานต่อ</p>
+      <h2 className="mb-1" style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>ตั้งรหัสผ่านใหม่</h2>
+      <p className="mb-5" style={{ fontSize: '14px', color: C.ink2 }}>เพื่อความปลอดภัยของบัญชีคุณ</p>
+      <div className="flex items-start gap-2.5 rounded-[14px] p-3.5 mb-5" style={{ backgroundColor: 'rgba(239,94,168,0.08)', border: '1px solid rgba(239,94,168,0.15)' }}>
+        <Info size={18} style={{ color: C.primary }} className="shrink-0 mt-0.5" />
+        <p style={{ fontSize: '13px', color: C.primary, lineHeight: '1.5' }}>กรุณาตั้งรหัสผ่านใหม่เพื่อเข้าใช้งานต่อ</p>
       </div>
-      <Field
-        icon={<Lock size={18} />} label="รหัสผ่านใหม่" type={showNew ? 'text' : 'password'}
-        value={newPassword} onChange={setNewPassword} placeholder="อย่างน้อย 8 ตัวอักษร"
-        right={<button type="button" onClick={() => setShowNew(!showNew)} className="text-ink-3">{showNew ? <EyeOff size={17}/> : <Eye size={17}/>}</button>}
-      />
+      <Field icon={<Lock size={18} />} label="รหัสผ่านใหม่" type={showNew ? 'text' : 'password'} value={newPassword} onChange={setNewPassword} placeholder="อย่างน้อย 8 ตัวอักษร"
+        right={<button type="button" onClick={() => setShowNew(!showNew)} style={{ color: C.ink3 }}>{showNew ? <EyeOff size={16}/> : <Eye size={16}/>}</button>} />
       <Field icon={<Lock size={18} />} label="ยืนยันรหัสผ่านใหม่" type={showNew ? 'text' : 'password'} value={confirmPw} onChange={setConfirmPw} placeholder="กรอกอีกครั้ง" />
-      <Btn onClick={handleReset}>บันทึกรหัสผ่านใหม่</Btn>
+      <Btn onClick={handleReset} loading={loading}>บันทึกรหัสผ่านใหม่</Btn>
     </Shell>
   );
 
-  /* ── Login / Register ───────────────────────────── */
+  /* ── Login / Register ──────────────────────────── */
   return (
     <Shell>
       {/* Tab switcher */}
-      <div className="flex bg-bg rounded-2xl p-1 mb-6 border border-rim">
+      <div
+        className="flex rounded-[14px] p-1 mb-6"
+        style={{ backgroundColor: C.bg }}
+      >
         {(['login', 'register'] as const).map(s => (
           <button
             key={s}
             onClick={() => setScreen(s)}
-            className={`flex-1 py-2.5 rounded-xl text-[14px] font-bold transition-all ${
-              screen === s
-                ? 'bg-surface text-ink'
-                : 'text-ink-3'
-            }`}
-            style={screen === s ? { boxShadow: '0 1px 6px rgba(0,0,0,0.10)' } : {}}
+            className="flex-1 py-2.5 rounded-[10px] font-bold transition-all"
+            style={{
+              fontSize: '14px',
+              backgroundColor: screen === s ? C.surface : 'transparent',
+              color: screen === s ? C.ink : C.ink3,
+              boxShadow: screen === s ? '0px 1px 6px rgba(0,0,0,0.08)' : 'none',
+            }}
           >
             {s === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
           </button>
         ))}
       </div>
 
-      <div>
-        {screen === 'register' && (
-          <Field icon={<User size={18} />} label="ชื่อผู้ใช้" type="text" value={username} onChange={setUsername} placeholder="ชื่อที่ต้องการแสดง" />
-        )}
-        <Field icon={<Mail size={18} />} label="อีเมล" type="email" value={email} onChange={setEmail} placeholder="example@email.com" />
-        <Field
-          icon={<Lock size={18} />}
-          label="รหัสผ่าน"
-          type={showPw ? 'text' : 'password'}
-          value={password}
-          onChange={setPassword}
-          placeholder={screen === 'register' ? 'อย่างน้อย 8 ตัวอักษร' : '••••••••'}
-          right={
-            <button type="button" onClick={() => setShowPw(!showPw)} className="text-ink-3">
-              {showPw ? <EyeOff size={17}/> : <Eye size={17}/>}
-            </button>
-          }
-        />
+      {screen === 'register' && (
+        <Field icon={<User size={18} />} label="ชื่อผู้ใช้" type="text" value={username} onChange={setUsername} placeholder="ชื่อที่ต้องการแสดง" />
+      )}
+      <Field icon={<Mail size={18} />} label="อีเมล" type="email" value={email} onChange={setEmail} placeholder="example@email.com" />
+      <Field
+        icon={<Lock size={18} />} label="รหัสผ่าน" type={showPw ? 'text' : 'password'}
+        value={password} onChange={setPassword}
+        placeholder={screen === 'register' ? 'อย่างน้อย 8 ตัวอักษร' : '••••••••'}
+        right={<button type="button" onClick={() => setShowPw(!showPw)} style={{ color: C.ink3 }}>{showPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>}
+      />
 
-        {screen === 'login' && (
-          <div className="flex justify-between -mt-2 mb-5">
-            <button
-              onClick={() => { setNewPassword(''); setConfirmPw(''); setScreen('first-login'); }}
-              className="text-[12px] text-ink-3"
-            >
-              เข้าสู่ระบบครั้งแรก?
-            </button>
-            <button className="text-[12px] text-brand font-semibold">ลืมรหัสผ่าน?</button>
-          </div>
-        )}
+      {screen === 'login' && (
+        <div className="flex justify-between -mt-2 mb-5">
+          <button onClick={() => { setNewPassword(''); setConfirmPw(''); setScreen('first-login'); }} style={{ fontSize: '12px', color: C.ink3 }}>
+            เข้าสู่ระบบครั้งแรก?
+          </button>
+          <button style={{ fontSize: '12px', color: C.primary, fontWeight: 600 }}>ลืมรหัสผ่าน?</button>
+        </div>
+      )}
 
-        <Btn onClick={screen === 'login' ? handleLogin : handleRegister}>
-          {screen === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกฟรี'}
-        </Btn>
+      <Btn onClick={screen === 'login' ? handleLogin : handleRegister} loading={loading}>
+        {screen === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิกฟรี'}
+      </Btn>
 
-        <button
-          onClick={() => router.replace('/home')}
-          className="w-full text-center py-4 text-[13px] text-ink-3 mt-1"
-        >
-          ข้ามไปก่อน
-        </button>
-      </div>
+      <button onClick={() => router.replace('/home')} className="w-full text-center py-4 mt-1" style={{ fontSize: '13px', color: C.ink3 }}>
+        ข้ามไปก่อน
+      </button>
     </Shell>
   );
 }

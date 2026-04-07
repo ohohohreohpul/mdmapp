@@ -1,97 +1,127 @@
 @import "tailwindcss";
 
-/* ─────────────────────────────────────────────────────────────
-   DESIGN TOKENS
-   ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — iOS Clean Clarity
+   Design archetype: Pastel & Soft + Swiss High-Contrast
+   Philosophy: Premium native iOS feel. NO gradients. Clean light mode.
+   ══════════════════════════════════════════════════════════════ */
 @theme {
-  /* Brand */
-  --color-brand:          #e8409b;
-  --color-brand-dark:     #c7357f;
-  --color-brand-light:    #fce7f3;
-  --color-brand-surface:  rgba(232, 64, 155, 0.09);
-
-  /* Gamification */
-  --color-xp:      #f97316;
-  --color-streak:  #ef4444;
-  --color-level:   #8b5cf6;
+  /* Primary brand — Mydemy Pink */
+  --color-primary:         #ef5ea8;
+  --color-primary-muted:   rgba(239, 94, 168, 0.10);
+  --color-primary-soft:    rgba(239, 94, 168, 0.06);
 
   /* Surfaces */
-  --color-bg:      #f3f3f8;
-  --color-surface: #ffffff;
-  --color-raised:  #f9f9fc;
+  --color-bg:      #F2F2F7;   /* iOS-standard page background */
+  --color-surface: #FFFFFF;   /* Card / panel background */
+  --color-glass:   rgba(255, 255, 255, 0.75);
 
   /* Ink (text) */
-  --color-ink:   #0d0d14;
-  --color-ink-2: #58587a;
-  --color-ink-3: #a5a5c0;
+  --color-ink:    #1C1C1E;    /* iOS text-primary */
+  --color-ink-2:  #8E8E93;    /* iOS text-secondary */
+  --color-ink-3:  #C7C7CC;    /* iOS text-tertiary */
 
-  /* UI chrome */
-  --color-rim:  #e8e8f0;
+  /* Borders */
+  --color-rim:    rgba(0, 0, 0, 0.08);
+  --color-glass-border: rgba(255, 255, 255, 0.40);
 
   /* Semantic */
-  --color-ok:   #16a34a;
-  --color-bad:  #dc2626;
-  --color-warn: #d97706;
-  --color-info: #2563eb;
+  --color-ok:    #34C759;
+  --color-bad:   #FF3B30;
+  --color-warn:  #FF9500;
+  --color-info:  #007AFF;
 
-  /* ── Legacy aliases so existing admin pages don't break ── */
-  --color-primary:         #e8409b;
-  --color-primary-dark:    #c7357f;
-  --color-primary-light:   #fce7f3;
-  --color-primary-surface: rgba(232, 64, 155, 0.09);
-  --color-ios-bg:          #f3f3f8;
-  --color-text-primary:    #0d0d14;
-  --color-text-secondary:  #58587a;
-  --color-text-tertiary:   #a5a5c0;
-  --color-separator:       #e8e8f0;
-  --color-success:         #16a34a;
-  --color-error:           #dc2626;
-  --color-warning:         #d97706;
+  /* ── legacy aliases (keeps admin pages from breaking) ── */
+  --color-brand:           #ef5ea8;
+  --color-brand-dark:      #d44a94;
+  --color-brand-light:     #fce7f3;
+  --color-brand-surface:   rgba(239, 94, 168, 0.10);
+  --color-ios-bg:          #F2F2F7;
+  --color-text-primary:    #1C1C1E;
+  --color-text-secondary:  #8E8E93;
+  --color-text-tertiary:   #C7C7CC;
+  --color-separator:       rgba(0, 0, 0, 0.08);
+  --color-success:         #34C759;
+  --color-error:           #FF3B30;
+  --color-warning:         #FF9500;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   RESET & BASE
-   ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  /* iOS-native font stack */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+               'Outfit', 'Plus Jakarta Sans', 'Inter',
+               'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  background: #f3f3f8;
-  color: #0d0d14;
+  background: #F2F2F7;
+  color: #1C1C1E;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   SAFE AREA UTILITIES
-   ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   SAFE AREA
+   ══════════════════════════════════════════════════════════════ */
 .safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-/* Header wrapper: adds safe-area-top so inner content uses normal py-N */
+/* Header wrapper: adds safe-area-top padding so content uses normal py-N */
 .header-shell {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   SCROLL UTILITIES
-   ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   CARDS — iOS style: white, 24px radius, ultra-soft shadow
+   ══════════════════════════════════════════════════════════════ */
+.card {
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.card-sm {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GLASS — iOS blur effect for headers / tab bar
+   ══════════════════════════════════════════════════════════════ */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.40);
+}
+
+/* Glass header (sticky top bar) */
+.glass-header {
+  background: rgba(242, 242, 247, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.10);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MISC UTILITIES
+   ══════════════════════════════════════════════════════════════ */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* ─────────────────────────────────────────────────────────────
-   CARD SHADOW
-   ───────────────────────────────────────────────────────────── */
-.card-shadow    { box-shadow: 0 1px 0 #e8e8f0, 0 4px 16px rgba(0,0,0,0.08); }
-.card-shadow-lg { box-shadow: 0 1px 0 #e8e8f0, 0 8px 28px rgba(0,0,0,0.12); }
-
-/* ─────────────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════════════════════
    ANIMATIONS
-   ───────────────────────────────────────────────────────────── */
+   ══════════════════════════════════════════════════════════════ */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -122,10 +152,10 @@ html, body {
   50%       { opacity: 0.45; }
 }
 
-.animate-fade-up   { animation: fadeUp  0.35s ease-out both; }
-.animate-fade-in   { animation: fadeIn  0.25s ease-out both; }
-.animate-scale-in  { animation: scaleIn 0.4s  ease-out both; }
-.animate-breathe   { animation: breathe 1.6s  ease-in-out infinite; }
-.animate-fill-bar  { animation: fillBar 2s    ease-out forwards; }
-.animate-pop-up    { animation: popUp  1.4s   ease-out forwards; }
-.animate-pulse-slow { animation: pulse 1.8s   ease-in-out infinite; }
+.animate-fade-up    { animation: fadeUp   0.35s ease-out both; }
+.animate-fade-in    { animation: fadeIn   0.25s ease-out both; }
+.animate-scale-in   { animation: scaleIn  0.4s  ease-out both; }
+.animate-breathe    { animation: breathe  1.6s  ease-in-out infinite; }
+.animate-fill-bar   { animation: fillBar  2s    ease-out forwards; }
+.animate-pop-up     { animation: popUp    1.4s  ease-out forwards; }
+.animate-pulse-slow { animation: pulse    1.8s  ease-in-out infinite; }
