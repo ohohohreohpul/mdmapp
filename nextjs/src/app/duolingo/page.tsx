@@ -53,16 +53,18 @@ function DuolingoPageInner() {
   };
 
   const q        = questions[current];
+  const qt       = q ? (q.type || q.question_type || 'multiple_choice') : '';
   const progress = questions.length > 0 ? (current / questions.length) * 100 : 0;
 
   const checkAnswer = (answer: any) => {
     if (answered) return;
     setSelected(answer);
     setAnswered(true);
+    const qt = q.type || q.question_type || 'multiple_choice';
     let isCorrect = false;
-    if (q.type === 'fill-blank') {
+    if (qt === 'fill-blank') {
       isCorrect = answer.trim().toLowerCase() === (q.correct_answer || '').trim().toLowerCase();
-    } else if (q.type === 'micro-lesson' || q.type === 'concept-reveal') {
+    } else if (qt === 'micro-lesson' || qt === 'concept-reveal') {
       isCorrect = true;
     } else {
       isCorrect = answer === q.correct_answer;
@@ -73,7 +75,7 @@ function DuolingoPageInner() {
   };
 
   const next = async () => {
-    if (!answered && q?.type !== 'micro-lesson' && q?.type !== 'concept-reveal') return;
+    if (!answered && qt !== 'micro-lesson' && qt !== 'concept-reveal') return;
     if (current + 1 >= questions.length || lives === 0) {
       try {
         const res = await axios.post(`${API_URL}/api/practice/module/${moduleId}/complete`, {
@@ -174,7 +176,7 @@ function DuolingoPageInner() {
           onFillSubmit={() => checkAnswer(fillValue)}
         />
 
-        {answered && q?.type !== 'micro-lesson' && q?.type !== 'concept-reveal' && (
+        {answered && qt !== 'micro-lesson' && qt !== 'concept-reveal' && (
           <div style={{ borderRadius: 16, padding: 16, display: 'flex', alignItems: 'center', gap: 12, backgroundColor: correct ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)' }}>
             {correct
               ? <CheckCircle size={24} color={C.green} style={{ flexShrink: 0 }} />
@@ -190,11 +192,11 @@ function DuolingoPageInner() {
           </div>
         )}
 
-        {(answered || q?.type === 'micro-lesson' || q?.type === 'concept-reveal') && (
+        {(answered || qt === 'micro-lesson' || qt === 'concept-reveal') && (
           <button
             onClick={next}
-            disabled={q?.type === 'micro-lesson' && microIdx < (q?.micro_lesson?.cards?.length ?? 0) - 1}
-            style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(232,64,155,0.28)', opacity: (q?.type === 'micro-lesson' && microIdx < (q?.micro_lesson?.cards?.length ?? 0) - 1) ? 0.4 : 1 }}
+            disabled={qt === 'micro-lesson' && microIdx < (q?.micro_lesson?.cards?.length ?? 0) - 1}
+            style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 6px 20px rgba(232,64,155,0.28)', opacity: (qt === 'micro-lesson' && microIdx < (q?.micro_lesson?.cards?.length ?? 0) - 1) ? 0.4 : 1 }}
           >
             {current + 1 >= questions.length ? 'ดูผลลัพธ์' : 'ถัดไป'} <ChevronRight size={20} />
           </button>
@@ -206,8 +208,10 @@ function DuolingoPageInner() {
 
 function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, correct, microIdx, onMicroNext, onSelect, onFillSubmit }: any) {
   if (!q) return null;
+  // Normalize: question_type (from quizzes table) → type
+  const qType = q.type || q.question_type || 'multiple_choice';
 
-  if (q.type === 'micro-lesson') {
+  if (qType === 'micro-lesson') {
     const cards = q.micro_lesson?.cards || [];
     const card  = cards[microIdx];
     if (!card) return null;
@@ -225,7 +229,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     );
   }
 
-  if (q.type === 'concept-reveal') {
+  if (qType === 'concept-reveal') {
     return (
       <div style={{ ...cardStyle, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: C.brand, margin: 0 }}>💡 Concept</p>
@@ -239,7 +243,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     );
   }
 
-  if (q.type === 'fill-blank') {
+  if (qType === 'fill-blank') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ ...cardStyle, padding: 20 }}>
@@ -269,7 +273,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     );
   }
 
-  if (q.type === 'scenario') {
+  if (qType === 'scenario') {
     const node = q.scenario_nodes?.[0];
     if (!node) return null;
     return (
