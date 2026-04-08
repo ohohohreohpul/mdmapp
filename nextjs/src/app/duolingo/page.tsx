@@ -580,7 +580,7 @@ function DuolingoPageInner() {
   const [fillValue, setFillValue] = useState('');
   const [answered, setAnswered]   = useState(false);
   const [correct, setCorrect]     = useState(false);
-  const [lives, setLives]         = useState(3);
+  const [lives]                    = useState(3); // kept for result screen compat
   const [xpEarned, setXpEarned]   = useState(0);
   const [done, setDone]           = useState(false);
   const [results, setResults]     = useState<any>(null);
@@ -608,7 +608,6 @@ function DuolingoPageInner() {
     setAnswered(true);
     setCorrect(isCorrect);
     if (isCorrect) setXpEarned(prev => prev + 10);
-    else           setLives(prev => Math.max(0, prev - 1));
   };
 
   const checkAnswer = (answer: any) => {
@@ -629,7 +628,6 @@ function DuolingoPageInner() {
     }
     setCorrect(isCorrect);
     if (isCorrect) setXpEarned(prev => prev + 10);
-    else           setLives(prev => Math.max(0, prev - 1));
   };
 
   const next = async () => {
@@ -638,7 +636,7 @@ function DuolingoPageInner() {
       const cards = q?.micro_lesson?.cards || q?.content?.cards || [];
       if (microIdx < cards.length - 1) { setMicroIdx(i => i + 1); return; }
     }
-    if (current + 1 >= questions.length || lives === 0) {
+    if (current + 1 >= questions.length) {
       try {
         const res = await axios.post(`${API_URL}/api/practice/module/${moduleId}/complete`, {
           user_id: user?._id || 'demo_user',
@@ -684,7 +682,6 @@ function DuolingoPageInner() {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: pass ? C.green : C.orange, margin: 0 }}>{pass ? 'ยอดเยี่ยม!' : 'ทำได้ดี!'}</h2>
           <p style={{ fontSize: 40, fontWeight: 800, color: C.ink, margin: 0 }}>{pct}%</p>
           <p style={{ color: C.ink2, margin: 0 }}>ตอบถูก {correctCount} จาก {total} ข้อ</p>
-          {lives === 0 && <p style={{ color: C.red, fontSize: 14, margin: 0 }}>หมดชีวิตแล้ว</p>}
           <span style={{ backgroundColor: 'rgba(239,94,168,0.10)', color: C.brand, fontWeight: 700, padding: '6px 16px', borderRadius: 999, fontSize: 14 }}>⚡ +{xpEarned} XP</span>
         </div>
         <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 360 }}>
@@ -692,7 +689,7 @@ function DuolingoPageInner() {
             style={{ flex: 1, borderRadius: 16, padding: '14px 0', fontWeight: 600, color: C.ink, backgroundColor: C.surface, border: '1px solid rgba(0,0,0,0.06)', boxShadow: cardShadow, cursor: 'pointer' }}>
             กลับ
           </button>
-          <button onClick={() => { setCurrent(0); setSelected(null); setFillValue(''); setAnswered(false); setCorrect(false); setLives(3); setXpEarned(0); setDone(false); setMicroIdx(0); }}
+          <button onClick={() => { setCurrent(0); setSelected(null); setFillValue(''); setAnswered(false); setCorrect(false); setXpEarned(0); setDone(false); setMicroIdx(0); }}
             style={{ flex: 1, backgroundColor: C.brand, color: '#fff', borderRadius: 16, padding: '14px 0', fontWeight: 700, border: 'none', cursor: 'pointer' }}>
             ฝึกอีกครั้ง
           </button>
@@ -714,7 +711,6 @@ function DuolingoPageInner() {
           </button>
           <div style={{ flex: 1 }}><ProgressBar pct={progress} /></div>
           <div style={{ display: 'flex', gap: 2 }}>
-            {[1,2,3].map(i => <span key={i} style={{ fontSize: 18, opacity: i <= lives ? 1 : 0.2 }}>❤️</span>)}
           </div>
           <span style={{ color: C.brand, fontWeight: 700, fontSize: 14 }}>+{xpEarned} XP</span>
         </div>
