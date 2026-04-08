@@ -118,8 +118,8 @@ function Shell({ children }: { children: React.ReactNode }) {
           src="/images/mascot.png"
           alt="Mydemy"
           width={88} height={88}
-          className="rounded-[24px] mb-3"
-          style={{ boxShadow: '0px 8px 28px rgba(0,0,0,0.14)' }}
+          className="rounded-[24px]"
+          style={{ boxShadow: '0px 8px 28px rgba(0,0,0,0.14)', marginBottom: 20 }}
           priority
         />
         <p style={{ fontSize: 14, color: C.ink2 }}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
