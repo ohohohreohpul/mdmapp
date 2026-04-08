@@ -1597,37 +1597,49 @@ async def debug_practice_module(module_id: str):
     }
 
 
-def _normalize_embedded_question(q: dict) -> dict | None:
+def _normalize_embedded_question(q: dict) -> Optional[dict]:
     """Normalize practice_modules embedded question schema to duolingo renderer format.
 
-    Embedded questions use 'prompt' / 'answer' and nest options inside
-    content.visual.config.blanks.  The renderer expects 'question', 'options'
-    (flat list of strings), and 'correct_answer'.
+    Handles two schemas:
+    1. Standard (already has 'question') – pass through with type normalization.
+    2. Embedded import format (uses 'prompt'/'answer' and nested blanks) – normalize fields.
+    3. Self-contained types (micro-lesson, concept-reveal, scenario) – pass through as-is.
     """
     if not q:
         return None
 
-    # Already in standard format
+    q_type = q.get("type") or q.get("question_type") or ""
+
+    # Self-contained types that don't need a 'question' field – pass straight through
+    if q_type in ("micro-lesson", "concept-reveal", "scenario"):
+        if "type" not in q:
+            q["type"] = q_type
+        return q
+
+    # Already in standard format (has 'question' field)
     if q.get("question"):
-        if "type" not in q and "question_type" in q:
+        if "type" not in q and q.get("question_type"):
             q["type"] = q["question_type"]
         return q
 
-    # Must have prompt to be renderable
+    # Embedded import format uses 'prompt' as the question text
     if not q.get("prompt"):
+        # No question text at all – skip
         return None
 
     q["question"] = q["prompt"]
+    if "type" not in q:
+        q["type"] = q_type or "multiple_choice"
 
     # Normalize answer → correct_answer
-    raw_answer = q.get("answer", "")
-    answer_ids = [a.strip() for a in str(raw_answer).split(",") if a.strip()]
+    raw_answer = str(q.get("answer", ""))
+    answer_ids = [a.strip() for a in raw_answer.split(",") if a.strip()]
 
     # Fill-blank with nested blanks (code completion style)
     blanks = (q.get("content") or {}).get("visual", {}).get("config", {}).get("blanks", [])
     if blanks:
         # Build id→label map across all blanks
-        id_to_label: dict = {}
+        id_to_label = {}
         for blank in blanks:
             for opt in blank.get("options", []):
                 id_to_label[opt["id"]] = opt["label"]
@@ -1639,7 +1651,7 @@ def _normalize_embedded_question(q: dict) -> dict | None:
         q["options"] = [opt["label"] for opt in first_blank.get("options", [])]
         q["correct_answer"] = id_to_label.get(first_answer_id, first_answer_id)
     else:
-        # Simple fill-blank or MC with flat options
+        # Simple MC with flat options list
         content_opts = (q.get("content") or {}).get("options", [])
         if content_opts:
             q["options"] = [
@@ -1647,7 +1659,6 @@ def _normalize_embedded_question(q: dict) -> dict | None:
                 for o in content_opts
             ]
             q["type"] = "multiple_choice"
-            # Map answer id → label if possible
             id_to_label = {
                 o["id"]: o.get("label", o["id"])
                 for o in content_opts if isinstance(o, dict) and "id" in o
