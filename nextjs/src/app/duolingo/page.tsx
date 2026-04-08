@@ -248,16 +248,14 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
                     {opt.label}
                   </span>
                 </div>
-                {/* HTML preview via iframe for proper rendering isolation */}
+                {/* HTML preview via iframe — no CSS reset so opt.content styles are preserved */}
                 <div
-                  style={{ height: 200, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
+                  style={{ height: 210, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
                   onClick={() => !answered && onSelect(optVal)}
                 >
                   <iframe
-                    srcDoc={opt.content
-                      ? `<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif}</style>${opt.content}`
-                      : `<div style="padding:16px;font-size:14px;color:#374151">${opt.label}</div>`}
-                    style={{ width: 700, height: 500, border: 'none', transform: 'scale(0.42)', transformOrigin: 'top left', pointerEvents: 'none', display: 'block' }}
+                    srcDoc={opt.content || `<div style="padding:16px;font-family:-apple-system,sans-serif;font-size:14px;color:#374151">${opt.label}</div>`}
+                    style={{ width: 375, height: 600, border: 'none', transform: 'scale(0.5)', transformOrigin: 'top left', pointerEvents: 'none', display: 'block' }}
                     sandbox="allow-same-origin"
                     title={opt.label}
                   />
