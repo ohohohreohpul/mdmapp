@@ -159,7 +159,7 @@ function CourseDetailPageInner() {
       <div style={{ position: 'relative' }}>
         {/* Background */}
         <div style={{
-          height: 220,
+          height: 280,
           width: '100%',
           backgroundColor: C.brand,
           ...(course.thumbnail ? { backgroundImage: `url(${course.thumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
@@ -167,7 +167,7 @@ function CourseDetailPageInner() {
         {/* Gradient overlay */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.20) 50%, transparent 100%)',
         }} />
 
         {/* Nav buttons */}
@@ -196,7 +196,7 @@ function CourseDetailPageInner() {
         </div>
 
         {/* Hero text */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 20px' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 24px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
             {course.career_path && (
               <span style={{

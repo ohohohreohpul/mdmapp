@@ -5,11 +5,12 @@ import { Ribbon, Linkedin, ExternalLink, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/contexts/UserContext';
-import { NavHeader, Spinner, EmptyState, PrimaryBtn } from '@/lib/ui';
+import { NavHeader, Spinner } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const APP_URL  = process.env.NEXT_PUBLIC_APP_URL || 'https://app.mydemy.co';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF' };
 
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
@@ -32,7 +33,7 @@ function getLinkedInUrl(cert: any) {
 
 export default function CertificatesPage() {
   const { user } = useUser();
-  const [certs, setCerts]   = useState<any[]>([]);
+  const [certs, setCerts]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,62 +60,96 @@ export default function CertificatesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="ใบประกาศนียบัตร" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px' }}>
+
         {!user ? (
-          <EmptyState icon={Ribbon} title="เข้าสู่ระบบเพื่อดูใบประกาศ"
-            action={<PrimaryBtn href="/auth">เข้าสู่ระบบ</PrimaryBtn>} />
+          /* Not logged in */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 64, paddingBottom: 64, gap: 16 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(239,94,168,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Ribbon size={32} color={C.brand} />
+            </div>
+            <div>
+              <p style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 6 }}>เข้าสู่ระบบเพื่อดูใบประกาศ</p>
+            </div>
+            <Link href="/auth" style={{ backgroundColor: C.brand, color: '#fff', fontWeight: 700, fontSize: 16, padding: '14px 32px', borderRadius: 14, textDecoration: 'none', boxShadow: '0px 8px 24px rgba(239,94,168,0.25)' }}>
+              เข้าสู่ระบบ
+            </Link>
+          </div>
+
         ) : loading ? (
           <Spinner />
+
         ) : certs.length === 0 ? (
-          <EmptyState icon={Ribbon} title="ยังไม่มีใบประกาศ" body="เรียนจบคอร์สและสอบผ่านเพื่อรับใบประกาศนียบัตร"
-            action={<PrimaryBtn href="/explore">สำรวจคอร์ส</PrimaryBtn>} />
+          /* Empty state */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 64, paddingBottom: 64, gap: 16 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(239,94,168,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Ribbon size={32} color={C.brand} />
+            </div>
+            <div>
+              <p style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 6 }}>ยังไม่มีใบประกาศ</p>
+              <p style={{ fontSize: 14, color: C.ink2, lineHeight: 1.55 }}>เรียนจบคอร์สและสอบผ่านเพื่อรับใบประกาศนียบัตร</p>
+            </div>
+            <Link href="/explore" style={{ backgroundColor: C.brand, color: '#fff', fontWeight: 700, fontSize: 16, padding: '14px 32px', borderRadius: 14, textDecoration: 'none', boxShadow: '0px 8px 24px rgba(239,94,168,0.25)' }}>
+              สำรวจคอร์ส
+            </Link>
+          </div>
+
         ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-[13px] text-ink-3">{certs.length} ใบประกาศ</p>
+          /* Certificate list */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ fontSize: 13, color: C.ink3 }}>{certs.length} ใบประกาศ</p>
             {certs.map(cert => {
               const isCareer = cert.cert_type === 'career';
+              const gold = '#C9A84C';
               return (
-                <div key={cert._id}
-                     className={`rounded-3xl overflow-hidden ${isCareer ? 'bg-[#1A1A2E]' : 'bg-surface'}`}
-                     style={{ boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: isCareer ? '1px solid rgba(201,168,76,0.30)' : '1px solid rgba(0,0,0,0.06)' }}>
-                  <div className={`h-1.5 w-full ${isCareer ? 'bg-gradient-to-r from-[#C9A84C] to-[#F5E6A3]' : 'bg-brand'}`} />
-                  <div className="p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`rounded-xl p-2 ${isCareer ? 'bg-[#C9A84C]/20' : 'bg-brand/10'}`}>
-                        <Image src="/images/logo.png" alt="Mydemy" width={28} height={28} className="object-contain" />
+                <div key={cert._id} style={{
+                  borderRadius: 20, overflow: 'hidden',
+                  backgroundColor: isCareer ? '#1A1A2E' : '#FFFFFF',
+                  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+                  border: isCareer ? `1px solid rgba(201,168,76,0.30)` : '1px solid rgba(0,0,0,0.06)',
+                }}>
+                  {/* Accent stripe */}
+                  <div style={{ height: 4, background: isCareer ? `linear-gradient(90deg, ${gold}, #F5E6A3)` : C.brand }} />
+
+                  <div style={{ padding: 20 }}>
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{ borderRadius: 12, padding: 8, backgroundColor: isCareer ? 'rgba(201,168,76,0.20)' : 'rgba(239,94,168,0.10)' }}>
+                        <Image src="/images/logo.png" alt="Mydemy" width={28} height={28} style={{ objectFit: 'contain' }} />
                       </div>
-                      <span className={`text-[12px] font-bold ${isCareer ? 'text-[#C9A84C]' : 'text-brand'}`}>Mydemy</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: isCareer ? gold : C.brand }}>Mydemy</span>
                       {isCareer && (
-                        <span className="ml-auto bg-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-bold px-2 py-0.5 rounded-full">Career Certificate</span>
+                        <span style={{ marginLeft: 'auto', backgroundColor: 'rgba(201,168,76,0.20)', color: gold, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>
+                          Career Certificate
+                        </span>
                       )}
                     </div>
-                    <h3 className={`text-[16px] font-extrabold mb-1 ${isCareer ? 'text-white' : 'text-ink'}`}>
+
+                    {/* Title + meta */}
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: isCareer ? '#fff' : C.ink, marginBottom: 4 }}>
                       {isCareer ? cert.career_path : cert.course_title}
                     </h3>
-                    <p className={`text-[13px] mb-1 ${isCareer ? 'text-white/60' : 'text-ink-2'}`}>
+                    <p style={{ fontSize: 13, color: isCareer ? 'rgba(255,255,255,0.60)' : C.ink2, marginBottom: 4 }}>
                       มอบให้แก่ {user.display_name || user.username}
                     </p>
-                    <p className={`text-[12px] ${isCareer ? 'text-white/40' : 'text-ink-3'}`}>{formatThaiDate(cert)}</p>
+                    <p style={{ fontSize: 12, color: isCareer ? 'rgba(255,255,255,0.40)' : C.ink3 }}>{formatThaiDate(cert)}</p>
 
-                    <div className="flex gap-2 mt-4">
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                       <a href={getLinkedInUrl(cert)} target="_blank" rel="noopener noreferrer"
-                         className="flex-1 flex items-center justify-center gap-1.5 bg-[#0A66C2] text-white text-[13px] font-semibold py-2.5 rounded-xl">
-                        <Linkedin size={16} /> LinkedIn
+                         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#0A66C2', color: '#fff', fontSize: 13, fontWeight: 600, padding: '10px 0', borderRadius: 12, textDecoration: 'none' }}>
+                        <Linkedin size={15} /> LinkedIn
                       </a>
                       <Link href={`/verify/${cert.verification_code}`}
-                            className={`flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold py-2.5 rounded-xl border ${
-                              isCareer ? 'bg-[#C9A84C]/20 border-[#C9A84C]/30 text-[#C9A84C]' : 'bg-bg border-rim text-ink'
-                            }`}>
-                        <ExternalLink size={16} /> ตรวจสอบ
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, fontWeight: 600, padding: '10px 0', borderRadius: 12, textDecoration: 'none', border: isCareer ? `1px solid rgba(201,168,76,0.30)` : '1px solid rgba(0,0,0,0.08)', backgroundColor: isCareer ? 'rgba(201,168,76,0.15)' : C.bg, color: isCareer ? gold : C.ink }}>
+                        <ExternalLink size={15} /> ตรวจสอบ
                       </Link>
                       <button onClick={() => handleShare(cert)}
-                              className={`w-11 flex items-center justify-center rounded-xl border ${
-                                isCareer ? 'bg-[#C9A84C]/20 border-[#C9A84C]/30 text-[#C9A84C]' : 'bg-bg border-rim text-ink'
-                              }`}>
-                        <Share2 size={16} />
+                              style={{ width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, border: isCareer ? `1px solid rgba(201,168,76,0.30)` : '1px solid rgba(0,0,0,0.08)', backgroundColor: isCareer ? 'rgba(201,168,76,0.15)' : C.bg, cursor: 'pointer', color: isCareer ? gold : C.ink }}>
+                        <Share2 size={15} />
                       </button>
                     </div>
                   </div>

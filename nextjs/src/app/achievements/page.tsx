@@ -7,6 +7,12 @@ import { NavHeader, Spinner, ProgressBar } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF' };
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
+};
 
 const BADGE_ICON_MAP: Record<string, { emoji: string; color: string }> = {
   first_lesson: { emoji: '🚩', color: '#6366F1' },
@@ -52,80 +58,76 @@ export default function AchievementsPage() {
   const li = dashboard?.level_info;
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="ความสำเร็จ" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px' }}>
         {loading ? <Spinner /> : (
           <>
             {/* Level card */}
-            <div className="rounded-2xl p-5 flex items-center gap-5 mb-4"
-                 style={{ backgroundColor: '#ef5ea8' }}>
-              <div className="text-center shrink-0">
-                <p className="text-white/70 text-[13px]">Level</p>
-                <p className="text-white text-[42px] font-extrabold leading-none">{li?.level ?? 1}</p>
+            <div style={{ backgroundColor: C.brand, borderRadius: 16, padding: '20px 20px', display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12 }}>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 13 }}>Level</p>
+                <p style={{ color: '#fff', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>{li?.level ?? 1}</p>
               </div>
-              <div className="flex-1">
+              <div style={{ flex: 1 }}>
                 {li?.xp_for_next ? (
                   <>
-                    <p className="text-white text-[13px] mb-2">
+                    <p style={{ color: '#fff', fontSize: 13, marginBottom: 8 }}>
                       {li.xp_in_level} / {li.xp_needed} XP ไปถึง Lv.{(li.level ?? 1) + 1}
                     </p>
-                    <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full" style={{ width: `${li.progress_percent}%` }} />
+                    <div style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.30)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', backgroundColor: '#fff', borderRadius: 4, width: `${li.progress_percent}%` }} />
                     </div>
                   </>
                 ) : (
-                  <p className="text-white text-[14px]">สูงสุดแล้ว! 🎉 {dashboard?.xp_total ?? 0} XP รวม</p>
+                  <p style={{ color: '#fff', fontSize: 14 }}>สูงสุดแล้ว! 🎉 {dashboard?.xp_total ?? 0} XP รวม</p>
                 )}
               </div>
             </div>
 
             {/* Stats row */}
-            <div className="flex overflow-hidden mb-5 rounded-2xl"
-                 style={{ backgroundColor: '#fff', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
+            <div style={{ ...card, display: 'flex', overflow: 'hidden', marginBottom: 20 }}>
               {[
                 { icon: <Flame  size={24} color="#F59E0B" />, value: dashboard?.current_streak ?? 0, label: 'Streak' },
                 { icon: <Trophy size={24} color="#10B981" />, value: earnedIds.size,                  label: 'Badges' },
                 { icon: <Star   size={24} color="#6366F1" />, value: dashboard?.xp_total ?? 0,        label: 'XP' },
               ].map((s, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center"
-                     style={{ padding: '16px 0', borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
                   {s.icon}
-                  <p style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', marginTop: 4, lineHeight: 1 }}>{s.value}</p>
-                  <p style={{ fontSize: 11, color: '#C7C7CC', marginTop: 3 }}>{s.label}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: C.ink, marginTop: 4, lineHeight: 1 }}>{s.value}</p>
+                  <p style={{ fontSize: 11, color: C.ink3, marginTop: 3 }}>{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Badges */}
-            <p className="text-[14px] font-bold text-ink mb-3">
+            <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 12 }}>
               Badges ({earnedIds.size}/{badges.length})
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {badges.map(badge => (
-                <div key={badge.id}
-                     className={`flex flex-col items-center gap-2 relative ${!badge.earned ? 'opacity-50' : ''}`}
-                     style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
-                       style={{ backgroundColor: badge.earned ? `${badge.iconInfo.color}20` : '#f3f3f8' }}>
+                <div key={badge.id} style={{ ...card, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, position: 'relative', opacity: badge.earned ? 1 : 0.5 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, backgroundColor: badge.earned ? `${badge.iconInfo.color}20` : '#f3f3f8' }}>
                     {badge.iconInfo.emoji}
                   </div>
-                  <p className={`text-[13px] font-bold text-center ${badge.earned ? 'text-ink' : 'text-ink-3'}`}>
+                  <p style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', color: badge.earned ? C.ink : C.ink3 }}>
                     {badge.name}
                   </p>
-                  <p className="text-[11px] text-ink-2 text-center leading-snug">{badge.description}</p>
+                  <p style={{ fontSize: 11, color: C.ink2, textAlign: 'center', lineHeight: 1.4 }}>{badge.description}</p>
                   {!badge.earned && (
-                    <div className="absolute top-2 right-2"><Lock size={14} className="text-ink-3" /></div>
+                    <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                      <Lock size={14} color={C.ink3} />
+                    </div>
                   )}
                 </div>
               ))}
             </div>
 
             {(dashboard?.longest_streak ?? 0) > 0 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <Flame size={16} className="text-[#F59E0B]" />
-                <p className="text-[13px] text-ink-2">Streak ยาวที่สุด: {dashboard?.longest_streak} วัน</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+                <Flame size={16} color="#F59E0B" />
+                <p style={{ fontSize: 13, color: C.ink2 }}>Streak ยาวที่สุด: {dashboard?.longest_streak} วัน</p>
               </div>
             )}
           </>
