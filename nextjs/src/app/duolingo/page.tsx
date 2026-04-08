@@ -299,7 +299,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
           const chosen   = selected === optVal;
           const isAnswer = q.correct_answer === optVal;
           return (
-            <McButton key={opt.id ?? optVal} label={opt.label || opt.content || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
+            <McButton key={opt.id ?? optVal} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
           );
         })}
       </div>
@@ -389,7 +389,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
           const chosen   = selected === optVal;
           const isAnswer = q.correct_answer === optVal;
           return (
-            <McButton key={opt.id ?? i} label={opt.label || opt.content || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
+            <McButton key={opt.id ?? i} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
           );
         })}
       </div>
