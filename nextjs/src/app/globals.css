@@ -53,10 +53,7 @@
 
 html, body {
   height: 100%;
-  /* iOS-native font stack */
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-               'Outfit', 'Plus Jakarta Sans', 'Inter',
-               'Helvetica Neue', Arial, sans-serif;
+  font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   background: #F2F2F7;
