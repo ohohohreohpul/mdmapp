@@ -1597,10 +1597,77 @@ async def debug_practice_module(module_id: str):
     }
 
 
+def _normalize_embedded_question(q: dict) -> dict | None:
+    """Normalize practice_modules embedded question schema to duolingo renderer format.
+
+    Embedded questions use 'prompt' / 'answer' and nest options inside
+    content.visual.config.blanks.  The renderer expects 'question', 'options'
+    (flat list of strings), and 'correct_answer'.
+    """
+    if not q:
+        return None
+
+    # Already in standard format
+    if q.get("question"):
+        if "type" not in q and "question_type" in q:
+            q["type"] = q["question_type"]
+        return q
+
+    # Must have prompt to be renderable
+    if not q.get("prompt"):
+        return None
+
+    q["question"] = q["prompt"]
+
+    # Normalize answer → correct_answer
+    raw_answer = q.get("answer", "")
+    answer_ids = [a.strip() for a in str(raw_answer).split(",") if a.strip()]
+
+    # Fill-blank with nested blanks (code completion style)
+    blanks = (q.get("content") or {}).get("visual", {}).get("config", {}).get("blanks", [])
+    if blanks:
+        # Build id→label map across all blanks
+        id_to_label: dict = {}
+        for blank in blanks:
+            for opt in blank.get("options", []):
+                id_to_label[opt["id"]] = opt["label"]
+
+        # Convert to multiple_choice using the first blank so the renderer works
+        first_blank = blanks[0]
+        first_answer_id = answer_ids[0] if answer_ids else ""
+        q["type"] = "multiple_choice"
+        q["options"] = [opt["label"] for opt in first_blank.get("options", [])]
+        q["correct_answer"] = id_to_label.get(first_answer_id, first_answer_id)
+    else:
+        # Simple fill-blank or MC with flat options
+        content_opts = (q.get("content") or {}).get("options", [])
+        if content_opts:
+            q["options"] = [
+                o.get("label", o) if isinstance(o, dict) else o
+                for o in content_opts
+            ]
+            q["type"] = "multiple_choice"
+            # Map answer id → label if possible
+            id_to_label = {
+                o["id"]: o.get("label", o["id"])
+                for o in content_opts if isinstance(o, dict) and "id" in o
+            }
+            resolved = [id_to_label.get(aid, aid) for aid in answer_ids]
+            q["correct_answer"] = resolved[0] if len(resolved) == 1 else ", ".join(resolved)
+        else:
+            if not q.get("correct_answer") and raw_answer:
+                q["correct_answer"] = raw_answer
+            if "type" not in q:
+                q["type"] = "fill-blank"
+
+    return q
+
+
 @api_router.get("/practice/module/{module_id}")
 async def get_practice_module(module_id: str):
     """Single module with full questions array.
     Falls back to the quizzes table when the practice module has no embedded questions.
+    Normalizes embedded question schema so the duolingo renderer can display them.
     """
     res = await supabase.table("practice_modules") \
         .select("*") \
@@ -1610,8 +1677,7 @@ async def get_practice_module(module_id: str):
     if not data:
         raise HTTPException(status_code=404, detail="Practice module not found")
 
-    # Prefer the quizzes table (admin-generated) over any embedded questions.
-    # Embedded questions in practice_modules may use a different schema.
+    # Try quizzes table first (admin-generated, preferred)
     course_id = data.get("course_id")
     if course_id:
         quiz_res = await supabase.table("quizzes") \
@@ -1621,14 +1687,22 @@ async def get_practice_module(module_id: str):
         all_questions = []
         for row in (quiz_res.data or []):
             for q in (row.get("questions") or []):
-                # Normalize question_type -> type for the duolingo renderer
                 if "type" not in q and "question_type" in q:
                     q["type"] = q["question_type"]
-                # Only include questions that have actual content
                 if q.get("question") and (q.get("options") or q.get("correct_answer")):
                     all_questions.append(q)
         if all_questions:
             data["questions"] = all_questions
+            return data
+
+    # Fall back to embedded questions — normalize schema for the renderer
+    embedded = data.get("questions") or []
+    normalized = []
+    for q in embedded:
+        nq = _normalize_embedded_question(dict(q))
+        if nq:
+            normalized.append(nq)
+    data["questions"] = normalized
 
     return data
 
