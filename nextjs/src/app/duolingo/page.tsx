@@ -160,7 +160,6 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Fullscreen expand modal */}
       {expanded && (
         <div
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 200,
@@ -168,7 +167,7 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
           onClick={() => setExpanded(null)}
         >
           <div style={{ backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}
-               onClick={e => e.stopPropagation()}>
+               onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.sep}` }}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{expanded.label}</span>
               <button onClick={() => setExpanded(null)}
@@ -199,7 +198,6 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
           const headerBg = reveal ? isAnswer ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : '#F9FAFB' : chosen ? 'rgba(239,94,168,0.10)' : '#F9FAFB';
           return (
             <div key={opt.id} style={{ flex: 1, borderRadius: 16, border: `2px solid ${border}`, backgroundColor: C.surface, overflow: 'hidden', boxShadow: cardShadow }}>
-              {/* Header */}
               <div style={{ backgroundColor: headerBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {reveal && isAnswer && <span style={{ color: C.green }}>✅</span>}
                 {reveal && chosen && !isAnswer && <span style={{ color: C.red }}>❌</span>}
@@ -207,7 +205,6 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
                   {opt.label}
                 </span>
               </div>
-              {/* HTML preview — click selects; expand badge opens modal */}
               <div
                 style={{ height: 170, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
                 onClick={() => !answered && onSelect(optVal)}
@@ -219,17 +216,15 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
                   scrolling="no"
                   title={opt.label}
                 />
-                {/* Expand badge — stops propagation so it doesn't also select */}
                 <div
                   style={{ position: 'absolute', bottom: 6, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}
-                  onClick={e => { e.stopPropagation(); setExpanded({ html: opt.content || '', label: opt.label }); }}
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpanded({ html: opt.content || '', label: opt.label }); }}
                 >
                   <span style={{ fontSize: 11, backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff', padding: '3px 12px', borderRadius: 999, cursor: 'pointer' }}>
                     🔍 ขยาย
                   </span>
                 </div>
               </div>
-              {/* Select button */}
               <button
                 onClick={() => !answered && onSelect(optVal)}
                 disabled={answered}
