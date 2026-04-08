@@ -1579,11 +1579,8 @@ async def get_practice_module(module_id: str):
     if not data:
         raise HTTPException(status_code=404, detail="Practice module not found")
 
-    # If the module already has embedded questions, return as-is
-    if data.get("questions"):
-        return data
-
-    # Fallback: pull all lesson_quiz questions from the quizzes table for this course
+    # Prefer the quizzes table (admin-generated) over any embedded questions.
+    # Embedded questions in practice_modules may use a different schema.
     course_id = data.get("course_id")
     if course_id:
         quiz_res = await supabase.table("quizzes") \
@@ -1597,8 +1594,11 @@ async def get_practice_module(module_id: str):
                 # Normalize question_type -> type for the duolingo renderer
                 if "type" not in q and "question_type" in q:
                     q["type"] = q["question_type"]
-                all_questions.append(q)
-        data["questions"] = all_questions
+                # Only include questions that have actual content
+                if q.get("question") and (q.get("options") or q.get("correct_answer")):
+                    all_questions.append(q)
+        if all_questions:
+            data["questions"] = all_questions
 
     return data
 
