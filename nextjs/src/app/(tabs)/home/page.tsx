@@ -152,7 +152,7 @@ export default function HomePage() {
             Mydemy
           </p>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
-            เรียนรู้วันนี้<br />เปลี่ยนชีวิตพรุ่งนี้
+            Upskill กับ mydemy<br />อาชีพไหนก็ฟรี
           </h1>
         </div>
 
