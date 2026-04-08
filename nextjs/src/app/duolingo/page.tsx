@@ -241,10 +241,82 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
   );
 }
 
+// ── Fill-blank word-bank renderer (needs useState for multi-select) ───────────
+
+function FillBlankWordBankRenderer({ q, visualConfig, answered, correct, onSubmit }: any) {
+  const [selections, setSelections] = useState<string[]>([]);
+
+  const blanks: any[] = (visualConfig?.blanks || []).filter((b: any) => typeof b === 'object' && b !== null);
+  const allOpts: any[] = [];
+  blanks.forEach((blank: any) => {
+    (blank.options || []).forEach((o: any) => {
+      if (typeof o === 'object' && o !== null && !allOpts.find((x: any) => x.id === o.id)) allOpts.push(o);
+    });
+  });
+
+  // Build correct labels from all blanks using original answer IDs
+  const idToLabel: Record<string, string> = {};
+  blanks.forEach((blank: any) => {
+    (blank.options || []).forEach((o: any) => { if (o?.id) idToLabel[o.id] = o.label || o.id; });
+  });
+  const correctIds = String(q.answer || q.correct_answer || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const correctLabels = new Set(correctIds.map(id => idToLabel[id] || id));
+
+  const toggle = (label: string) => {
+    if (answered) return;
+    setSelections(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ ...cardStyle, padding: 20 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
+        {visualConfig?.code && (
+          <pre style={{ backgroundColor: '#1e1e2e', borderRadius: 10, padding: 14, fontSize: 13, color: '#cdd6f4', overflowX: 'auto', whiteSpace: 'pre-wrap', margin: 0 }}>
+            {visualConfig.code}
+          </pre>
+        )}
+      </div>
+      <p style={{ fontSize: 12, color: C.ink2, margin: '4px 0', textAlign: 'center' }}>
+        {blanks.length > 1 ? `เลือก ${blanks.length} คำตอบ` : 'เลือกคำตอบที่ถูกต้อง'}
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+        {allOpts.map((o: any) => {
+          const oLabel  = o.label || o.id;
+          const chosen  = answered ? selections.includes(oLabel) : selections.includes(oLabel);
+          const isRight = correctLabels.has(oLabel);
+          const bg = answered
+            ? isRight ? 'rgba(16,185,129,0.12)' : chosen ? 'rgba(239,68,68,0.10)' : '#F3F4F6'
+            : chosen ? 'rgba(239,94,168,0.10)' : '#F3F4F6';
+          const border = answered
+            ? isRight ? C.green : chosen ? C.red : 'transparent'
+            : chosen ? C.brand : 'transparent';
+          return (
+            <button key={o.id} onClick={() => toggle(oLabel)}
+              style={{ padding: '8px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                       border: `2px solid ${border}`, backgroundColor: bg, color: C.ink,
+                       cursor: answered ? 'default' : 'pointer' }}>
+              {oLabel}
+            </button>
+          );
+        })}
+      </div>
+      {!answered && (
+        <button onClick={() => onSubmit(selections, correctLabels)} disabled={selections.length === 0}
+          style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700,
+                   padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer',
+                   opacity: selections.length === 0 ? 0.4 : 1 }}>
+          ตรวจคำตอบ
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Question renderer ─────────────────────────────────────────────────────────
 
 function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, correct,
-  microIdx, onMicroNext, onSelect, onFillSubmit }: any) {
+  microIdx, onMicroNext, onSelect, onFillSubmit, onWordBankSubmit }: any) {
   if (!q) return null;
 
   const qType   = q.type || q.question_type || 'multiple-choice';
@@ -350,41 +422,11 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     const hasWordBank   = blanks.length > 0;
 
     if (hasWordBank) {
-      // Word-bank style: show first blank's options as tappable chips
-      const allOpts: any[] = [];
-      blanks.forEach((blank: any) => {
-        (blank.options || []).forEach((o: any) => {
-          if (typeof o === 'object' && o !== null && !allOpts.find(x => x.id === o.id)) allOpts.push(o);
-        });
-      });
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ ...cardStyle, padding: 20 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
-            {visualConfig?.code && (
-              <pre style={{ backgroundColor: '#1e1e2e', borderRadius: 10, padding: 14, fontSize: 13, color: '#cdd6f4', overflowX: 'auto', whiteSpace: 'pre-wrap', margin: 0 }}>
-                {visualConfig.code}
-              </pre>
-            )}
-          </div>
-          <p style={{ fontSize: 12, color: C.ink2, margin: '4px 0', textAlign: 'center' }}>เลือกคำตอบที่ถูกต้อง</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-            {allOpts.map((o: any) => {
-              const oLabel   = o.label || o.id;
-              const chosen   = selected === oLabel;
-              const isAnswer = q.correct_answer === oLabel;
-              const reveal   = answered;
-              const bg = reveal ? isAnswer ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : '#F3F4F6' : chosen ? 'rgba(239,94,168,0.10)' : '#F3F4F6';
-              const border = reveal ? isAnswer ? C.green : chosen ? C.red : 'transparent' : chosen ? C.brand : 'transparent';
-              return (
-                <button key={o.id} onClick={() => !answered && onSelect(oLabel)}
-                  style={{ padding: '8px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: `2px solid ${border}`, backgroundColor: bg, color: C.ink, cursor: answered ? 'default' : 'pointer' }}>
-                  {oLabel}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <FillBlankWordBankRenderer
+          q={q} visualConfig={visualConfig} answered={answered} correct={correct}
+          onSubmit={onWordBankSubmit}
+        />
       );
     }
 
@@ -481,6 +523,19 @@ function DuolingoPageInner() {
   const q        = questions[current];
   const qt       = q ? (q.type || q.question_type || 'multiple-choice') : '';
   const progress = questions.length > 0 ? (current / questions.length) * 100 : 0;
+
+  // Word-bank submit: receives (selections: string[], correctLabels: Set<string>)
+  const checkWordBank = (selections: string[], correctLabels: Set<string>) => {
+    if (answered) return;
+    setSelected(selections.join(','));
+    setAnswered(true);
+    const isCorrect = correctLabels.size > 0 &&
+      [...correctLabels].every(l => selections.includes(l)) &&
+      selections.every(l => correctLabels.has(l));
+    setCorrect(isCorrect);
+    if (isCorrect) setXpEarned(prev => prev + 10);
+    else           setLives(prev => Math.max(0, prev - 1));
+  };
 
   const checkAnswer = (answer: any) => {
     if (answered) return;
@@ -596,7 +651,9 @@ function DuolingoPageInner() {
           q={q} selected={selected} fillValue={fillValue}
           onFillChange={setFillValue} answered={answered} correct={correct}
           microIdx={microIdx} onMicroNext={() => setMicroIdx(i => i + 1)}
-          onSelect={checkAnswer} onFillSubmit={() => checkAnswer(fillValue)}
+          onSelect={checkAnswer}
+          onFillSubmit={() => checkAnswer(fillValue)}
+          onWordBankSubmit={checkWordBank}
         />
 
         {answered && !noAnswerType && (
