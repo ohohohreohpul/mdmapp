@@ -1586,7 +1586,6 @@ async def get_practice_module(module_id: str):
         quiz_res = await supabase.table("quizzes") \
             .select("questions") \
             .eq("course_id", course_id) \
-            .eq("quiz_type", "lesson_quiz") \
             .execute()
         all_questions = []
         for row in (quiz_res.data or []):
