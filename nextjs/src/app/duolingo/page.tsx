@@ -248,15 +248,16 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
                     {opt.label}
                   </span>
                 </div>
-                {/* HTML preview via iframe — no CSS reset so opt.content styles are preserved */}
+                {/* HTML preview — Tailwind CDN needed since content uses Tailwind classes */}
                 <div
-                  style={{ height: 210, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
+                  style={{ height: 170, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
                   onClick={() => !answered && onSelect(optVal)}
                 >
                   <iframe
-                    srcDoc={opt.content || `<div style="padding:16px;font-family:-apple-system,sans-serif;font-size:14px;color:#374151">${opt.label}</div>`}
-                    style={{ width: 375, height: 600, border: 'none', transform: 'scale(0.5)', transformOrigin: 'top left', pointerEvents: 'none', display: 'block' }}
-                    sandbox="allow-same-origin"
+                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"><\/script><style>*{box-sizing:border-box}body{margin:0;padding:8px;background:transparent;font-family:sans-serif}</style></head><body>${opt.content || `<div class="p-4 text-sm text-gray-600">${opt.label}</div>`}</body></html>`}
+                    style={{ width: '100%', height: 170, border: 'none', display: 'block', pointerEvents: 'none' }}
+                    sandbox="allow-scripts"
+                    scrolling="no"
                     title={opt.label}
                   />
                   {!answered && (
