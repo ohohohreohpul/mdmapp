@@ -20,48 +20,60 @@ export default function SplashPage() {
       className="fixed inset-0 flex flex-col items-center justify-center"
       style={{ backgroundColor: '#ef5ea8' }}
     >
-      {/* Ambient glow circles */}
-      <div className="absolute w-[300px] h-[300px] rounded-full animate-breathe"
-           style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)' }} />
-      <div className="absolute w-[200px] h-[200px] rounded-full border border-white/20 animate-breathe"
-           style={{ animationDelay: '0.3s' }} />
+      {/* Subtle ambient glow */}
+      <div
+        className="absolute rounded-full animate-breathe"
+        style={{
+          width: 320, height: 320,
+          background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)',
+        }}
+      />
 
-      {/* Mascot */}
-      <div className="relative z-10 mb-6 animate-scale-in">
+      {/* Mascot icon */}
+      <div className="relative z-10 animate-scale-in" style={{ marginBottom: 24 }}>
         <Image
           src="/images/mascot.png"
           alt="Mydemy"
           width={148}
           height={148}
-          className="rounded-[32px] shadow-[0_24px_48px_rgba(0,0,0,0.22)]"
+          className="rounded-[32px]"
+          style={{ boxShadow: '0px 20px 48px rgba(0,0,0,0.24)' }}
           priority
         />
       </div>
 
       {/* Wordmark + tagline */}
-      <div className="relative z-10 flex flex-col items-center gap-1.5 animate-fade-up"
-           style={{ animationDelay: '0.4s' }}>
+      <div
+        className="relative z-10 flex flex-col items-center animate-fade-up"
+        style={{ gap: 8, animationDelay: '0.35s' }}
+      >
         <Image
           src="/images/logo-wordmark.png"
           alt="Mydemy"
-          width={126}
-          height={40}
+          width={130}
+          height={42}
           className="object-contain brightness-0 invert"
           priority
         />
-        <p className="text-white/65 text-[13px] tracking-wide">เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.02em' }}>
+          เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน
+        </p>
       </div>
 
-      {/* Progress bar */}
+      {/* Loading bar */}
       <div
-        className="absolute inset-x-14 animate-fade-up"
+        className="absolute animate-fade-up"
         style={{
           bottom: 'calc(env(safe-area-inset-bottom, 20px) + 28px)',
+          left: 56, right: 56,
           animationDelay: '0.45s',
         }}
       >
-        <div className="h-[3px] bg-white/20 rounded-full overflow-hidden">
-          <div className="h-full bg-white/75 rounded-full animate-fill-bar" />
+        <div
+          className="rounded-full overflow-hidden"
+          style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.20)' }}
+        >
+          <div className="h-full rounded-full animate-fill-bar" style={{ backgroundColor: 'rgba(255,255,255,0.75)' }} />
         </div>
       </div>
     </div>
