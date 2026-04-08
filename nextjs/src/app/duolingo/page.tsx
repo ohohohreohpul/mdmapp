@@ -148,6 +148,99 @@ function McButton({ label, chosen, isCorrect, answered, onPress }: {
   );
 }
 
+// ── Comparison renderer (separate component so it can own useState) ───────────
+
+function mkHtmlDoc(body: string) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"><\/script><style>*{box-sizing:border-box}body{margin:0;padding:8px;font-family:sans-serif}</style></head><body>${body}</body></html>`;
+}
+
+function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
+  const [expanded, setExpanded] = useState<{ html: string; label: string } | null>(null);
+  const opts: any[] = content.options || [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {expanded && (
+        <div
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 200,
+                   display: 'flex', flexDirection: 'column', padding: 16 }}
+          onClick={() => setExpanded(null)}
+        >
+          <div style={{ backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}
+               onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.sep}` }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{expanded.label}</span>
+              <button onClick={() => setExpanded(null)}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: C.ink2, lineHeight: 1 }}>✕</button>
+            </div>
+            <iframe
+              srcDoc={mkHtmlDoc(expanded.html)}
+              style={{ width: '100%', flex: 1, border: 'none', display: 'block' }}
+              sandbox="allow-scripts allow-same-origin"
+              title={expanded.label}
+            />
+          </div>
+        </div>
+      )}
+
+      <div style={{ ...cardStyle, padding: 20 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 6px' }}>{q.question || q.prompt}</p>
+        <p style={{ fontSize: 12, color: C.ink2, margin: 0 }}>🔍 เปรียบเทียบและเลือกตัวเลือกที่ดีกว่า</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        {opts.map((opt: any) => {
+          const optVal   = opt.content || opt.label || opt.id;
+          const chosen   = selected === optVal;
+          const isAnswer = q.correct_answer === optVal;
+          const reveal   = answered;
+          const border   = reveal ? isAnswer ? C.green : chosen ? C.red : C.sep : chosen ? C.brand : C.sep;
+          const headerBg = reveal ? isAnswer ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : '#F9FAFB' : chosen ? 'rgba(239,94,168,0.10)' : '#F9FAFB';
+          return (
+            <div key={opt.id} style={{ flex: 1, borderRadius: 16, border: `2px solid ${border}`, backgroundColor: C.surface, overflow: 'hidden', boxShadow: cardShadow }}>
+              <div style={{ backgroundColor: headerBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {reveal && isAnswer && <span style={{ color: C.green }}>✅</span>}
+                {reveal && chosen && !isAnswer && <span style={{ color: C.red }}>❌</span>}
+                <span style={{ fontSize: 13, fontWeight: 700, color: reveal ? (isAnswer ? C.green : chosen ? C.red : C.ink2) : C.ink2 }}>
+                  {opt.label}
+                </span>
+              </div>
+              <div
+                style={{ height: 170, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
+                onClick={() => !answered && onSelect(optVal)}
+              >
+                <iframe
+                  srcDoc={mkHtmlDoc(opt.content || `<div class="p-4 text-sm text-gray-600">${opt.label}</div>`)}
+                  style={{ width: '100%', height: 170, border: 'none', display: 'block', pointerEvents: 'none' }}
+                  sandbox="allow-scripts allow-same-origin"
+                  scrolling="no"
+                  title={opt.label}
+                />
+                <div
+                  style={{ position: 'absolute', bottom: 6, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpanded({ html: opt.content || '', label: opt.label }); }}
+                >
+                  <span style={{ fontSize: 11, backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff', padding: '3px 12px', borderRadius: 999, cursor: 'pointer' }}>
+                    🔍 ขยาย
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => !answered && onSelect(optVal)}
+                disabled={answered}
+                style={{ width: '100%', padding: '10px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: answered ? 'default' : 'pointer',
+                         backgroundColor: chosen ? (reveal ? (isAnswer ? C.green : C.red) : C.brand) : '#F3F4F6',
+                         color: chosen ? '#fff' : C.ink2 }}>
+                {reveal && isAnswer ? '✅ ถูก' : reveal && chosen && !isAnswer ? '❌ ผิด' : chosen ? '✓ เลือกแล้ว' : 'เลือก'}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Question renderer ─────────────────────────────────────────────────────────
 
 function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, correct,
@@ -223,67 +316,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   // ── Comparison ────────────────────────────────────────────────────────────
   if (qType === 'comparison') {
-    const opts: any[] = content.options || [];
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ ...cardStyle, padding: 20 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 6px' }}>{q.question || q.prompt}</p>
-          <p style={{ fontSize: 12, color: C.ink2, margin: 0 }}>🔍 เปรียบเทียบและเลือกตัวเลือกที่ดีกว่า</p>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {opts.map((opt: any) => {
-            const optVal   = opt.content || opt.label || opt.id;
-            const chosen   = selected === optVal;
-            const isAnswer = q.correct_answer === optVal;
-            const reveal   = answered;
-            const border   = reveal ? isAnswer ? C.green : chosen ? C.red : C.sep : chosen ? C.brand : C.sep;
-            const headerBg = reveal ? isAnswer ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : '#F9FAFB' : chosen ? 'rgba(239,94,168,0.10)' : '#F9FAFB';
-            return (
-              <div key={opt.id} style={{ flex: 1, borderRadius: 16, border: `2px solid ${border}`, backgroundColor: C.surface, overflow: 'hidden', boxShadow: cardShadow }}>
-                {/* Header */}
-                <div style={{ backgroundColor: headerBg, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {reveal && isAnswer && <span style={{ color: C.green }}>✅</span>}
-                  {reveal && chosen && !isAnswer && <span style={{ color: C.red }}>❌</span>}
-                  <span style={{ fontSize: 13, fontWeight: 700, color: reveal ? (isAnswer ? C.green : chosen ? C.red : C.ink2) : C.ink2 }}>
-                    {opt.label}
-                  </span>
-                </div>
-                {/* HTML preview via iframe for proper rendering isolation */}
-                <div
-                  style={{ height: 200, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
-                  onClick={() => !answered && onSelect(optVal)}
-                >
-                  <iframe
-                    srcDoc={opt.content
-                      ? `<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif}</style>${opt.content}`
-                      : `<div style="padding:16px;font-size:14px;color:#374151">${opt.label}</div>`}
-                    style={{ width: 700, height: 500, border: 'none', transform: 'scale(0.42)', transformOrigin: 'top left', pointerEvents: 'none', display: 'block' }}
-                    sandbox="allow-same-origin"
-                    title={opt.label}
-                  />
-                  {!answered && (
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: 6 }}>
-                      <span style={{ fontSize: 11, backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff', padding: '2px 10px', borderRadius: 999 }}>
-                        tap to expand
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {/* Select button */}
-                <button
-                  onClick={() => !answered && onSelect(optVal)}
-                  disabled={answered}
-                  style={{ width: '100%', padding: '10px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: answered ? 'default' : 'pointer',
-                           backgroundColor: chosen ? (reveal ? (isAnswer ? C.green : C.red) : C.brand) : '#F3F4F6',
-                           color: chosen ? '#fff' : C.ink2 }}>
-                  {reveal && isAnswer ? '✅ ถูก' : reveal && chosen && !isAnswer ? '❌ ผิด' : chosen ? '✓ เลือกแล้ว' : 'เลือก'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    return <ComparisonRenderer q={q} content={content} selected={selected} answered={answered} onSelect={onSelect} />;
   }
 
   // ── Chart-reading / Chart-comparison ─────────────────────────────────────
