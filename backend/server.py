@@ -477,7 +477,11 @@ def _transform_practice_question(q: dict) -> dict:
             if blanks:
                 id_to_label: dict = {}
                 for blank in blanks:
+                    if not isinstance(blank, dict):
+                        continue
                     for opt in blank.get("options", []):
+                        if not isinstance(opt, dict):
+                            continue
                         id_to_label[opt["id"]] = opt.get("label") or opt["id"]
                 raw = str(out.get("answer") or "").split(",")[0].strip()
                 out["correct_answer"] = id_to_label.get(raw, raw)
