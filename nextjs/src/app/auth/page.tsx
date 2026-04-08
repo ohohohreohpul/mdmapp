@@ -117,20 +117,9 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Image
           src="/images/mascot.png"
           alt="Mydemy"
-          width={80} height={80}
-          className="rounded-[22px] mb-4"
+          width={88} height={88}
+          className="rounded-[24px] mb-3"
           style={{ boxShadow: '0px 8px 28px rgba(0,0,0,0.14)' }}
-          priority
-        />
-        <Image
-          src="/images/logo-wordmark.png"
-          alt="Mydemy"
-          width={120} height={38}
-          className="object-contain mb-2"
-          style={{
-            filter: 'brightness(0) saturate(100%) invert(44%) sepia(77%) saturate(1032%) hue-rotate(295deg) brightness(98%) contrast(95%)',
-            height: 32, width: 'auto',
-          }}
           priority
         />
         <p style={{ fontSize: 14, color: C.ink2 }}>เรียนรู้ทักษะใหม่ เพื่ออาชีพในฝัน</p>
