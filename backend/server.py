@@ -1689,6 +1689,7 @@ async def get_practice_module(module_id: str):
             for q in (row.get("questions") or []):
                 if "type" not in q and "question_type" in q:
                     q["type"] = q["question_type"]
+                # Only include questions that have actual content
                 if q.get("question") and (q.get("options") or q.get("correct_answer")):
                     all_questions.append(q)
         if all_questions:
