@@ -248,14 +248,18 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
                     {opt.label}
                   </span>
                 </div>
-                {/* HTML preview */}
+                {/* HTML preview via iframe for proper rendering isolation */}
                 <div
-                  style={{ height: 180, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
+                  style={{ height: 200, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
                   onClick={() => !answered && onSelect(optVal)}
                 >
-                  <div
-                    dangerouslySetInnerHTML={{ __html: opt.content || `<div style="padding:12px;font-size:13px;color:#374151">${opt.label}</div>` }}
-                    style={{ transform: 'scale(0.55)', transformOrigin: 'top left', width: '182%', pointerEvents: 'none' }}
+                  <iframe
+                    srcDoc={opt.content
+                      ? `<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif}</style>${opt.content}`
+                      : `<div style="padding:16px;font-size:14px;color:#374151">${opt.label}</div>`}
+                    style={{ width: 700, height: 500, border: 'none', transform: 'scale(0.42)', transformOrigin: 'top left', pointerEvents: 'none', display: 'block' }}
+                    sandbox="allow-same-origin"
+                    title={opt.label}
                   />
                   {!answered && (
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', paddingBottom: 6 }}>
@@ -299,7 +303,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
           const chosen   = selected === optVal;
           const isAnswer = q.correct_answer === optVal;
           return (
-            <McButton key={opt.id ?? optVal} label={opt.label || opt.content || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
+            <McButton key={opt.id ?? optVal} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
           );
         })}
       </div>
@@ -389,7 +393,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
           const chosen   = selected === optVal;
           const isAnswer = q.correct_answer === optVal;
           return (
-            <McButton key={opt.id ?? i} label={opt.label || opt.content || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
+            <McButton key={opt.id ?? i} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
           );
         })}
       </div>
