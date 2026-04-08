@@ -1677,8 +1677,11 @@ def _normalize_embedded_question(q: dict) -> Optional[dict]:
 @api_router.get("/practice/module/{module_id}")
 async def get_practice_module(module_id: str):
     """Single module with full questions array.
-    Falls back to the quizzes table when the practice module has no embedded questions.
-    Normalizes embedded question schema so the duolingo renderer can display them.
+
+    Lookup order:
+    1. quizzes table filtered by course_id + module_key (populated by
+       migrate_practice_to_quizzes.py) — preferred, renderer-ready format.
+    2. Fall back to embedded questions in practice_modules.questions.
     """
     res = await supabase.table("practice_modules") \
         .select("*") \
@@ -1688,27 +1691,22 @@ async def get_practice_module(module_id: str):
     if not data:
         raise HTTPException(status_code=404, detail="Practice module not found")
 
-    # Try quizzes table first (admin-generated, preferred)
-    course_id = data.get("course_id")
-    if course_id:
+    course_id  = data.get("course_id")
+    module_key = data.get("module_key")
+
+    if course_id and module_key:
+        # Prefer the per-module quiz row written by the migration script.
         quiz_res = await supabase.table("quizzes") \
             .select("questions") \
             .eq("course_id", course_id) \
-            .execute()
-        all_questions = []
-        for row in (quiz_res.data or []):
-            for q in (row.get("questions") or []):
-                if "type" not in q and "question_type" in q:
-                    q["type"] = q["question_type"]
-                # Only include questions that have actual content
-                if q.get("question") and (q.get("options") or q.get("correct_answer")):
-                    all_questions.append(q)
-        if all_questions:
-            data["questions"] = all_questions
+            .eq("quiz_type", module_key) \
+            .limit(1).execute()
+        quiz_row = _one(quiz_res)
+        if quiz_row and quiz_row.get("questions"):
+            data["questions"] = quiz_row["questions"]
             return data
 
-    # Fall back to embedded questions — return as-is; the Expo renderer reads
-    # q.prompt / q.answer / q.content natively for all 9 question types.
+    # Fall back to embedded questions — returned as-is.
     return data
 
 
