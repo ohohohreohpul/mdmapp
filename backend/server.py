@@ -1568,7 +1568,9 @@ async def get_practice_modules(course_id: str, user_id: str = "demo_user"):
 
 @api_router.get("/practice/module/{module_id}")
 async def get_practice_module(module_id: str):
-    """Single module with full questions array."""
+    """Single module with full questions array.
+    Falls back to the quizzes table when the practice module has no embedded questions.
+    """
     res = await supabase.table("practice_modules") \
         .select("*") \
         .eq("id", module_id) \
@@ -1576,6 +1578,28 @@ async def get_practice_module(module_id: str):
     data = _one(res)
     if not data:
         raise HTTPException(status_code=404, detail="Practice module not found")
+
+    # If the module already has embedded questions, return as-is
+    if data.get("questions"):
+        return data
+
+    # Fallback: pull all lesson_quiz questions from the quizzes table for this course
+    course_id = data.get("course_id")
+    if course_id:
+        quiz_res = await supabase.table("quizzes") \
+            .select("questions") \
+            .eq("course_id", course_id) \
+            .eq("quiz_type", "lesson_quiz") \
+            .execute()
+        all_questions = []
+        for row in (quiz_res.data or []):
+            for q in (row.get("questions") or []):
+                # Normalize question_type -> type for the duolingo renderer
+                if "type" not in q and "question_type" in q:
+                    q["type"] = q["question_type"]
+                all_questions.append(q)
+        data["questions"] = all_questions
+
     return data
 
 
