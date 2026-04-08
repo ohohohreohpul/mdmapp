@@ -1,0 +1,191 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CheckCircle, PlayCircle, Headphones, FileText, Clock, Info, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { useUser } from '@/contexts/UserContext';
+import { stripHtml } from '@shared/contentUtils';
+import { NavHeader } from '@/lib/ui';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF', green: '#10B981' };
+
+function LessonPageInner() {
+  const router  = useRouter();
+  const params  = useSearchParams();
+  const lessonId = params.get('id') ?? '';
+  const courseId = params.get('courseId') ?? '';
+  const { user, updateProgress, getUserProgress } = useUser();
+
+  const [lesson, setLesson]           = useState<any>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completing, setCompleting]   = useState(false);
+
+  useEffect(() => { if (lessonId) loadLesson(); }, [lessonId]);
+
+  useEffect(() => {
+    if (user && courseId) {
+      const progress = getUserProgress(courseId);
+      setIsCompleted(progress?.completed_lessons?.includes(lessonId) || false);
+    }
+  }, [user, courseId, lessonId]);
+
+  const loadLesson = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/lessons/${lessonId}`);
+      setLesson(res.data);
+    } catch { setError('ไม่สามารถโหลดบทเรียนได้'); }
+    finally   { setLoading(false); }
+  };
+
+  const markAsComplete = async () => {
+    if (!user) { toast.error('กรุณาเข้าสู่ระบบเพื่อบันทึกความคืบหน้า'); return; }
+    setCompleting(true);
+    try {
+      await updateProgress(courseId, lessonId);
+      setIsCompleted(true);
+      toast.success('เรียนจบบทเรียนนี้แล้ว!');
+    } catch { toast.error('ไม่สามารถบันทึกความคืบหน้าได้'); }
+    finally   { setCompleting(false); }
+  };
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', backgroundColor: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Loader2 size={32} color={C.brand} className="animate-spin" />
+    </div>
+  );
+
+  if (error || !lesson) return (
+    <div style={{ minHeight: '100vh', backgroundColor: C.surface, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center' }}>
+      <AlertCircle size={64} color="#EF4444" />
+      <p style={{ fontWeight: 600, color: C.ink }}>{error || 'ไม่พบบทเรียน'}</p>
+      <button onClick={loadLesson} style={{ backgroundColor: C.brand, color: '#fff', padding: '12px 24px', borderRadius: 16, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+        ลองอีกครั้ง
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: C.surface }}>
+      <NavHeader
+        title={lesson.title}
+        right={isCompleted ? <CheckCircle size={22} color={C.green} /> : undefined}
+      />
+
+      <div style={{ maxWidth: 512, margin: '0 auto', paddingBottom: 40 }}>
+
+        {/* Video */}
+        {lesson.content_type === 'video' && (
+          <div style={{ width: '100%', backgroundColor: '#000', aspectRatio: '16/9' }}>
+            {lesson.video_url ? (
+              <iframe
+                src={lesson.video_url}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#111' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <PlayCircle size={36} color="#fff" />
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>วิดีโอจะพร้อมใช้งานเร็วๆ นี้</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Audio */}
+        {lesson.content_type === 'audio' && (
+          <div>
+            <div style={{ padding: '32px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: C.brand }}>
+              <div style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <Headphones size={40} color="#fff" />
+              </div>
+              <h2 style={{ color: '#fff', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>{lesson.title}</h2>
+              <span style={{ backgroundColor: 'rgba(255,255,255,0.20)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 999 }}>Podcast Mode</span>
+            </div>
+            {lesson.audio_url ? (
+              <div style={{ padding: '16px 20px' }}>
+                <audio controls style={{ width: '100%' }} src={lesson.audio_url}>Your browser does not support audio.</audio>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', gap: 8, color: C.ink2 }}>
+                <Headphones size={40} color={C.ink3} />
+                <p style={{ fontSize: 14 }}>Audio กำลังสร้าง...</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Body */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Info card */}
+          <div style={{ backgroundColor: C.bg, borderRadius: 16, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Info size={18} color={C.brand} />
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>เกี่ยวกับบทเรียนนี้</p>
+            </div>
+            <p style={{ fontSize: 14, color: C.ink2, lineHeight: 1.65, marginBottom: 12 }}>{stripHtml(lesson.description)}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.ink2 }}>
+                {lesson.content_type === 'video' ? <PlayCircle size={16} color={C.ink2} /> : lesson.content_type === 'audio' ? <Headphones size={16} color={C.ink2} /> : <FileText size={16} color={C.ink2} />}
+                <span style={{ fontSize: 13, color: C.ink2 }}>
+                  {lesson.content_type === 'video' ? 'วิดีโอ' : lesson.content_type === 'audio' ? 'เสียง' : 'บทความ'}
+                </span>
+              </div>
+              {lesson.duration_minutes > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Clock size={16} color={C.ink2} />
+                  <span style={{ fontSize: 13, color: C.ink2 }}>{lesson.duration_minutes} นาที</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Text content */}
+          {lesson.content_type === 'text' && lesson.content && (
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
+              <p style={{ fontSize: 15, color: C.ink, lineHeight: 1.75, whiteSpace: 'pre-line' }}>
+                {stripHtml(lesson.content)}
+              </p>
+            </div>
+          )}
+
+          {/* Complete button */}
+          {!isCompleted ? (
+            <button
+              onClick={markAsComplete}
+              disabled={completing}
+              style={{
+                width: '100%', backgroundColor: C.green, color: '#fff',
+                fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16,
+                border: 'none', cursor: completing ? 'not-allowed' : 'pointer',
+                opacity: completing ? 0.6 : 1,
+                boxShadow: '0px 6px 14px rgba(16,185,129,0.30)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {completing ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} color="#fff" />}
+              {completing ? 'กำลังบันทึก...' : 'ทำเครื่องหมายว่าเสร็จแล้ว'}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(16,185,129,0.10)', borderRadius: 16, padding: '16px 0' }}>
+              <CheckCircle size={24} color={C.green} />
+              <span style={{ color: C.green, fontWeight: 700, fontSize: 16 }}>เรียนจบแล้ว</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function LessonPage() {
+  return <Suspense><LessonPageInner /></Suspense>;
+}

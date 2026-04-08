@@ -110,3 +110,5 @@ frontend/.metro-cache
 # Environment files
 *.env
 *.env.*
+nextjs/.next
+nextjs/out

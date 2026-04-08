@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, Image, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { COLORS, SHADOWS } from '../../constants/theme';
@@ -31,6 +31,17 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   return (
+    <View style={{ flex: 1 }}>
+    {/* Pink mascot strip that fills the iOS safe-area gap at the bottom */}
+    {Platform.OS === 'web' && (
+      <View style={styles.mascotStrip} pointerEvents="none">
+        <Image
+          source={require('../../assets/images/mascot.png')}
+          style={styles.mascotImage}
+          resizeMode="contain"
+        />
+      </View>
+    )}
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -40,7 +51,7 @@ export default function TabLayout() {
         tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
           position: 'absolute',
-          bottom: Math.max(20, insets.bottom + 6),
+          bottom: Platform.OS === 'web' ? 0 : insets.bottom + 6,
           left: 20,
           right: 20,
           elevation: 0,
@@ -138,6 +149,7 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </View>
   );
 }
 
@@ -148,6 +160,22 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  mascotStrip: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 42,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    zIndex: 0,
+  },
+  mascotImage: {
+    width: 80,
+    height: 60,
+    marginBottom: -8,
   },
   iconWrapActive: {
     backgroundColor: COLORS.primary,
