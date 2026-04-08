@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, X, BookOpen, FileText, Users, Rabbit, ChevronRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Settings, X, ChevronRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -10,38 +10,23 @@ import { toast } from 'sonner';
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
-function InputField({ label, value, onChange, placeholder, type = 'text' }: any) {
-  return (
-    <div>
-      <label className="block text-[13px] font-semibold text-[#374151] mb-1.5 mt-4">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full border border-[#D1D5DB] rounded-xl px-3 py-3 text-[15px] text-text-primary focus:outline-none focus:border-primary"
-        autoCapitalize="none"
-      />
-    </div>
-  );
-}
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF', sep: 'rgba(0,0,0,0.08)', green: '#10B981', red: '#EF4444' };
 
 export default function AdminPage() {
-  const router = useRouter();
+  const router  = useRouter();
   const { user } = useUser();
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
 
   const [courseCount, setCourseCount] = useState<number | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [showModal, setShowModal]     = useState(false);
+  const [saving, setSaving]           = useState(false);
 
-  // Settings
-  const [aiProvider, setAiProvider] = useState('openai');
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [claudeKey, setClaudeKey] = useState('');
+  const [aiProvider, setAiProvider]     = useState('openai');
+  const [openaiKey, setOpenaiKey]       = useState('');
+  const [geminiKey, setGeminiKey]       = useState('');
+  const [claudeKey, setClaudeKey]       = useState('');
   const [elevenlabsKey, setElevenlabsKey] = useState('');
-  const [bunnyApiKey, setBunnyApiKey] = useState('');
+  const [bunnyApiKey, setBunnyApiKey]   = useState('');
   const [bunnyLibraryId, setBunnyLibraryId] = useState('');
 
   useEffect(() => {
@@ -86,82 +71,96 @@ export default function AdminPage() {
       setShowModal(false);
     } catch {
       toast.error('ไม่สามารถบันทึกการตั้งค่าได้');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
-  const menuCards = [
-    { id: 'courses', emoji: '📚', title: 'จัดการคอร์ส', desc: 'เพิ่ม แก้ไข และจัดการคอร์สทั้งหมด', href: '/admin/courses' },
-    { id: 'materials', emoji: '📄', title: 'เนื้อหาบทเรียน', desc: 'อัปโหลดและจัดการเนื้อหา', href: '/admin/materials' },
-    { id: 'users', emoji: '👥', title: 'ผู้ใช้งาน', desc: 'ดูรายชื่อและสถานะผู้เรียน', href: '/admin/users' },
-    { id: 'bunny', emoji: '🐰', title: 'Import from Bunny.net', desc: 'สร้างบทเรียนจากวิดีโอใน Bunny', href: '/admin/bunny-import' },
-    { id: 'matcher', emoji: '🎯', title: 'Bunny Matcher', desc: 'จับคู่วิดีโอกับบทเรียนอัตโนมัติ', href: '/admin/bunny-matcher' },
-    { id: 'quiz', emoji: '✨', title: 'สร้างแบบทดสอบด้วย AI', desc: 'Generate quiz จากเนื้อหาบทเรียน', href: '/admin/quiz-generator' },
-    { id: 'settings', emoji: '⚙️', title: 'ตั้งค่าระบบ', desc: 'AI keys, ElevenLabs และการตั้งค่าอื่นๆ', action: () => setShowModal(true) },
+  const menuItems = [
+    { id: 'courses',  emoji: '📚', title: 'จัดการคอร์ส',           desc: 'เพิ่ม แก้ไข และจัดการคอร์สทั้งหมด',      href: '/admin/courses' },
+    { id: 'materials',emoji: '📄', title: 'เนื้อหาบทเรียน',          desc: 'อัปโหลดและจัดการเนื้อหา',               href: '/admin/materials' },
+    { id: 'users',    emoji: '👥', title: 'ผู้ใช้งาน',               desc: 'ดูรายชื่อและสถานะผู้เรียน',             href: '/admin/users' },
+    { id: 'bunny',    emoji: '🐰', title: 'Import from Bunny.net',   desc: 'สร้างบทเรียนจากวิดีโอใน Bunny',         href: '/admin/bunny-import' },
+    { id: 'matcher',  emoji: '🎯', title: 'Bunny Matcher',           desc: 'จับคู่วิดีโอกับบทเรียนอัตโนมัติ',       href: '/admin/bunny-matcher' },
+    { id: 'quiz',     emoji: '✨', title: 'สร้างแบบทดสอบด้วย AI',   desc: 'Generate quiz จากเนื้อหาบทเรียน',       href: '/admin/quiz-generator' },
+    { id: 'settings', emoji: '⚙️', title: 'ตั้งค่าระบบ',             desc: 'AI keys, ElevenLabs และการตั้งค่าอื่นๆ', action: () => setShowModal(true) },
   ];
 
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-ios-bg">
-      <header className="bg-white border-b border-separator px-4 pt-safe py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <Settings size={22} className="text-primary" />
-          <h1 className="text-[18px] font-bold text-text-primary">แผงควบคุม</h1>
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
+
+      {/* Header */}
+      <header style={{
+        backgroundColor: '#fff', borderBottom: `1px solid ${C.sep}`,
+        padding: '12px 20px', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'sticky', top: 0, zIndex: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Settings size={22} color={C.brand} />
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>แผงควบคุม</h1>
         </div>
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-          <X size={22} className="text-text-secondary" />
+        <button onClick={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <X size={22} color={C.ink2} />
         </button>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 40px' }}>
+
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-[#EEF2FF] rounded-2xl p-4 flex flex-col items-center justify-center min-h-[72px]">
-            <p className="text-[28px] font-bold text-[#6366F1]">{courseCount === null ? '...' : courseCount}</p>
-            <p className="text-[12px] text-text-secondary mt-1 text-center">คอร์สทั้งหมด</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
+          <div style={{ backgroundColor: '#EEF2FF', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 80 }}>
+            <p style={{ fontSize: 28, fontWeight: 700, color: '#6366F1' }}>{courseCount === null ? '...' : courseCount}</p>
+            <p style={{ fontSize: 12, color: C.ink2, marginTop: 2, textAlign: 'center' }}>คอร์สทั้งหมด</p>
           </div>
-          <div className="bg-[#FEF3C7] rounded-2xl p-4 flex flex-col items-center justify-center">
-            <span className="text-2xl">✨</span>
-            <p className="text-[12px] text-text-secondary mt-1 text-center">AI พร้อมใช้งาน</p>
+          <div style={{ backgroundColor: '#FEF3C7', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 26 }}>✨</span>
+            <p style={{ fontSize: 12, color: C.ink2, marginTop: 2, textAlign: 'center' }}>AI พร้อมใช้งาน</p>
           </div>
-          <div className="bg-[#D1FAE5] rounded-2xl p-4 flex flex-col items-center justify-center">
-            <CheckCircle2 size={28} className="text-[#10B981]" />
-            <p className="text-[12px] text-text-secondary mt-1 text-center">ระบบปกติ</p>
+          <div style={{ backgroundColor: '#D1FAE5', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle2 size={28} color={C.green} />
+            <p style={{ fontSize: 12, color: C.ink2, marginTop: 2, textAlign: 'center' }}>ระบบปกติ</p>
           </div>
         </div>
 
-        {/* Menu cards */}
-        <p className="text-[14px] font-bold text-text-primary mb-3">เมนูจัดการ</p>
-        <div className="flex flex-col gap-2 mb-6">
-          {menuCards.map(card => (
+        {/* Menu */}
+        <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 10 }}>เมนูจัดการ</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+          {menuItems.map(item => (
             <button
-              key={card.id}
-              onClick={() => card.action ? card.action() : router.push(card.href as any)}
-              className="bg-white rounded-2xl border border-separator p-4 flex items-center gap-3 text-left hover:border-primary/30 transition-colors"
+              key={item.id}
+              onClick={() => item.action ? item.action() : router.push(item.href as any)}
+              style={{
+                backgroundColor: '#fff', borderRadius: 16,
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0px 1px 4px rgba(0,0,0,0.04)',
+                padding: 16, display: 'flex', alignItems: 'center', gap: 12,
+                textAlign: 'left', cursor: 'pointer', width: '100%',
+              }}
             >
-              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-2xl shrink-0">{card.emoji}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-semibold text-text-primary">{card.title}</p>
-                <p className="text-[13px] text-text-secondary">{card.desc}</p>
+              <div style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                {item.emoji}
               </div>
-              <ChevronRight size={18} className="text-text-tertiary shrink-0" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: C.ink2 }}>{item.desc}</p>
+              </div>
+              <ChevronRight size={18} color={C.ink3} style={{ flexShrink: 0 }} />
             </button>
           ))}
         </div>
 
         {/* API Status */}
-        <p className="text-[14px] font-bold text-text-primary mb-3">สถานะ API</p>
-        <div className="bg-white rounded-2xl border border-separator p-4 flex flex-col gap-3">
+        <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 10 }}>สถานะ API</p>
+        <div style={{ backgroundColor: '#fff', borderRadius: 16, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0px 1px 4px rgba(0,0,0,0.04)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[
             { ok: !!(openaiKey || geminiKey || claudeKey), label: `AI Provider (${aiProvider.toUpperCase()})` },
             { ok: !!elevenlabsKey, label: 'ElevenLabs TTS' },
-            { ok: !!bunnyApiKey, label: 'Bunny.net CDN' },
+            { ok: !!bunnyApiKey,   label: 'Bunny.net CDN' },
           ].map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
-              {s.ok ? <CheckCircle2 size={18} className="text-[#10B981]" /> : <XCircle size={18} className="text-[#EF4444]" />}
-              <p className="text-[14px] text-text-secondary">{s.label}</p>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {s.ok ? <CheckCircle2 size={18} color={C.green} /> : <XCircle size={18} color={C.red} />}
+              <p style={{ fontSize: 14, color: C.ink2 }}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -169,37 +168,54 @@ export default function AdminPage() {
 
       {/* API Keys Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-lg max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-separator shrink-0">
-              <h2 className="text-[18px] font-bold text-text-primary">ตั้งค่า API Keys</h2>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-                <X size={22} className="text-text-secondary" />
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.50)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 512, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${C.sep}`, flexShrink: 0 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>ตั้งค่า API Keys</h2>
+              <button onClick={() => setShowModal(false)} style={{ width: 32, height: 32, borderRadius: 16, border: 'none', backgroundColor: C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={20} color={C.ink2} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4">
-              <label className="block text-[13px] font-semibold text-[#374151] mb-2">AI Provider</label>
-              <div className="flex gap-2 mb-2">
-                {['openai', 'gemini', 'claude'].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setAiProvider(p)}
-                    className={`flex-1 py-2.5 rounded-xl border-2 text-[13px] font-bold transition-colors ${aiProvider === p ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-text-secondary'}`}
-                  >
-                    {p.toUpperCase()}
-                  </button>
-                ))}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 8 }}>AI Provider</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['openai', 'gemini', 'claude'].map(p => (
+                    <button key={p} onClick={() => setAiProvider(p)} style={{
+                      flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      border: `2px solid ${aiProvider === p ? C.brand : 'rgba(0,0,0,0.10)'}`,
+                      backgroundColor: aiProvider === p ? 'rgba(239,94,168,0.08)' : 'transparent',
+                      color: aiProvider === p ? C.brand : C.ink2,
+                    }}>
+                      {p.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <InputField label="OpenAI API Key" value={openaiKey} onChange={setOpenaiKey} placeholder="sk-..." type="password" />
-              <InputField label="Google Gemini API Key" value={geminiKey} onChange={setGeminiKey} placeholder="AIza..." type="password" />
-              <InputField label="Anthropic Claude API Key" value={claudeKey} onChange={setClaudeKey} placeholder="sk-ant-..." type="password" />
-              <InputField label="ElevenLabs API Key" value={elevenlabsKey} onChange={setElevenlabsKey} placeholder="elevenlabs key" type="password" />
-              <InputField label="Bunny.net API Key" value={bunnyApiKey} onChange={setBunnyApiKey} placeholder="bunny api key" type="password" />
-              <InputField label="Bunny.net Library ID" value={bunnyLibraryId} onChange={setBunnyLibraryId} placeholder="library id" />
+              {[
+                { label: 'OpenAI API Key',          value: openaiKey,      set: setOpenaiKey,      ph: 'sk-...' },
+                { label: 'Google Gemini API Key',    value: geminiKey,      set: setGeminiKey,      ph: 'AIza...' },
+                { label: 'Anthropic Claude API Key', value: claudeKey,      set: setClaudeKey,      ph: 'sk-ant-...' },
+                { label: 'ElevenLabs API Key',       value: elevenlabsKey,  set: setElevenlabsKey,  ph: 'elevenlabs key' },
+                { label: 'Bunny.net API Key',        value: bunnyApiKey,    set: setBunnyApiKey,    ph: 'bunny api key' },
+                { label: 'Bunny.net Library ID',     value: bunnyLibraryId, set: setBunnyLibraryId, ph: 'library id', text: true },
+              ].map(f => (
+                <div key={f.label}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>{f.label}</label>
+                  <input
+                    type={f.text ? 'text' : 'password'}
+                    value={f.value}
+                    onChange={e => f.set(e.target.value)}
+                    placeholder={f.ph}
+                    autoCapitalize="none"
+                    style={{ width: '100%', border: '1px solid rgba(0,0,0,0.10)', borderRadius: 12, padding: '12px 14px', fontSize: 15, color: C.ink, outline: 'none', backgroundColor: C.bg, boxSizing: 'border-box' }}
+                  />
+                </div>
+              ))}
               <button
                 onClick={saveSettings}
                 disabled={saving}
-                className="w-full bg-primary text-white font-bold py-4 rounded-2xl mt-6 mb-2 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, marginTop: 8, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 {saving && <Loader2 size={18} className="animate-spin" />}
                 บันทึกการตั้งค่า
