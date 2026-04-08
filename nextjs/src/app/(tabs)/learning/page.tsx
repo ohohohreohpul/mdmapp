@@ -4,28 +4,34 @@ import { useState, useEffect } from 'react';
 import { Sparkles, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
-import { PrimaryBtn, Skel, EmptyState, ProgressBar } from '@/lib/ui';
+import { PrimaryBtn, Skel, ProgressBar } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 const C = {
-  primary:  '#ef5ea8',
-  bg:       '#F2F2F7',
-  surface:  '#FFFFFF',
-  ink:      '#1C1C1E',
-  ink2:     '#8E8E93',
-  ink3:     '#C7C7CC',
-  card:     { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
+  primary: '#ef5ea8',
+  bg:      '#F2F2F7',
+  surface: '#FFFFFF',
+  ink:     '#1C1C1E',
+  ink2:    '#8E8E93',
+  ink3:    '#C7C7CC',
+};
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
 };
 
 const PATH_META: Record<string, { emoji: string; color: string; bg: string }> = {
-  'UX Design':         { emoji: '🎨', color: '#6366F1', bg: '#EEF2FF' },
-  'Data Analysis':     { emoji: '📊', color: '#10B981', bg: '#ECFDF5' },
-  'Digital Marketing': { emoji: '📣', color: '#F59E0B', bg: '#FFFBEB' },
-  'Project Management':{ emoji: '📋', color: '#ef5ea8', bg: '#FFF0F7' },
-  'Learning Designer': { emoji: '🎓', color: '#8B5CF6', bg: '#F5F3FF' },
-  'QA Tester':         { emoji: '🐛', color: '#D946EF', bg: '#FDF4FF' },
+  'UX Design':          { emoji: '🎨', color: '#6366F1', bg: '#EEF2FF' },
+  'Data Analysis':      { emoji: '📊', color: '#10B981', bg: '#ECFDF5' },
+  'Digital Marketing':  { emoji: '📣', color: '#F59E0B', bg: '#FFFBEB' },
+  'Project Management': { emoji: '📋', color: '#ef5ea8', bg: '#FFF0F7' },
+  'Learning Designer':  { emoji: '🎓', color: '#8B5CF6', bg: '#F5F3FF' },
+  'QA Tester':          { emoji: '🐛', color: '#D946EF', bg: '#FDF4FF' },
 };
 
 function pathMeta(careerPath?: string) {
@@ -35,6 +41,27 @@ function pathMeta(careerPath?: string) {
   }
   return { emoji: '📚', color: '#6366F1', bg: '#EEF2FF' };
 }
+
+const GlassHeader = () => (
+  <div
+    className="sticky top-0 z-20 header-shell"
+    style={{
+      background: 'rgba(255,255,255,0.94)',
+      backdropFilter: 'saturate(180%) blur(20px)',
+      WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+      borderBottom: '1px solid rgba(0,0,0,0.08)',
+    }}
+  >
+    <div
+      className="flex items-center max-w-lg mx-auto"
+      style={{ height: 54, paddingLeft: 20, paddingRight: 20 }}
+    >
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>
+        คอร์สเรียนของฉัน
+      </h1>
+    </div>
+  </div>
+);
 
 export default function LearningPage() {
   const { user } = useUser();
@@ -54,28 +81,23 @@ export default function LearningPage() {
     } catch { setEnrolledCourses([]); } finally { setLoading(false); }
   };
 
-  const Header = () => (
-    <div
-      className="sticky top-0 z-20 header-shell"
-      style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'saturate(180%) blur(20px)', WebkitBackdropFilter: 'saturate(180%) blur(20px)', borderBottom: '1px solid rgba(0,0,0,0.10)' }}
-    >
-      <div className="flex items-center px-6 h-[54px] max-w-lg mx-auto">
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>คอร์สเรียนของฉัน</h1>
-      </div>
-    </div>
-  );
-
   if (!user) return (
-    <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
-      <Header />
-      <div className="max-w-lg mx-auto flex flex-col items-center text-center px-6 py-16 gap-6">
-        <div className="w-24 h-24 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(239,94,168,0.10)' }}>
-          <span className="text-[40px]">📚</span>
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+      <GlassHeader />
+      <div
+        className="max-w-lg mx-auto flex flex-col items-center text-center"
+        style={{ padding: '64px 20px', gap: 20 }}
+      >
+        <div
+          className="flex items-center justify-center rounded-full"
+          style={{ width: 88, height: 88, backgroundColor: 'rgba(239,94,168,0.10)', fontSize: 36 }}
+        >
+          📚
         </div>
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }} className="mb-2">เข้าสู่ระบบ</h2>
-          <p style={{ fontSize: '15px', color: C.ink2, lineHeight: '1.55' }}>
-            บันทึกความคืบหน้า ติดตามคอร์ส<br/>และรับใบประกาศนียบัตรได้เลย
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: C.ink, marginBottom: 8 }}>เข้าสู่ระบบ</h2>
+          <p style={{ fontSize: 15, color: C.ink2, lineHeight: 1.55 }}>
+            บันทึกความคืบหน้า ติดตามคอร์ส<br />และรับใบประกาศนียบัตรได้เลย
           </p>
         </div>
         <PrimaryBtn href="/auth">เข้าสู่ระบบ</PrimaryBtn>
@@ -83,93 +105,122 @@ export default function LearningPage() {
     </div>
   );
 
-  const totalCompleted = enrolledCourses.reduce((sum, c) => sum + (user?.progress?.[c._id]?.completed_lessons?.length ?? 0), 0);
-  const totalLessons   = enrolledCourses.reduce((sum, c) => sum + (c.total_lessons ?? 0), 0);
-  const overallPct     = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+  const totalCompleted = enrolledCourses.reduce(
+    (sum, c) => sum + (user?.progress?.[c._id]?.completed_lessons?.length ?? 0), 0
+  );
+  const totalLessons = enrolledCourses.reduce((sum, c) => sum + (c.total_lessons ?? 0), 0);
+  const overallPct   = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
-      <Header />
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+      <GlassHeader />
 
-      <div className="max-w-lg mx-auto px-6 py-5">
+      <div className="max-w-lg mx-auto flex flex-col" style={{ padding: '20px 20px 0', gap: 20 }}>
 
-        {/* Summary strip */}
+        {/* Stats — one card, 3 columns */}
         {enrolledCourses.length > 0 && !loading && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div style={{ ...cardStyle, display: 'flex', overflow: 'hidden' }}>
             {[
-              { val: enrolledCourses.length, label: 'คอร์ส', emoji: '📚' },
-              { val: totalCompleted,         label: 'บทเรียน', emoji: '✅' },
-              { val: `${overallPct}%`,        label: 'รวม', emoji: '📈' },
+              { emoji: '📚', val: enrolledCourses.length, label: 'คอร์ส' },
+              { emoji: '✅', val: totalCompleted,          label: 'บทเรียน' },
+              { emoji: '📈', val: `${overallPct}%`,         label: 'ภาพรวม' },
             ].map((s, i) => (
               <div
                 key={i}
-                className="flex flex-col items-center py-4 rounded-[20px]"
-                style={{ backgroundColor: C.surface, ...C.card }}
+                className="flex-1 flex flex-col items-center"
+                style={{
+                  padding: '16px 0',
+                  borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                }}
               >
-                <span className="text-[22px]">{s.emoji}</span>
-                <p className="text-[18px] font-bold mt-1" style={{ color: C.ink }}>{s.val}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.ink3 }}>{s.label}</p>
+                <span style={{ fontSize: 22 }}>{s.emoji}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginTop: 4, lineHeight: 1 }}>{s.val}</span>
+                <span style={{ fontSize: 11, color: C.ink3, marginTop: 3 }}>{s.label}</span>
               </div>
             ))}
           </div>
         )}
 
-        {loading ? (
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="rounded-[20px] p-4 flex gap-3" style={{ backgroundColor: C.surface, ...C.card }}>
-                <Skel className="w-[60px] h-[60px] shrink-0 rounded-[14px]" />
-                <div className="flex-1 flex flex-col gap-2.5">
-                  <Skel className="h-3.5 w-3/4 rounded-lg" />
-                  <Skel className="h-2 w-full rounded-full" />
-                  <Skel className="h-2 w-1/3 rounded-lg" />
+        {/* Course list */}
+        <div style={{ paddingBottom: 24 }}>
+          {loading ? (
+            <div className="flex flex-col" style={{ gap: 10 }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex" style={{ ...cardStyle, padding: 14, gap: 12 }}>
+                  <Skel style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 12 }} />
+                  <div className="flex-1 flex flex-col" style={{ gap: 8 }}>
+                    <Skel style={{ height: 14, width: '70%', borderRadius: 7 }} />
+                    <Skel style={{ height: 6, width: '100%', borderRadius: 3 }} />
+                    <Skel style={{ height: 11, width: '30%', borderRadius: 6 }} />
+                  </div>
                 </div>
+              ))}
+            </div>
+          ) : enrolledCourses.length === 0 ? (
+            <div className="flex flex-col items-center" style={{ paddingTop: 64, gap: 16 }}>
+              <div
+                className="flex items-center justify-center rounded-full"
+                style={{ width: 80, height: 80, backgroundColor: 'rgba(239,94,168,0.10)' }}
+              >
+                <Sparkles size={32} style={{ color: C.primary }} />
               </div>
-            ))}
-          </div>
-        ) : enrolledCourses.length === 0 ? (
-          <EmptyState
-            icon={Sparkles}
-            title="ยังไม่มีคอร์สที่กำลังเรียน"
-            body="เริ่มเรียนคอร์สแรกของคุณได้เลย"
-            action={<PrimaryBtn href="/explore">สำรวจคอร์ส</PrimaryBtn>}
-          />
-        ) : (
-          <div className="flex flex-col gap-3">
-            <p className="text-[12px] font-bold uppercase tracking-widest mb-1" style={{ color: C.ink3 }}>
-              กำลังเรียน {enrolledCourses.length} คอร์ส
-            </p>
-            {enrolledCourses.map((course: any) => {
-              const progress  = user?.progress?.[course._id];
-              const completed = progress?.completed_lessons?.length ?? 0;
-              const total     = (course.total_lessons || 0) > 0 ? course.total_lessons : 1;
-              const pct       = Math.round((completed / total) * 100);
-              const meta      = pathMeta(course.career_path);
+              <div className="text-center">
+                <p style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
+                  ยังไม่มีคอร์สที่กำลังเรียน
+                </p>
+                <p style={{ fontSize: 14, color: C.ink2 }}>เริ่มเรียนคอร์สแรกของคุณได้เลย</p>
+              </div>
+              <PrimaryBtn href="/explore">สำรวจคอร์ส</PrimaryBtn>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize: 14, color: C.ink2, fontWeight: 500, marginBottom: 12 }}>
+                กำลังเรียน {enrolledCourses.length} คอร์ส
+              </p>
+              <div className="flex flex-col" style={{ gap: 10 }}>
+                {enrolledCourses.map((course: any) => {
+                  const progress  = user?.progress?.[course._id];
+                  const completed = progress?.completed_lessons?.length ?? 0;
+                  const total     = (course.total_lessons || 0) > 0 ? course.total_lessons : 1;
+                  const pct       = Math.round((completed / total) * 100);
+                  const meta      = pathMeta(course.career_path);
+                  return (
+                    <Link
+                      key={course._id}
+                      href={`/course-detail?id=${course._id}`}
+                      className="active:scale-[0.97] transition-transform"
+                      style={{ ...cardStyle, display: 'flex', alignItems: 'center', padding: 14, gap: 12 }}
+                    >
+                      <div
+                        className="flex items-center justify-center"
+                        style={{
+                          width: 56, height: 56,
+                          borderRadius: 12,
+                          backgroundColor: meta.bg,
+                          flexShrink: 0, fontSize: 26,
+                        }}
+                      >
+                        {meta.emoji}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p className="line-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.35, marginBottom: 8 }}>
+                          {course.title}
+                        </p>
+                        <ProgressBar pct={pct} />
+                        <div className="flex items-center justify-between" style={{ marginTop: 6 }}>
+                          <p style={{ fontSize: 11, color: C.ink3 }}>{completed}/{course.total_lessons ?? 0} บทเรียน</p>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: meta.color }}>{pct}%</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} style={{ color: C.ink3, flexShrink: 0 }} />
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
-              return (
-                <Link
-                  key={course._id}
-                  href={`/course-detail?id=${course._id}`}
-                  className="rounded-[20px] p-4 flex items-center gap-3 active:scale-[0.97] transition-transform"
-                  style={{ backgroundColor: C.surface, ...C.card }}
-                >
-                  <div className="w-[60px] h-[60px] rounded-[14px] flex items-center justify-center text-[28px] shrink-0" style={{ backgroundColor: meta.bg }}>
-                    {meta.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold line-clamp-2 mb-2 leading-snug" style={{ color: C.ink }}>{course.title}</p>
-                    <ProgressBar pct={pct} className="mb-1.5" />
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px]" style={{ color: C.ink3 }}>{completed}/{total} บทเรียน</p>
-                      <p className="text-[12px] font-bold" style={{ color: meta.color }}>{pct}%</p>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} style={{ color: C.ink3 }} className="shrink-0" />
-                </Link>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

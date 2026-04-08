@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, CheckCircle, Loader2, ChevronRight, BookOpen } from 'lucide-react';
+import { Bell, CheckCircle, Loader2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { ARTICLES } from '@/lib/articles';
@@ -10,15 +10,20 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
-/* ── Design tokens ────────────────────────── */
 const C = {
-  primary:  '#ef5ea8',
-  bg:       '#F2F2F7',
-  surface:  '#FFFFFF',
-  ink:      '#1C1C1E',
-  ink2:     '#8E8E93',
-  ink3:     '#C7C7CC',
-  card:     { boxShadow: '0px 2px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(0,0,0,0.06)' },
+  primary: '#ef5ea8',
+  bg:      '#F2F2F7',
+  surface: '#FFFFFF',
+  ink:     '#1C1C1E',
+  ink2:    '#8E8E93',
+  ink3:    '#C7C7CC',
+};
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
 };
 
 const PATHS = [
@@ -40,13 +45,13 @@ function streakMsg(n: number) {
 
 export default function HomePage() {
   const { user } = useUser();
-  const [dash, setDash]         = useState<any>(null);
-  const [courses, setCourses]   = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [dash, setDash]           = useState<any>(null);
+  const [courses, setCourses]     = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
-  const [xpPop, setXpPop]   = useState(0);
-  const [showPop, setShowPop] = useState(false);
+  const [xpPop, setXpPop]         = useState(0);
+  const [showPop, setShowPop]     = useState(false);
 
   const todayKey = `ci_${new Date().toISOString().slice(0, 10)}`;
 
@@ -97,200 +102,199 @@ export default function HomePage() {
   const initial = (user?.display_name || user?.username || '?')[0].toUpperCase();
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
 
-      {/* ── Glass sticky header ─────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-20 header-shell"
         style={{
-          background: 'rgba(255,255,255,0.92)',
+          background: 'rgba(255,255,255,0.94)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: '1px solid rgba(0,0,0,0.10)',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        <div className="flex items-center justify-between px-6 h-[54px] max-w-lg mx-auto">
-          {/* Avatar + greeting */}
-          <div className="flex items-center gap-2.5">
+        <div
+          className="flex items-center justify-between max-w-lg mx-auto"
+          style={{ height: 54, paddingLeft: 20, paddingRight: 20 }}
+        >
+          <div className="flex items-center" style={{ gap: 10 }}>
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'rgba(239,94,168,0.12)' }}
+              className="flex items-center justify-center rounded-full"
+              style={{ width: 36, height: 36, backgroundColor: 'rgba(239,94,168,0.12)', flexShrink: 0 }}
             >
-              <span className="font-extrabold text-[14px]" style={{ color: C.primary }}>{initial}</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: C.primary }}>{initial}</span>
             </div>
             <div>
-              <p className="text-[11px]" style={{ color: C.ink2 }}>สวัสดี 👋</p>
-              <p className="text-[14px] font-bold leading-tight" style={{ color: C.ink }}>{name}</p>
+              <p style={{ fontSize: 11, color: C.ink2, lineHeight: 1.2 }}>สวัสดี 👋</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>{name}</p>
             </div>
           </div>
           <Link
             href="/notifications"
-            className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(0,0,0,0.04)' }}
+            className="flex items-center justify-center rounded-full active:scale-90 transition-transform"
+            style={{ width: 36, height: 36, backgroundColor: 'rgba(0,0,0,0.05)' }}
           >
-            <Bell size={18} style={{ color: C.ink2 }} />
+            <Bell size={17} style={{ color: C.ink2 }} />
           </Link>
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-6 pt-4 flex flex-col gap-4">
+      {/* ── Page content ────────────────────────────────────── */}
+      <div
+        className="max-w-lg mx-auto flex flex-col"
+        style={{ padding: '24px 20px 0', gap: 24 }}
+      >
 
-        {/* ── Hero greeting ──────────────────────────────── */}
+        {/* Hero */}
         <div>
-          <h1
-            className="leading-tight"
-            style={{ fontSize: '26px', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: '32px' }}
-          >
-            เรียนรู้ทุกวัน ก้าวไปข้างหน้า 🚀
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Mydemy
+          </p>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+            เรียนรู้วันนี้<br />เปลี่ยนชีวิตพรุ่งนี้
           </h1>
         </div>
 
-        {/* ── Stats row ─────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2.5">
+        {/* Stats — single card, 3 columns */}
+        <div style={{ ...cardStyle, display: 'flex', overflow: 'hidden' }}>
           {[
-            { icon: '🔥', val: streak,        sub: 'Streak' },
-            { icon: '⚡', val: xpTotal,        sub: 'XP รวม' },
-            { icon: '👑', val: `Lv.${level}`,  sub: 'ระดับ'  },
+            { emoji: '🔥', val: streak,        label: 'Streak' },
+            { emoji: '⚡', val: xpTotal,        label: 'XP รวม' },
+            { emoji: '👑', val: `Lv.${level}`,  label: 'ระดับ' },
           ].map((s, i) => (
             <div
               key={i}
-              className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-[18px]"
-              style={{ backgroundColor: C.surface, ...C.card }}
+              className="flex-1 flex flex-col items-center"
+              style={{
+                padding: '16px 0',
+                borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+              }}
             >
-              <span className="text-[20px]">{s.icon}</span>
-              <p className="text-[15px] font-bold" style={{ color: C.ink }}>{s.val}</p>
-              <p className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: C.ink3 }}>{s.sub}</p>
+              <span style={{ fontSize: 22 }}>{s.emoji}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginTop: 4, lineHeight: 1 }}>{s.val}</span>
+              <span style={{ fontSize: 11, color: C.ink3, marginTop: 3 }}>{s.label}</span>
             </div>
           ))}
         </div>
 
-        {/* ── Daily Goal card ───────────────────────────── */}
-        <div
-          className="rounded-[20px] p-4"
-          style={{ backgroundColor: C.surface, ...C.card }}
-        >
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[15px] font-bold" style={{ color: C.ink }}>🎯 เป้าหมายวันนี้</p>
-            <span className="text-[14px] font-bold" style={{ color: C.primary }}>
-              {todayXp}
-              <span className="text-[11px] font-normal" style={{ color: C.ink3 }}>/{goal} XP</span>
-            </span>
-          </div>
-          <ProgressBar pct={goalPct} className="mb-3" />
-
-          {user ? (
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-[12px] mb-2" style={{ color: C.ink2 }}>{streakMsg(streak)}</p>
-                <div className="flex gap-1.5">
-                  {[1,2,3,4,5,6,7].map(d => (
-                    <div
-                      key={d}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] transition-all"
-                      style={{
-                        backgroundColor: d <= streak ? '#FFF0E6' : 'rgba(0,0,0,0.04)',
-                        color: d <= streak ? '#F97316' : C.ink3,
-                      }}
-                    >
-                      {d <= streak ? '🔥' : <span style={{ fontSize: '9px' }}>{d}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="relative shrink-0">
-                {!checkedIn ? (
-                  <button
-                    onClick={doCheckIn}
-                    disabled={checkingIn}
-                    className="flex flex-col items-center gap-0.5 rounded-[16px] px-4 py-3 active:scale-90 transition-transform disabled:opacity-50"
-                    style={{ backgroundColor: C.primary, boxShadow: '0px 8px 24px rgba(239,94,168,0.30)' }}
-                  >
-                    {checkingIn
-                      ? <Loader2 size={18} color="white" className="animate-spin" />
-                      : <>
-                          <span className="text-[22px] leading-none">✅</span>
-                          <span className="text-[11px] font-bold text-white">เช็คอิน</span>
-                          <span className="text-[9px] text-white opacity-80">+20 XP</span>
-                        </>}
-                  </button>
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <CheckCircle size={30} color="#34C759" />
-                    <span className="text-[10px] font-bold" style={{ color: '#34C759' }}>เช็คอินแล้ว</span>
-                  </div>
-                )}
-                {showPop && (
-                  <span
-                    className="absolute -top-8 left-1/2 text-[13px] font-bold whitespace-nowrap animate-pop-up"
-                    style={{ color: C.primary }}
-                  >
-                    +{xpPop} XP 🎉
-                  </span>
-                )}
-              </div>
+        {/* Daily goal */}
+        <div style={cardStyle}>
+          <div style={{ padding: 16 }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>🎯 เป้าหมายวันนี้</p>
+              <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>
+                {todayXp}
+                <span style={{ fontSize: 11, fontWeight: 400, color: C.ink3 }}>/{goal} XP</span>
+              </span>
             </div>
-          ) : (
-            <Link
-              href="/auth"
-              className="flex items-center justify-center gap-2 rounded-[14px] py-3 text-[14px] font-bold active:scale-[0.97] transition-transform"
-              style={{ backgroundColor: 'rgba(239,94,168,0.08)', color: C.primary }}
-            >
-              เข้าสู่ระบบเพื่อติดตามความคืบหน้า →
-            </Link>
-          )}
+            <ProgressBar pct={goalPct} />
+
+            <div style={{ marginTop: 14 }}>
+              {user ? (
+                <div className="flex items-center" style={{ gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: C.ink2, marginBottom: 8 }}>{streakMsg(streak)}</p>
+                    <div className="flex" style={{ gap: 5 }}>
+                      {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                        <div
+                          key={d}
+                          className="flex items-center justify-center rounded-full"
+                          style={{
+                            width: 26, height: 26, fontSize: d <= streak ? 12 : 10,
+                            backgroundColor: d <= streak ? '#FFF0E6' : 'rgba(0,0,0,0.05)',
+                            color: d <= streak ? '#F97316' : C.ink3,
+                          }}
+                        >
+                          {d <= streak ? '🔥' : d}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {!checkedIn ? (
+                      <button
+                        onClick={doCheckIn}
+                        disabled={checkingIn}
+                        className="flex flex-col items-center active:scale-90 transition-transform disabled:opacity-50"
+                        style={{
+                          gap: 3, backgroundColor: C.primary,
+                          borderRadius: 14, padding: '10px 14px',
+                          boxShadow: '0px 8px 24px rgba(239,94,168,0.30)',
+                        }}
+                      >
+                        {checkingIn
+                          ? <Loader2 size={18} color="white" className="animate-spin" />
+                          : <>
+                              <span style={{ fontSize: 20 }}>✅</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: 'white' }}>เช็คอิน</span>
+                              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>+20 XP</span>
+                            </>}
+                      </button>
+                    ) : (
+                      <div className="flex flex-col items-center" style={{ gap: 4 }}>
+                        <CheckCircle size={28} color="#34C759" />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#34C759' }}>เช็คอินแล้ว</span>
+                      </div>
+                    )}
+                    {showPop && (
+                      <span
+                        className="absolute animate-pop-up"
+                        style={{
+                          top: -32, left: '50%', transform: 'translateX(-50%)',
+                          fontSize: 13, fontWeight: 700, color: C.primary,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        +{xpPop} XP 🎉
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  href="/auth"
+                  className="flex items-center justify-center active:scale-[0.97] transition-transform"
+                  style={{
+                    borderRadius: 12, padding: '12px 16px',
+                    backgroundColor: 'rgba(239,94,168,0.08)',
+                    fontSize: 14, fontWeight: 600, color: C.primary,
+                  }}
+                >
+                  เข้าสู่ระบบเพื่อติดตามความคืบหน้า →
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* ── Level progress ──────────────────────────────── */}
-        <div
-          className="rounded-[18px] p-3.5 flex items-center gap-3"
-          style={{ backgroundColor: C.surface, ...C.card }}
-        >
+        {/* Level progress */}
+        <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 14, padding: 14 }}>
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[18px]"
-            style={{ backgroundColor: 'rgba(139,92,246,0.12)' }}
+            className="flex items-center justify-center rounded-full"
+            style={{ width: 44, height: 44, backgroundColor: 'rgba(139,92,246,0.10)', flexShrink: 0, fontSize: 20 }}
           >
             👑
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center mb-1.5">
-              <p className="text-[13px] font-bold" style={{ color: C.ink }}>Level {level}</p>
-              <p className="text-[11px]" style={{ color: C.ink2 }}>{lvlPct}% → Lv.{level + 1}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 7 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Level {level}</span>
+              <span style={{ fontSize: 12, color: C.ink2 }}>{lvlPct}% → Lv.{level + 1}</span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
-              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${lvlPct}%`, backgroundColor: '#8B5CF6' }} />
+            <div style={{ height: 6, borderRadius: 99, backgroundColor: 'rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${lvlPct}%`, backgroundColor: '#8B5CF6', borderRadius: 99, transition: 'width 0.7s' }} />
             </div>
           </div>
         </div>
 
-        {/* ── Announcements ─────────────────────────────── */}
-        <div>
-          <SectionHead title="📢 ประกาศ" />
-          <HScroll>
-            {[
-              { title: 'ยินดีต้อนรับสู่ Mydemy! 🎉', body: 'พัฒนาทักษะด้วยคอร์สออนไลน์', icon: '📣', color: '#ef5ea8', bg: 'rgba(239,94,168,0.08)' },
-              { title: 'คอร์สใหม่มาแล้ว!',           body: 'เปิดตัว UX/UI Design ฉบับสมบูรณ์', icon: '🆕', color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
-            ].map((a, i) => (
-              <div
-                key={i}
-                className="rounded-[18px] p-3 min-w-[220px] shrink-0 flex gap-2.5 items-start"
-                style={{ backgroundColor: a.bg, border: `1px solid ${a.color}22` }}
-              >
-                <span className="text-[22px] mt-0.5 shrink-0">{a.icon}</span>
-                <div>
-                  <p className="font-bold text-[13px] mb-0.5" style={{ color: C.ink }}>{a.title}</p>
-                  <p className="text-[11px] leading-relaxed" style={{ color: C.ink2 }}>{a.body}</p>
-                </div>
-              </div>
-            ))}
-          </HScroll>
-        </div>
-
-        {/* ── Courses ───────────────────────────────────── */}
+        {/* Courses */}
         <div>
           <SectionHead title="📚 เริ่มเรียนเลย" href="/explore" />
           {loading ? (
             <HScroll>
-              {[1,2,3].map(i => <Skel key={i} className="w-[140px] h-[160px] shrink-0 rounded-[18px]" />)}
+              {[1, 2, 3].map(i => (
+                <Skel key={i} style={{ width: 140, height: 152, flexShrink: 0, borderRadius: 16 }} />
+              ))}
             </HScroll>
           ) : (
             <HScroll>
@@ -300,21 +304,20 @@ export default function HomePage() {
                   <Link
                     key={c._id}
                     href={`/course-detail?id=${c._id}`}
-                    className="shrink-0 w-[140px] active:scale-[0.97] transition-transform overflow-hidden rounded-[18px]"
-                    style={{ backgroundColor: C.surface, ...C.card }}
+                    className="active:scale-[0.97] transition-transform"
+                    style={{ ...cardStyle, width: 140, flexShrink: 0, overflow: 'hidden', display: 'block' }}
                   >
                     <div
-                      className="w-full h-[76px] flex items-center justify-center text-[30px]"
-                      style={{ backgroundColor: p?.bg ?? '#F3F0FF' }}
+                      className="flex items-center justify-center"
+                      style={{ height: 76, backgroundColor: p?.bg ?? '#F3F0FF', fontSize: 30 }}
                     >
                       {p?.icon ?? '📚'}
                     </div>
-                    <div className="p-2.5">
-                      <p className="text-[11px] font-bold line-clamp-2 leading-snug mb-1" style={{ color: C.ink }}>{c.title}</p>
-                      <div className="flex items-center gap-1">
-                        <BookOpen size={9} style={{ color: C.ink3 }} />
-                        <p className="text-[10px]" style={{ color: C.ink3 }}>{c.total_lessons ?? 0} บทเรียน</p>
-                      </div>
+                    <div style={{ padding: '10px 12px 12px' }}>
+                      <p className="line-clamp-2" style={{ fontSize: 12, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>
+                        {c.title}
+                      </p>
+                      <p style={{ fontSize: 10, color: C.ink3, marginTop: 5 }}>{c.total_lessons ?? 0} บทเรียน</p>
                     </div>
                   </Link>
                 );
@@ -323,46 +326,58 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ── Career Paths ─────────────────────────────── */}
+        {/* Career paths — horizontal pill chips */}
         <div>
           <SectionHead title="🗺️ Career Paths" href="/explore" />
-          <div className="grid grid-cols-3 gap-3">
+          <HScroll>
             {PATHS.map(p => (
               <Link
                 key={p.id}
                 href="/explore"
-                className="rounded-[20px] p-3.5 flex flex-col items-center gap-1.5 active:scale-90 transition-transform"
-                style={{ backgroundColor: p.bg, border: '1px solid rgba(0,0,0,0.04)' }}
+                className="flex items-center active:scale-[0.97] transition-transform"
+                style={{
+                  gap: 8, flexShrink: 0,
+                  backgroundColor: p.bg,
+                  borderRadius: 99,
+                  padding: '9px 16px',
+                  border: '1px solid rgba(0,0,0,0.04)',
+                }}
               >
-                <span className="text-[24px] leading-none">{p.icon}</span>
-                <span className="text-[10px] font-bold text-center leading-tight" style={{ color: p.color }}>{p.label}</span>
+                <span style={{ fontSize: 18 }}>{p.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: p.color, whiteSpace: 'nowrap' }}>{p.label}</span>
               </Link>
             ))}
-          </div>
+          </HScroll>
         </div>
 
-        {/* ── Articles ──────────────────────────────────── */}
-        <div className="pb-4">
+        {/* Articles */}
+        <div style={{ paddingBottom: 24 }}>
           <SectionHead title="📖 บทความแนะนำ" href="/articles" />
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col" style={{ gap: 10 }}>
             {ARTICLES.slice(0, 3).map(a => (
               <Link
                 key={a.id}
                 href={`/articles/${a.id}`}
-                className="rounded-[20px] p-4 flex items-center gap-3 active:scale-[0.97] transition-transform"
-                style={{ backgroundColor: C.surface, ...C.card }}
+                className="active:scale-[0.97] transition-transform"
+                style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 12, padding: 14 }}
               >
                 <div
-                  className="w-12 h-12 rounded-[14px] flex items-center justify-center text-[22px] shrink-0"
-                  style={{ backgroundColor: a.cover_color + '18' }}
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 48, height: 48, borderRadius: 12,
+                    backgroundColor: a.cover_color + '18',
+                    flexShrink: 0, fontSize: 22,
+                  }}
                 >
                   {a.cover_emoji}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold line-clamp-2 leading-snug mb-1" style={{ color: C.ink }}>{a.title}</p>
-                  <p className="text-[11px]" style={{ color: C.ink3 }}>{a.read_time} นาที · {a.category}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="line-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>
+                    {a.title}
+                  </p>
+                  <p style={{ fontSize: 12, color: C.ink3, marginTop: 3 }}>{a.read_time} นาที · {a.category}</p>
                 </div>
-                <ChevronRight size={16} style={{ color: C.ink3 }} className="shrink-0" />
+                <ChevronRight size={16} style={{ color: C.ink3, flexShrink: 0 }} />
               </Link>
             ))}
           </div>
