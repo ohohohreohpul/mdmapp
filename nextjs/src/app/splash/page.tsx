@@ -8,6 +8,18 @@ export default function SplashPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Paint body + html pink so no gray/white bleeds through in iOS PWA mode.
+    // Cleaned up automatically when component unmounts.
+    const prev = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#ef5ea8';
+    document.documentElement.style.backgroundColor = '#ef5ea8';
+    return () => {
+      document.body.style.backgroundColor = prev;
+      document.documentElement.style.backgroundColor = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const t = setTimeout(() => {
       const user = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       router.replace(user ? '/home' : '/auth');
