@@ -111,16 +111,16 @@ export default function ResumePage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="Resume & Career" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10 flex flex-col gap-5">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-10 flex flex-col gap-5">
         {/* Resume */}
         <div>
           <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider px-1 mb-2">Resume</p>
           {loadingResume ? (
-            <div className="bg-surface rounded-2xl p-8 flex justify-center card-shadow">
+            <div className="rounded-2xl p-8 flex justify-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <Loader2 size={24} className="animate-spin text-brand" />
             </div>
           ) : resume ? (
-            <div className="bg-surface rounded-2xl p-4 border border-rim card-shadow">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <div className="flex items-start justify-between mb-3">
                 <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full text-white ${resume.resume_type === 'uploaded' ? 'bg-[#3B82F6]' : 'bg-brand'}`}>
                   {resume.resume_type === 'uploaded' ? '☁️ อัปโหลด PDF' : '✏️ สร้างจาก Template'}
@@ -169,7 +169,7 @@ export default function ResumePage() {
               </div>
             </div>
           ) : (
-            <div className="bg-surface rounded-2xl p-6 border border-rim card-shadow flex flex-col items-center text-center gap-3">
+            <div className="rounded-2xl p-6 flex flex-col items-center text-center gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center">
                 <FileText size={28} className="text-brand" />
               </div>
@@ -191,7 +191,7 @@ export default function ResumePage() {
           {loadingCL ? (
             <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-brand" /></div>
           ) : coverLetters.length === 0 ? (
-            <div className="bg-surface rounded-2xl p-5 border border-rim card-shadow flex flex-col items-center text-center gap-2">
+            <div className="rounded-2xl p-5 flex flex-col items-center text-center gap-2" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <PenLine size={32} className="text-ink-3" />
               <p className="text-sm text-ink-2">ยังไม่มี Cover Letter</p>
               <button onClick={openNewCL} className="text-brand text-sm font-semibold">+ สร้าง Cover Letter แรก</button>
@@ -201,7 +201,7 @@ export default function ResumePage() {
               {coverLetters.map((cl: any) => {
                 const clId = cl._id || cl.id;
                 return (
-                  <div key={clId} className="bg-surface rounded-2xl p-4 border border-rim card-shadow">
+                  <div key={clId} className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
                     <div className="flex-1 min-w-0 mb-1">
                       <p className="font-bold text-[14px] text-ink truncate">{cl.title}</p>
                       {cl.company_name && <p className="text-[12px] text-ink-2">{cl.company_name}{cl.position ? ` · ${cl.position}` : ''}</p>}

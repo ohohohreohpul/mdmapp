@@ -145,7 +145,7 @@ function LessonPageInner() {
 
           {/* Text content */}
           {lesson.content_type === 'text' && lesson.content && (
-            <div className="bg-surface rounded-2xl p-4 border border-rim card-shadow">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <p className="text-[15px] text-ink leading-[1.75] whitespace-pre-line">
                 {stripHtml(lesson.content)}
               </p>

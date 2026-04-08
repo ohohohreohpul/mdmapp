@@ -112,8 +112,9 @@ function QuizPageInner() {
     return (
       <div className="min-h-screen bg-bg">
         <NavHeader title="ผลการทดสอบ" />
-        <div className="max-w-lg mx-auto px-4 py-8 flex flex-col items-center text-center gap-5">
-          <div className={`rounded-3xl p-8 w-full flex flex-col items-center gap-3 card-shadow ${passed ? 'bg-[#10B981]/10' : 'bg-[#EF4444]/10'}`}>
+        <div className="max-w-lg mx-auto px-5 py-8 flex flex-col items-center text-center gap-5">
+          <div className={`rounded-3xl p-8 w-full flex flex-col items-center gap-3 ${passed ? 'bg-[#10B981]/10' : 'bg-[#EF4444]/10'}`}
+               style={{ boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
             {passed
               ? <CheckCircle size={80} className="text-[#10B981]" />
               : <XCircle    size={80} className="text-[#EF4444]" />}
@@ -132,7 +133,8 @@ function QuizPageInner() {
           <div className="flex gap-3 w-full">
             {!passed && (
               <button onClick={retry}
-                      className="flex-1 flex items-center justify-center gap-2 bg-surface border border-rim rounded-2xl py-3.5 font-semibold text-ink card-shadow">
+                      className="flex-1 flex items-center justify-center gap-2 rounded-2xl py-3.5 font-semibold text-ink"
+                      style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
                 <RefreshCw size={18} /> ทำใหม่
               </button>
             )}
@@ -170,9 +172,9 @@ function QuizPageInner() {
         </p>
       </div>
 
-      <div className="flex-1 max-w-lg mx-auto w-full px-4 pb-6 flex flex-col gap-4 pt-4">
+      <div className="flex-1 max-w-lg mx-auto w-full px-5 pb-6 flex flex-col gap-4 pt-4">
         {/* Question */}
-        <div className="bg-surface rounded-2xl p-5 card-shadow">
+        <div className="rounded-2xl p-5" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
           <p className="text-[16px] font-bold text-ink leading-snug">{question.question}</p>
           {question.media_url && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -203,7 +205,8 @@ function QuizPageInner() {
         <div className="flex gap-3 mt-auto pt-2">
           {currentQ > 0 && (
             <button onClick={() => setCurrentQ(currentQ - 1)}
-                    className="flex-1 bg-surface border border-rim rounded-2xl py-3.5 font-semibold text-ink card-shadow">
+                    className="flex-1 rounded-2xl py-3.5 font-semibold text-ink"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
               ← ก่อนหน้า
             </button>
           )}

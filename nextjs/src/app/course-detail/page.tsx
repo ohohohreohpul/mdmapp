@@ -141,7 +141,7 @@ function CourseDetailPageInner() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Floating controls */}
-        <div className="absolute top-0 left-0 right-0 px-4 flex items-center justify-between"
+        <div className="absolute top-0 left-0 right-0 px-5 flex items-center justify-between"
              style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
           <button onClick={() => router.back()} className="w-10 h-10 bg-black/30 rounded-full flex items-center justify-center backdrop-blur-sm">
             <ArrowLeft size={22} className="text-white" />
@@ -152,7 +152,7 @@ function CourseDetailPageInner() {
         </div>
 
         {/* Hero content */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
           <div className="flex flex-wrap gap-1.5 mb-2">
             <span className="bg-brand/80 text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
               {course.career_path}
@@ -181,10 +181,10 @@ function CourseDetailPageInner() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4 flex flex-col gap-4 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 flex flex-col gap-4 pb-10">
         {/* Progress */}
         {progress.completed > 0 && (
-          <div className="bg-surface rounded-2xl p-4 card-shadow">
+          <div className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
             <div className="flex justify-between items-center mb-1.5">
               <p className="text-[14px] font-bold text-ink">ความคืบหน้าของคุณ</p>
               <p className="text-[14px] font-bold text-brand">{progress.percentage}%</p>
@@ -200,7 +200,7 @@ function CourseDetailPageInner() {
 
         {/* CTA */}
         {isComingSoon ? (
-          <div className="flex items-center gap-3 bg-surface rounded-2xl p-4 border border-rim card-shadow">
+          <div className="flex items-center gap-3 rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
             <div className="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center shrink-0">
               <Calendar size={24} className="text-brand" />
             </div>
@@ -210,8 +210,8 @@ function CourseDetailPageInner() {
             </div>
           </div>
         ) : isLocked ? (
-          <div className="flex items-center gap-3 bg-surface rounded-2xl p-4 border border-rim card-shadow">
-            <div className="w-12 h-12 bg-rim rounded-xl flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3 rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
               <Lock size={24} className="text-ink-3" />
             </div>
             <div>
@@ -232,7 +232,7 @@ function CourseDetailPageInner() {
 
         {/* About */}
         {course.description && (
-          <div className="bg-surface rounded-2xl p-4 card-shadow">
+          <div className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
             <p className="text-[15px] font-bold text-ink mb-2">เกี่ยวกับคอร์สนี้</p>
             <p className="text-[14px] text-ink-2 leading-relaxed">{stripHtml(course.description)}</p>
           </div>
@@ -253,7 +253,7 @@ function CourseDetailPageInner() {
                 const completedCount = lessons.filter(l => isLessonCompleted(l._id)).length;
                 const expanded      = expandedModules.includes(mod._id);
                 return (
-                  <div key={mod._id} className="bg-surface rounded-2xl overflow-hidden border border-rim card-shadow">
+                  <div key={mod._id} className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
                     <button
                       onClick={() => toggleModule(mod._id)}
                       className="w-full flex items-center gap-3 p-4 text-left hover:bg-bg transition-colors"
@@ -310,7 +310,8 @@ function CourseDetailPageInner() {
                     key={pm.id}
                     disabled={!unlocked}
                     onClick={() => unlocked && router.push(`/duolingo?moduleId=${pm.id}&courseId=${courseId}&title=${encodeURIComponent(pm.title)}`)}
-                    className={`w-full flex items-center gap-3 bg-surface rounded-2xl p-4 border text-left card-shadow ${unlocked ? 'border-rim' : 'border-rim opacity-50'}`}
+                    className={`w-full flex items-center gap-3 rounded-2xl p-4 text-left ${!unlocked ? 'opacity-50' : ''}`}
+                    style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
                   >
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 ${pm.user_completed ? 'bg-[#10B981]' : unlocked ? 'bg-brand' : 'bg-rim'}`}>
                       {pm.user_completed ? <CheckCircle size={16} className="text-white" /> : <span>{idx + 1}</span>}
@@ -327,7 +328,8 @@ function CourseDetailPageInner() {
               {course.has_final_exam && (
                 <Link
                   href={`/quiz?courseId=${courseId}&type=final_exam`}
-                  className="flex items-center gap-3 bg-surface rounded-2xl p-4 border border-rim card-shadow"
+                  className="flex items-center gap-3 rounded-2xl p-4"
+                  style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
                 >
                   <div className="w-8 h-8 bg-brand rounded-xl flex items-center justify-center shrink-0">
                     <Ribbon size={18} className="text-white" />

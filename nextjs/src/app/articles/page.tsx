@@ -39,7 +39,7 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      <main className="max-w-lg mx-auto px-4 pb-8 pt-4">
+      <main className="max-w-lg mx-auto px-5 pb-8 pt-4">
         <p className="text-sm text-ink-3 mb-3">{filtered.length} บทความ</p>
 
         <div className="flex flex-col gap-3">
@@ -47,7 +47,8 @@ export default function ArticlesPage() {
             <button
               key={article.id}
               onClick={() => router.push(`/articles/${article.id}`)}
-              className="bg-surface rounded-2xl overflow-hidden card-shadow text-left w-full active:scale-[0.98] transition-transform"
+              className="rounded-2xl overflow-hidden text-left w-full active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
             >
               <div
                 className="h-28 flex items-center justify-center text-4xl"

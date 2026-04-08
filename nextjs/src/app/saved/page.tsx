@@ -46,7 +46,7 @@ export default function SavedPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="บันทึกไว้" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
         {loading ? (
           <Spinner />
         ) : courses.length === 0 ? (
@@ -63,7 +63,7 @@ export default function SavedPage() {
               {courses.map((course) => {
                 const id = course._id || course.id;
                 return (
-                  <div key={id} className="bg-surface rounded-2xl p-4 flex items-center gap-3 card-shadow">
+                  <div key={id} className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
                     <button
                       onClick={() => router.push(`/course-detail?id=${id}`)}
                       className="flex items-center gap-3 flex-1 min-w-0 text-left"

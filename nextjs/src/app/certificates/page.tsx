@@ -62,7 +62,7 @@ export default function CertificatesPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="ใบประกาศนียบัตร" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
         {!user ? (
           <EmptyState icon={Ribbon} title="เข้าสู่ระบบเพื่อดูใบประกาศ"
             action={<PrimaryBtn href="/auth">เข้าสู่ระบบ</PrimaryBtn>} />
@@ -78,7 +78,8 @@ export default function CertificatesPage() {
               const isCareer = cert.cert_type === 'career';
               return (
                 <div key={cert._id}
-                     className={`rounded-3xl overflow-hidden card-shadow border ${isCareer ? 'bg-[#1A1A2E] border-[#C9A84C]/30' : 'bg-surface border-rim'}`}>
+                     className={`rounded-3xl overflow-hidden ${isCareer ? 'bg-[#1A1A2E]' : 'bg-surface'}`}
+                     style={{ boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: isCareer ? '1px solid rgba(201,168,76,0.30)' : '1px solid rgba(0,0,0,0.06)' }}>
                   <div className={`h-1.5 w-full ${isCareer ? 'bg-gradient-to-r from-[#C9A84C] to-[#F5E6A3]' : 'bg-brand'}`} />
                   <div className="p-5">
                     <div className="flex items-center gap-3 mb-4">

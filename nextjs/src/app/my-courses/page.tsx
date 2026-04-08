@@ -48,7 +48,7 @@ export default function MyCoursesPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="คอร์สของฉัน" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
         {loading ? (
           <Spinner />
         ) : (
@@ -59,7 +59,7 @@ export default function MyCoursesPage() {
                 { value: completedCount, label: 'เรียนจบ' },
                 { value: totalLessons,   label: 'บทเรียน' },
               ].map((s, i) => (
-                <div key={i} className="bg-surface rounded-2xl p-4 flex flex-col items-center card-shadow">
+                <div key={i} className="rounded-2xl p-4 flex flex-col items-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
                   <p className="text-[26px] font-extrabold text-brand">{s.value}</p>
                   <p className="text-[12px] text-ink-2 mt-1">{s.label}</p>
                 </div>
@@ -77,7 +77,8 @@ export default function MyCoursesPage() {
                     <button
                       key={course._id}
                       onClick={() => router.push(`/course-detail?id=${course._id}`)}
-                      className="bg-surface rounded-2xl p-4 flex items-center gap-3 text-left card-shadow active:scale-[0.98] transition-transform"
+                      className="rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
+                      style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
                     >
                       <div className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shrink-0">
                         <School size={22} className="text-white" />

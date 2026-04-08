@@ -55,12 +55,12 @@ export default function AchievementsPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="ความสำเร็จ" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
         {loading ? <Spinner /> : (
           <>
             {/* Level card */}
             <div className="rounded-2xl p-5 flex items-center gap-5 mb-4"
-                 style={{ background: 'linear-gradient(135deg, #f06bba, #e8409b, #c7357f)' }}>
+                 style={{ backgroundColor: '#ef5ea8' }}>
               <div className="text-center shrink-0">
                 <p className="text-white/70 text-[13px]">Level</p>
                 <p className="text-white text-[42px] font-extrabold leading-none">{li?.level ?? 1}</p>
@@ -82,16 +82,18 @@ export default function AchievementsPage() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="flex overflow-hidden mb-5 rounded-2xl"
+                 style={{ backgroundColor: '#fff', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               {[
-                { icon: <Flame  size={28} className="text-[#F59E0B]" />, value: dashboard?.current_streak ?? 0, label: 'Streak' },
-                { icon: <Trophy size={28} className="text-[#10B981]" />, value: earnedIds.size,                  label: 'Badges' },
-                { icon: <Star   size={28} className="text-[#6366F1]" />, value: dashboard?.xp_total ?? 0,        label: 'XP' },
+                { icon: <Flame  size={24} color="#F59E0B" />, value: dashboard?.current_streak ?? 0, label: 'Streak' },
+                { icon: <Trophy size={24} color="#10B981" />, value: earnedIds.size,                  label: 'Badges' },
+                { icon: <Star   size={24} color="#6366F1" />, value: dashboard?.xp_total ?? 0,        label: 'XP' },
               ].map((s, i) => (
-                <div key={i} className="bg-surface rounded-2xl p-4 flex flex-col items-center gap-1 card-shadow">
+                <div key={i} className="flex-1 flex flex-col items-center"
+                     style={{ padding: '16px 0', borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
                   {s.icon}
-                  <p className="text-[22px] font-extrabold text-ink">{s.value}</p>
-                  <p className="text-[12px] text-ink-2">{s.label}</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', marginTop: 4, lineHeight: 1 }}>{s.value}</p>
+                  <p style={{ fontSize: 11, color: '#C7C7CC', marginTop: 3 }}>{s.label}</p>
                 </div>
               ))}
             </div>
@@ -103,7 +105,8 @@ export default function AchievementsPage() {
             <div className="grid grid-cols-2 gap-3">
               {badges.map(badge => (
                 <div key={badge.id}
-                     className={`bg-surface rounded-2xl p-4 flex flex-col items-center gap-2 relative card-shadow ${!badge.earned ? 'opacity-50' : ''}`}>
+                     className={`flex flex-col items-center gap-2 relative ${!badge.earned ? 'opacity-50' : ''}`}
+                     style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
                   <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
                        style={{ backgroundColor: badge.earned ? `${badge.iconInfo.color}20` : '#f3f3f8' }}>
                     {badge.iconInfo.emoji}

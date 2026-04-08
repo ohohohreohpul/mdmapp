@@ -19,10 +19,10 @@ export default function HelpPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="ช่วยเหลือ" />
 
-      <main className="max-w-lg mx-auto px-4 py-5 pb-10">
+      <main className="max-w-lg mx-auto px-5 py-5 pb-10">
         {/* Contact card */}
         <div className="bg-brand/5 rounded-2xl p-6 flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center card-shadow mb-3">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#FFFFFF', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
             <Headphones size={32} className="text-brand" />
           </div>
           <h2 className="text-[18px] font-bold text-ink mb-1">ต้องการความช่วยเหลือ?</h2>
@@ -50,7 +50,8 @@ export default function HelpPage() {
             <button
               key={faq.id}
               onClick={() => setExpandedFaq(expandedFaq === faq.id ? null : faq.id)}
-              className="bg-surface border border-rim rounded-2xl p-4 text-left w-full card-shadow"
+              className="rounded-2xl p-4 text-left w-full"
+              style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[14px] font-semibold text-ink">{faq.question}</span>
@@ -74,7 +75,7 @@ export default function HelpPage() {
             { icon: Twitter,   color: '#1DA1F2' },
             { icon: Youtube,   color: '#FF0000' },
           ].map(({ icon: Icon, color }, i) => (
-            <button key={i} className="w-12 h-12 bg-surface border border-rim rounded-2xl flex items-center justify-center card-shadow">
+            <button key={i} className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
               <Icon size={22} style={{ color }} />
             </button>
           ))}

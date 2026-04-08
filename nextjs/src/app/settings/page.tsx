@@ -82,7 +82,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-bg">
       <NavHeader title="การตั้งค่า" />
 
-      <div className="max-w-lg mx-auto px-4 py-5 flex flex-col gap-5 pb-10">
+      <div className="max-w-lg mx-auto px-5 py-5 flex flex-col gap-5 pb-10">
         <Section title="บัญชี">
           <SettingRow icon={<User size={20} className="text-ink-2" />} label="แก้ไขโปรไฟล์" sub={user?.username}
             onClick={() => { if (!user) { toast.error('กรุณาเข้าสู่ระบบก่อน'); return; } setDisplayName(user.username || ''); setEditProfileOpen(true); }} />
@@ -151,7 +151,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div>
       <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider px-1 mb-2">{title}</p>
-      <div className="bg-surface rounded-2xl overflow-hidden border border-rim card-shadow">{children}</div>
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>{children}</div>
     </div>
   );
 }

@@ -103,7 +103,8 @@ function DuolingoPageInner() {
     const pct          = Math.round((correctCount / total) * 100);
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center gap-5">
-        <div className={`rounded-3xl p-8 w-full max-w-sm flex flex-col items-center gap-3 card-shadow ${pct >= 70 ? 'bg-[#10B981]/10' : 'bg-orange-50'}`}>
+        <div className={`rounded-3xl p-8 w-full max-w-sm flex flex-col items-center gap-3 ${pct >= 70 ? 'bg-[#10B981]/10' : 'bg-orange-50'}`}
+             style={{ boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
           {pct >= 70 ? <CheckCircle size={80} className="text-[#10B981]" /> : <span className="text-6xl">💪</span>}
           <h2 className={`text-[22px] font-extrabold ${pct >= 70 ? 'text-[#10B981]' : 'text-orange-500'}`}>
             {pct >= 70 ? 'ยอดเยี่ยม!' : 'ทำได้ดี!'}
@@ -115,7 +116,8 @@ function DuolingoPageInner() {
         </div>
         <div className="flex gap-3 w-full max-w-sm">
           <button onClick={() => router.back()}
-                  className="flex-1 bg-surface border border-rim rounded-2xl py-3.5 font-semibold text-ink card-shadow">
+                  className="flex-1 rounded-2xl py-3.5 font-semibold text-ink"
+                  style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
             กลับ
           </button>
           <button
@@ -148,7 +150,7 @@ function DuolingoPageInner() {
         </div>
       </header>
 
-      <div className="flex-1 max-w-lg mx-auto w-full px-4 py-5 flex flex-col gap-4">
+      <div className="flex-1 max-w-lg mx-auto w-full px-5 py-5 flex flex-col gap-4">
         <QuestionRenderer
           q={q}
           selected={selected}
@@ -200,7 +202,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     const card  = cards[microIdx];
     if (!card) return null;
     return (
-      <div className="bg-surface rounded-2xl p-5 card-shadow flex flex-col gap-3">
+      <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
         <span className="text-3xl">{card.icon || '📖'}</span>
         <p className="text-[12px] font-bold text-brand uppercase tracking-widest">{card.cardType}</p>
         <h2 className="text-[18px] font-extrabold text-ink">{card.title}</h2>
@@ -215,7 +217,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   if (q.type === 'concept-reveal') {
     return (
-      <div className="bg-surface rounded-2xl p-5 card-shadow flex flex-col gap-3">
+      <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
         <p className="text-[13px] font-bold text-brand">💡 Concept</p>
         <p className="text-[15px] text-ink leading-relaxed whitespace-pre-line">{q.concept_reveal?.content || q.question}</p>
         {q.concept_reveal?.summary && (
@@ -230,7 +232,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   if (q.type === 'fill-blank') {
     return (
       <div className="flex flex-col gap-4">
-        <div className="bg-surface rounded-2xl p-5 card-shadow">
+        <div className="rounded-2xl p-5" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
           <p className="text-[16px] font-bold text-ink mb-3">{q.question}</p>
           <input
             type="text"
@@ -261,7 +263,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     if (!node) return null;
     return (
       <div className="flex flex-col gap-3">
-        <div className="bg-surface rounded-2xl p-5 card-shadow">
+        <div className="rounded-2xl p-5" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
           <span className="text-3xl mb-2 block">{node.icon}</span>
           <p className="text-[14px] font-bold text-ink mb-1">{node.situation}</p>
           <p className="text-[13px] text-ink-2 leading-relaxed">{node.context}</p>
@@ -287,7 +289,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="bg-surface rounded-2xl p-5 card-shadow">
+      <div className="rounded-2xl p-5" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
         <p className="text-[16px] font-bold text-ink">{q.question}</p>
       </div>
       {q.options?.map((opt: string, i: number) => {
