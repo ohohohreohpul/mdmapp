@@ -1707,15 +1707,8 @@ async def get_practice_module(module_id: str):
             data["questions"] = all_questions
             return data
 
-    # Fall back to embedded questions — normalize schema for the renderer
-    embedded = data.get("questions") or []
-    normalized = []
-    for q in embedded:
-        nq = _normalize_embedded_question(dict(q))
-        if nq:
-            normalized.append(nq)
-    data["questions"] = normalized
-
+    # Fall back to embedded questions — return as-is; the Expo renderer reads
+    # q.prompt / q.answer / q.content natively for all 9 question types.
     return data
 
 
