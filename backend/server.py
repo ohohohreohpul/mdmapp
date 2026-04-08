@@ -512,56 +512,71 @@ async def migrate_practice_quizzes():
 
     Safe to run multiple times — uses upsert logic (update if exists, insert if not).
     """
-    mods_res = await supabase.table("practice_modules") \
-        .select("id, course_id, module_key, title, questions") \
-        .execute()
-    modules = mods_res.data or []
+    try:
+        mods_res = await supabase.table("practice_modules") \
+            .select("id, course_id, module_key, title, questions") \
+            .execute()
+        modules = mods_res.data or []
 
-    results = []
-    for mod in modules:
-        course_id  = mod.get("course_id")
-        module_key = mod.get("module_key") or mod["id"]
-        title      = mod.get("title") or module_key
-        embedded   = mod.get("questions") or []
+        results = []
+        for mod in modules:
+            course_id  = mod.get("course_id")
+            module_key = mod.get("module_key") or mod["id"]
+            title      = mod.get("title") or module_key
+            embedded   = mod.get("questions") or []
 
-        if not embedded:
-            results.append({"module": title, "status": "skipped", "questions": 0})
-            continue
+            if not course_id:
+                results.append({"module": title, "status": "skipped_no_course_id", "questions": 0})
+                continue
 
-        transformed = [_transform_practice_question(dict(q)) for q in embedded]
+            if not embedded:
+                results.append({"module": title, "status": "skipped_no_questions", "questions": 0})
+                continue
 
-        # Upsert: update existing row or insert new one
-        existing = await supabase.table("quizzes") \
-            .select("id") \
-            .eq("course_id", course_id) \
-            .eq("quiz_type", module_key) \
-            .limit(1).execute()
+            try:
+                transformed = [_transform_practice_question(dict(q)) for q in embedded]
+            except Exception as e:
+                results.append({"module": title, "status": f"transform_error: {e}", "questions": 0})
+                continue
 
-        existing_row = _one(existing)
-        if existing_row:
-            await supabase.table("quizzes") \
-                .update({"questions": transformed, "title": title}) \
-                .eq("id", existing_row["id"]) \
-                .execute()
-            status = "updated"
-        else:
-            await supabase.table("quizzes").insert({
-                "course_id": course_id,
-                "quiz_type": module_key,
-                "title":     title,
-                "questions": transformed,
-            }).execute()
-            status = "inserted"
+            try:
+                # Upsert: update existing row or insert new one
+                existing = await supabase.table("quizzes") \
+                    .select("id") \
+                    .eq("course_id", course_id) \
+                    .eq("quiz_type", module_key) \
+                    .limit(1).execute()
 
-        results.append({"module": title, "status": status, "questions": len(transformed)})
+                existing_row = _one(existing)
+                if existing_row:
+                    await supabase.table("quizzes") \
+                        .update({"questions": transformed, "title": title}) \
+                        .eq("id", existing_row["id"]) \
+                        .execute()
+                    status = "updated"
+                else:
+                    await supabase.table("quizzes").insert({
+                        "course_id": course_id,
+                        "quiz_type": module_key,
+                        "title":     title,
+                        "questions": transformed,
+                    }).execute()
+                    status = "inserted"
+            except Exception as e:
+                results.append({"module": title, "status": f"db_error: {e}", "questions": 0})
+                continue
 
-    total_q = sum(r["questions"] for r in results)
-    return {
-        "ok": True,
-        "modules_processed": len(results),
-        "total_questions": total_q,
-        "details": results,
-    }
+            results.append({"module": title, "status": status, "questions": len(transformed)})
+
+        total_q = sum(r["questions"] for r in results)
+        return {
+            "ok": True,
+            "modules_processed": len(results),
+            "total_questions": total_q,
+            "details": results,
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ===== USERS =====
