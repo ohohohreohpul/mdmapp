@@ -241,72 +241,149 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
   );
 }
 
-// ── Fill-blank word-bank renderer (needs useState for multi-select) ───────────
+// ── Fill-blank word-bank renderer — slot-based, matches Expo behavior ────────
 
-function FillBlankWordBankRenderer({ q, visualConfig, answered, correct, onSubmit }: any) {
-  const [selections, setSelections] = useState<string[]>([]);
+function FillBlankWordBankRenderer({ q, visualConfig, answered, onSubmit }: any) {
+  const code: string   = visualConfig?.code || '';
+  const hasCode        = code.includes('___');
+  const rawBlanks: any[] = (visualConfig?.blanks || []).filter((b: any) => typeof b === 'object');
 
-  const blanks: any[] = (visualConfig?.blanks || []).filter((b: any) => typeof b === 'object' && b !== null);
-  const allOpts: any[] = [];
-  blanks.forEach((blank: any) => {
-    (blank.options || []).forEach((o: any) => {
-      if (typeof o === 'object' && o !== null && !allOpts.find((x: any) => x.id === o.id)) allOpts.push(o);
+  // Derive all options (supports Format 1 flat array and Format 2 per-blank pools)
+  const allOpts: any[] = (() => {
+    // Try content.options first (legacy/injected)
+    const co = q.content?.options || [];
+    if (co.length > 0) return co;
+    if (rawBlanks.length === 0) return [];
+    if (rawBlanks[0] && Array.isArray(rawBlanks[0].options)) {
+      // Format 2: per-blank pools — flatten + dedupe
+      const seen = new Set<string>();
+      const flat: any[] = [];
+      rawBlanks.forEach((b: any) => (b.options || []).forEach((o: any) => {
+        if (o?.id && !seen.has(o.id)) { seen.add(o.id); flat.push(o); }
+      }));
+      return flat;
+    }
+    // Format 1: blanks IS the option pool
+    return rawBlanks.map((b: any) => ({ id: b.id ?? b.answer, label: b.label ?? b.answer ?? b.id }));
+  })();
+
+  const correctIds = String(q.answer || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const numBlanks  = correctIds.length || rawBlanks.length || 1;
+
+  const [slots, setSlots]     = useState<(string | null)[]>(Array(numBlanks).fill(null));
+  const [submitted, setSubmit] = useState(false);
+
+  const getLabel = (id: string | null) => allOpts.find((o: any) => o.id === id)?.label ?? id ?? '';
+
+  const placeOpt = (optId: string) => {
+    if (submitted) return;
+    const i = slots.findIndex(s => s === null);
+    if (i === -1) return;
+    setSlots(prev => { const n = [...prev]; n[i] = optId; return n; });
+  };
+
+  const removeSlot = (i: number) => {
+    if (submitted) return;
+    setSlots(prev => { const n = [...prev]; n[i] = null; return n; });
+  };
+
+  const handleSubmit = () => {
+    if (slots.some(s => s === null)) return;
+    setSubmit(true);
+    const isCorrect = correctIds.length > 0 && correctIds.every((cid, i) => slots[i] === cid);
+    onSubmit(isCorrect);
+  };
+
+  const placedIds = new Set(slots.filter(Boolean) as string[]);
+  const bankOpts  = allOpts.filter((o: any) => !placedIds.has(o.id));
+
+  // Render code with interactive inline blank slots
+  const renderCode = () => {
+    let bi = 0;
+    return code.split('\n').map((line: string, li: number) => {
+      const parts = line.split('___');
+      return (
+        <div key={li} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', minHeight: 22 }}>
+          {parts.map((seg: string, si: number) => {
+            const blankIdx = bi;
+            if (si < parts.length - 1) bi++;
+            const slotId    = blankIdx < slots.length ? slots[blankIdx] : null;
+            const slotLabel = getLabel(slotId);
+            const ok  = submitted && correctIds[blankIdx] === slotId;
+            const bad = submitted && !!slotId && correctIds[blankIdx] !== slotId;
+            return (
+              <span key={si} style={{ display: 'contents' }}>
+                {seg && <span style={{ whiteSpace: 'pre', fontFamily: 'monospace', fontSize: 13, color: '#cdd6f4' }}>{seg}</span>}
+                {si < parts.length - 1 && (
+                  <button onClick={() => slotId ? removeSlot(blankIdx) : undefined}
+                    style={{ display: 'inline-flex', alignItems: 'center', margin: '0 2px', padding: '1px 8px',
+                             borderRadius: 6, fontFamily: 'monospace', fontSize: 13,
+                             border: `1.5px solid ${ok ? C.green : bad ? C.red : slotId ? C.brand : 'rgba(255,255,255,0.3)'}`,
+                             backgroundColor: ok ? 'rgba(16,185,129,0.2)' : bad ? 'rgba(239,68,68,0.2)' : slotId ? 'rgba(239,94,168,0.2)' : 'rgba(255,255,255,0.08)',
+                             color: ok ? C.green : bad ? C.red : slotId ? '#f9a8d4' : '#6B7280',
+                             cursor: slotId && !submitted ? 'pointer' : 'default', minWidth: 40 }}>
+                    {slotLabel || '___'}
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      );
     });
-  });
-
-  const idToLabel: Record<string, string> = {};
-  blanks.forEach((blank: any) => {
-    (blank.options || []).forEach((o: any) => { if (o?.id) idToLabel[o.id] = o.label || o.id; });
-  });
-  const correctIds = String(q.answer || q.correct_answer || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-  const correctLabels = new Set(correctIds.map(id => idToLabel[id] || id));
-
-  const toggle = (label: string) => {
-    if (answered) return;
-    setSelections(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ ...cardStyle, padding: 20 }}>
         <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
-        {visualConfig?.code && (
-          <pre style={{ backgroundColor: '#1e1e2e', borderRadius: 10, padding: 14, fontSize: 13, color: '#cdd6f4', overflowX: 'auto', whiteSpace: 'pre-wrap', margin: 0 }}>
-            {visualConfig.code}
-          </pre>
+        {hasCode ? (
+          <div style={{ backgroundColor: '#1e1e2e', borderRadius: 10, padding: 14, overflowX: 'auto' }}>
+            {renderCode()}
+          </div>
+        ) : (
+          /* No code template — numbered slots */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {slots.map((slotId, i) => {
+              const ok  = submitted && correctIds[i] === slotId;
+              const bad = submitted && !!slotId && correctIds[i] !== slotId;
+              return (
+                <button key={i} onClick={() => slotId ? removeSlot(i) : undefined}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, textAlign: 'left',
+                           border: `2px solid ${ok ? C.green : bad ? C.red : slotId ? C.brand : C.sep}`,
+                           backgroundColor: ok ? 'rgba(16,185,129,0.08)' : bad ? 'rgba(239,68,68,0.08)' : slotId ? 'rgba(239,94,168,0.08)' : C.bg,
+                           cursor: slotId && !submitted ? 'pointer' : 'default' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.ink3, minWidth: 16 }}>{i + 1}</span>
+                  <span style={{ fontSize: 14, color: slotId ? C.ink : C.ink3 }}>{getLabel(slotId) || '_ _ _'}</span>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
-      <p style={{ fontSize: 12, color: C.ink2, margin: '4px 0', textAlign: 'center' }}>
-        {blanks.length > 1 ? `เลือก ${blanks.length} คำตอบ` : 'เลือกคำตอบที่ถูกต้อง'}
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-        {allOpts.map((o: any) => {
-          const oLabel  = o.label || o.id;
-          const chosen  = selections.includes(oLabel);
-          const isRight = correctLabels.has(oLabel);
-          const bg = answered
-            ? isRight ? 'rgba(16,185,129,0.12)' : chosen ? 'rgba(239,68,68,0.10)' : '#F3F4F6'
-            : chosen ? 'rgba(239,94,168,0.10)' : '#F3F4F6';
-          const border = answered
-            ? isRight ? C.green : chosen ? C.red : 'transparent'
-            : chosen ? C.brand : 'transparent';
-          return (
-            <button key={o.id} onClick={() => toggle(oLabel)}
-              style={{ padding: '8px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600,
-                       border: `2px solid ${border}`, backgroundColor: bg, color: C.ink,
-                       cursor: answered ? 'default' : 'pointer' }}>
-              {oLabel}
-            </button>
-          );
-        })}
-      </div>
-      {!answered && (
-        <button onClick={() => onSubmit(selections, correctLabels)} disabled={selections.length === 0}
-          style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700,
-                   padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer',
-                   opacity: selections.length === 0 ? 0.4 : 1 }}>
-          ตรวจคำตอบ
-        </button>
+
+      {/* Word bank */}
+      {!submitted && (
+        <>
+          <p style={{ fontSize: 12, color: C.ink2, margin: '4px 0', textAlign: 'center' }}>
+            คลังคำ — แตะเพื่อเติมในช่องว่าง
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+            {bankOpts.map((o: any) => (
+              <button key={o.id} onClick={() => placeOpt(o.id)}
+                style={{ padding: '8px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                         border: `2px solid ${C.sep}`, backgroundColor: C.surface, color: C.ink, cursor: 'pointer' }}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={handleSubmit} disabled={slots.some(s => s === null)}
+            style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700,
+                     padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer',
+                     opacity: slots.some(s => s === null) ? 0.4 : 1 }}>
+            ตรวจคำตอบ
+          </button>
+        </>
       )}
     </div>
   );
@@ -524,14 +601,11 @@ function DuolingoPageInner() {
   const qt       = q ? (q.type || q.question_type || 'multiple-choice') : '';
   const progress = questions.length > 0 ? (current / questions.length) * 100 : 0;
 
-  // Word-bank submit: receives (selections: string[], correctLabels: Set<string>)
-  const checkWordBank = (selections: string[], correctLabels: Set<string>) => {
+  // Word-bank submit: component computes correctness internally, passes boolean
+  const checkWordBank = (isCorrect: boolean) => {
     if (answered) return;
-    setSelected(selections.join(','));
+    setSelected('__wb__');
     setAnswered(true);
-    const isCorrect = correctLabels.size > 0 &&
-      [...correctLabels].every(l => selections.includes(l)) &&
-      selections.every(l => correctLabels.has(l));
     setCorrect(isCorrect);
     if (isCorrect) setXpEarned(prev => prev + 10);
     else           setLives(prev => Math.max(0, prev - 1));
