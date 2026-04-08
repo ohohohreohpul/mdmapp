@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, PenLine, Trash2, Copy, Plus, Edit2, Info, ExternalLink, Loader2 } from 'lucide-react';
+import { FileText, PenLine, Trash2, Copy, Plus, Edit2, Info, ExternalLink, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
@@ -9,27 +9,38 @@ import { NavHeader } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF', red: '#EF4444' };
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
+};
+const btnBase: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  backgroundColor: C.bg, border: '1px solid rgba(0,0,0,0.08)', color: C.ink,
+};
 
 function AtsScoreRing({ score }: { score: number }) {
-  const color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444';
+  const color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : C.red;
   const label = score >= 70 ? 'ดีมาก' : score >= 40 ? 'พอใช้' : 'ควรปรับปรุง';
   return (
-    <div className="w-[72px] h-[72px] rounded-full border-4 flex flex-col items-center justify-center" style={{ borderColor: color }}>
-      <span className="text-[22px] font-extrabold leading-tight" style={{ color }}>{score}</span>
-      <span className="text-[10px] font-semibold" style={{ color }}>{label}</span>
+    <div style={{ width: 72, height: 72, borderRadius: 36, border: `4px solid ${color}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color }}>{score}</span>
+      <span style={{ fontSize: 10, fontWeight: 600, color }}>{label}</span>
     </div>
   );
 }
 
 export default function ResumePage() {
   const { user } = useUser();
-  const [resume, setResume]         = useState<any>(null);
+  const [resume, setResume]           = useState<any>(null);
   const [coverLetters, setCoverLetters] = useState<any[]>([]);
   const [loadingResume, setLoadingResume] = useState(true);
-  const [loadingCL, setLoadingCL]   = useState(true);
+  const [loadingCL, setLoadingCL]     = useState(true);
   const [deletingResume, setDeletingResume] = useState(false);
   const [deletingCLId, setDeletingCLId]     = useState<string | null>(null);
-  const [showTooltip, setShowTooltip]       = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const [clOpen, setClOpen]         = useState(false);
   const [editingCL, setEditingCL]   = useState<any | null>(null);
@@ -108,119 +119,125 @@ export default function ResumePage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="Resume & Career" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-10 flex flex-col gap-5">
-        {/* Resume */}
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Resume ── */}
         <div>
-          <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider px-1 mb-2">Resume</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4, marginBottom: 8 }}>Resume</p>
+
           {loadingResume ? (
-            <div className="rounded-2xl p-8 flex justify-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-              <Loader2 size={24} className="animate-spin text-brand" />
+            <div style={{ ...card, padding: 32, display: 'flex', justifyContent: 'center' }}>
+              <Loader2 size={24} color={C.brand} className="animate-spin" />
             </div>
           ) : resume ? (
-            <div className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-              <div className="flex items-start justify-between mb-3">
-                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full text-white ${resume.resume_type === 'uploaded' ? 'bg-[#3B82F6]' : 'bg-brand'}`}>
+            <div style={{ ...card, padding: 16 }}>
+              {/* Type badge + ATS score */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999, color: '#fff', backgroundColor: resume.resume_type === 'uploaded' ? '#3B82F6' : C.brand }}>
                   {resume.resume_type === 'uploaded' ? '☁️ อัปโหลด PDF' : '✏️ สร้างจาก Template'}
                 </span>
                 {resume.ats_score != null && (
-                  <div className="flex items-center gap-1">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AtsScoreRing score={resume.ats_score} />
-                    <button onClick={() => setShowTooltip(v => !v)} className="text-ink-3 hover:text-ink-2">
+                    <button onClick={() => setShowTooltip(v => !v)} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: C.ink3, display: 'flex' }}>
                       <Info size={16} />
                     </button>
                   </div>
                 )}
               </div>
+
               {showTooltip && (
-                <p className="text-[12px] text-ink-2 bg-bg rounded-xl p-3 mb-3 leading-relaxed">
+                <p style={{ fontSize: 12, color: C.ink2, backgroundColor: C.bg, borderRadius: 12, padding: 12, marginBottom: 12, lineHeight: 1.6 }}>
                   คะแนน ATS บอกว่า Resume ของคุณอ่านง่ายสำหรับระบบคัดกรอง ยิ่งสูงยิ่งมีโอกาสผ่านการคัดกรองเบื้องต้น
                 </p>
               )}
-              <p className="font-semibold text-ink text-[14px] mb-0.5">{resume.file_name || 'Resume ของฉัน'}</p>
-              <p className="text-[12px] text-ink-2 mb-3">
+
+              <p style={{ fontWeight: 600, color: C.ink, fontSize: 14, marginBottom: 2 }}>{resume.file_name || 'Resume ของฉัน'}</p>
+              <p style={{ fontSize: 12, color: C.ink2, marginBottom: 10 }}>
                 {formatDate(resume.created_at)}{resume.file_size ? ` · ${formatSize(resume.file_size)}` : ''}
               </p>
+
               {resume.parsed_skills?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                   {resume.parsed_skills.slice(0, 8).map((s: string) => (
-                    <span key={s} className="bg-brand/10 text-brand text-[11px] font-semibold px-2 py-0.5 rounded-full">{s}</span>
+                    <span key={s} style={{ backgroundColor: 'rgba(239,94,168,0.10)', color: C.brand, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999 }}>{s}</span>
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
+
+              <div style={{ display: 'flex', gap: 8 }}>
                 {resume.file_url && (
-                  <a href={resume.file_url} target="_blank" rel="noopener noreferrer"
-                     className="flex-1 flex items-center justify-center gap-1.5 bg-bg border border-rim rounded-2xl py-2.5 text-[13px] font-semibold text-ink">
-                    <ExternalLink size={15} /> ดู PDF
+                  <a href={resume.file_url} target="_blank" rel="noopener noreferrer" style={{ ...btnBase, flex: 1, textDecoration: 'none' }}>
+                    <ExternalLink size={14} /> ดู PDF
                   </a>
                 )}
-                <Link href="/resume-setup"
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-bg border border-rim rounded-2xl py-2.5 text-[13px] font-semibold text-ink">
-                  <Edit2 size={15} /> แก้ไข
+                <Link href="/resume-setup" style={{ ...btnBase, flex: 1, textDecoration: 'none' }}>
+                  <Edit2 size={14} /> แก้ไข
                 </Link>
-                <button onClick={handleDeleteResume}
-                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl text-[13px] font-semibold transition-colors ${deletingResume ? 'bg-[#EF4444] text-white' : 'bg-bg border border-rim text-[#EF4444]'}`}>
-                  <Trash2 size={15} />
-                  {deletingResume ? 'กดอีกครั้งเพื่อลบ' : ''}
+                <button onClick={handleDeleteResume} style={{ ...btnBase, paddingLeft: 12, paddingRight: 12, flex: 'none', backgroundColor: deletingResume ? C.red : C.bg, color: deletingResume ? '#fff' : C.red, border: deletingResume ? 'none' : '1px solid rgba(239,68,68,0.20)' }}>
+                  <Trash2 size={14} />
+                  {deletingResume && <span style={{ fontSize: 12 }}>กดอีกครั้งเพื่อลบ</span>}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl p-6 flex flex-col items-center text-center gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-              <div className="w-14 h-14 bg-brand/10 rounded-full flex items-center justify-center">
-                <FileText size={28} className="text-brand" />
+            <div style={{ ...card, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239,94,168,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={28} color={C.brand} />
               </div>
-              <p className="font-bold text-ink">ยังไม่มี Resume</p>
-              <p className="text-sm text-ink-2">สร้างหรืออัปโหลด Resume เพื่อเพิ่มโอกาสในการสมัครงาน</p>
-              <Link href="/resume-setup" className="bg-brand text-white font-bold px-6 py-3 rounded-2xl">สร้าง Resume</Link>
+              <p style={{ fontWeight: 700, color: C.ink }}>ยังไม่มี Resume</p>
+              <p style={{ fontSize: 14, color: C.ink2 }}>สร้างหรืออัปโหลด Resume เพื่อเพิ่มโอกาสในการสมัครงาน</p>
+              <Link href="/resume-setup" style={{ backgroundColor: C.brand, color: '#fff', fontWeight: 700, padding: '12px 24px', borderRadius: 14, textDecoration: 'none' }}>
+                สร้าง Resume
+              </Link>
             </div>
           )}
         </div>
 
-        {/* Cover Letters */}
+        {/* ── Cover Letters ── */}
         <div>
-          <div className="flex items-center justify-between px-1 mb-2">
-            <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider">Cover Letters</p>
-            <button onClick={openNewCL} className="flex items-center gap-1 text-brand text-[13px] font-semibold">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 4, marginBottom: 8 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cover Letters</p>
+            <button onClick={openNewCL} style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.brand, fontSize: 13, fontWeight: 600, border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>
               <Plus size={16} /> สร้างใหม่
             </button>
           </div>
+
           {loadingCL ? (
-            <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-brand" /></div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+              <Loader2 size={24} color={C.brand} className="animate-spin" />
+            </div>
           ) : coverLetters.length === 0 ? (
-            <div className="rounded-2xl p-5 flex flex-col items-center text-center gap-2" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-              <PenLine size={32} className="text-ink-3" />
-              <p className="text-sm text-ink-2">ยังไม่มี Cover Letter</p>
-              <button onClick={openNewCL} className="text-brand text-sm font-semibold">+ สร้าง Cover Letter แรก</button>
+            <div style={{ ...card, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 8 }}>
+              <PenLine size={32} color={C.ink3} />
+              <p style={{ fontSize: 14, color: C.ink2 }}>ยังไม่มี Cover Letter</p>
+              <button onClick={openNewCL} style={{ color: C.brand, fontSize: 14, fontWeight: 600, border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>
+                + สร้าง Cover Letter แรก
+              </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {coverLetters.map((cl: any) => {
                 const clId = cl._id || cl.id;
                 return (
-                  <div key={clId} className="rounded-2xl p-4" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-                    <div className="flex-1 min-w-0 mb-1">
-                      <p className="font-bold text-[14px] text-ink truncate">{cl.title}</p>
-                      {cl.company_name && <p className="text-[12px] text-ink-2">{cl.company_name}{cl.position ? ` · ${cl.position}` : ''}</p>}
-                      <p className="text-[11px] text-ink-3 mt-0.5">{formatDate(cl.created_at)}</p>
-                    </div>
-                    <p className="text-[12px] text-ink-2 line-clamp-2 mb-3">{cl.content}</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEditCL(cl)}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-bg border border-rim rounded-2xl py-2 text-[12px] font-semibold text-ink">
+                  <div key={clId} style={{ ...card, padding: 16 }}>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{cl.title}</p>
+                    {cl.company_name && <p style={{ fontSize: 12, color: C.ink2 }}>{cl.company_name}{cl.position ? ` · ${cl.position}` : ''}</p>}
+                    <p style={{ fontSize: 11, color: C.ink3, marginTop: 2, marginBottom: 6 }}>{formatDate(cl.created_at)}</p>
+                    <p style={{ fontSize: 12, color: C.ink2, marginBottom: 12, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cl.content}</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => openEditCL(cl)} style={{ ...btnBase, flex: 1, fontSize: 12, padding: '8px 0' }}>
                         <Edit2 size={13} /> แก้ไข
                       </button>
-                      <button onClick={() => handleCopyCL(cl)}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-bg border border-rim rounded-2xl py-2 text-[12px] font-semibold text-ink">
+                      <button onClick={() => handleCopyCL(cl)} style={{ ...btnBase, flex: 1, fontSize: 12, padding: '8px 0' }}>
                         <Copy size={13} /> คัดลอก
                       </button>
-                      <button onClick={() => handleDeleteCL(cl)}
-                              className={`flex items-center justify-center gap-1 px-3 py-2 rounded-2xl text-[12px] font-semibold transition-colors ${deletingCLId === clId ? 'bg-[#EF4444] text-white' : 'bg-bg border border-rim text-[#EF4444]'}`}>
+                      <button onClick={() => handleDeleteCL(cl)} style={{ ...btnBase, paddingLeft: 10, paddingRight: 10, flex: 'none', fontSize: 12, padding: '8px 10px', backgroundColor: deletingCLId === clId ? C.red : C.bg, color: deletingCLId === clId ? '#fff' : C.red, border: deletingCLId === clId ? 'none' : '1px solid rgba(239,68,68,0.20)' }}>
                         <Trash2 size={13} />
-                        {deletingCLId === clId ? 'ยืนยัน' : ''}
+                        {deletingCLId === clId && <span>ยืนยัน</span>}
                       </button>
                     </div>
                   </div>
@@ -231,30 +248,31 @@ export default function ResumePage() {
         </div>
       </div>
 
-      {/* Cover letter modal */}
+      {/* ── Cover Letter Modal ── */}
       {clOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex flex-col justify-end">
-          <div className="bg-surface rounded-t-3xl w-full max-w-lg mx-auto flex flex-col"
-               style={{ maxHeight: '90vh', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-rim">
-              <button onClick={() => setClOpen(false)} className="text-ink-2 text-sm">ยกเลิก</button>
-              <h2 className="text-[17px] font-bold text-ink">{editingCL ? 'แก้ไข Cover Letter' : 'สร้าง Cover Letter'}</h2>
-              <button onClick={handleSaveCL} disabled={savingCL} className="text-brand font-bold text-sm flex items-center gap-1">
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.50)', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 512, margin: '0 auto', display: 'flex', flexDirection: 'column', maxHeight: '90vh', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            {/* Modal header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <button onClick={() => setClOpen(false)} style={{ fontSize: 14, color: C.ink2, border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>ยกเลิก</button>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>{editingCL ? 'แก้ไข Cover Letter' : 'สร้าง Cover Letter'}</h2>
+              <button onClick={handleSaveCL} disabled={savingCL} style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.brand, fontWeight: 700, fontSize: 14, border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>
                 {savingCL && <Loader2 size={14} className="animate-spin" />} บันทึก
               </button>
             </div>
-            <div className="overflow-y-auto p-5 flex flex-col gap-3">
-              <FormField label="ชื่อ Cover Letter *" value={clTitle}   onChange={setClTitle}   placeholder="เช่น Cover Letter — UX Designer" />
-              <FormField label="บริษัท"               value={clCompany} onChange={setClCompany} placeholder="ชื่อบริษัท" />
-              <FormField label="ตำแหน่งที่สมัคร"      value={clPosition} onChange={setClPosition} placeholder="เช่น UX Designer" />
+            {/* Modal body */}
+            <div style={{ overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <FormField label="ชื่อ Cover Letter *" value={clTitle}    onChange={setClTitle}    placeholder="เช่น Cover Letter — UX Designer" />
+              <FormField label="บริษัท"              value={clCompany}  onChange={setClCompany}  placeholder="ชื่อบริษัท" />
+              <FormField label="ตำแหน่งที่สมัคร"     value={clPosition} onChange={setClPosition} placeholder="เช่น UX Designer" />
               <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">เนื้อหา *</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>เนื้อหา *</label>
                 <textarea
                   value={clContent}
                   onChange={e => setClContent(e.target.value)}
                   placeholder="เขียน Cover Letter ที่นี่..."
                   rows={10}
-                  className="w-full border border-rim rounded-2xl px-4 py-3 text-[14px] text-ink outline-none focus:border-brand transition-colors resize-none bg-bg"
+                  style={{ width: '100%', border: '1px solid rgba(0,0,0,0.10)', borderRadius: 14, padding: '12px 16px', fontSize: 14, color: C.ink, outline: 'none', resize: 'none', backgroundColor: C.bg, boxSizing: 'border-box' }}
                 />
               </div>
             </div>
@@ -268,13 +286,13 @@ export default function ResumePage() {
 function FormField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
     <div>
-      <label className="block text-[13px] font-semibold text-ink mb-1.5">{label}</label>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1C1C1E', marginBottom: 6 }}>{label}</label>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full border border-rim rounded-2xl px-4 py-3 text-[14px] text-ink outline-none focus:border-brand transition-colors bg-bg placeholder:text-ink-3"
+        style={{ width: '100%', border: '1px solid rgba(0,0,0,0.10)', borderRadius: 14, padding: '12px 16px', fontSize: 14, color: '#1C1C1E', outline: 'none', backgroundColor: '#F2F2F7', boxSizing: 'border-box' }}
       />
     </div>
   );
