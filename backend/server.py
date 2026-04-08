@@ -504,7 +504,7 @@ def _transform_practice_question(q: dict) -> dict:
     return out
 
 
-@api_router.post("/admin/migrate-practice-quizzes")
+@api_router.get("/admin/migrate-practice-quizzes")
 async def migrate_practice_quizzes():
     """One-time migration: reads all practice_modules, transforms embedded
     questions to renderer format, and upserts one quiz row per module into
