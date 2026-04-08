@@ -8,18 +8,23 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
+const C = {
+  brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC',
+  bg: '#F2F2F7', surface: '#FFFFFF', sep: 'rgba(0,0,0,0.08)',
+};
+
 function SectionDivider({ title }: { title: string }) {
   return (
-    <div className="mt-5 mb-3">
-      <p className="text-[11px] font-extrabold text-[#374151] tracking-widest uppercase mb-1.5">{title}</p>
-      <div className="h-[1.5px] bg-[#E5E7EB]" />
+    <div style={{ marginTop: 20, marginBottom: 12 }}>
+      <p style={{ fontSize: 11, fontWeight: 800, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>{title}</p>
+      <div style={{ height: 1.5, backgroundColor: '#E5E7EB' }} />
     </div>
   );
 }
 
 function SkillChip({ label }: { label: string }) {
   return (
-    <span className="bg-[#F3F4F6] rounded-md px-2.5 py-1 text-[12px] font-semibold text-[#374151] m-[3px]">
+    <span style={{ backgroundColor: '#F3F4F6', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, color: '#374151', margin: 3, display: 'inline-block' }}>
       {label}
     </span>
   );
@@ -29,15 +34,23 @@ function AtsBadge({ score }: { score: number }) {
   const color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444';
   const label = score >= 70 ? 'ดีมาก' : score >= 40 ? 'พอใช้' : 'ควรปรับปรุง';
   return (
-    <div
-      className="w-14 h-14 rounded-full border-[3px] flex flex-col items-center justify-center shrink-0"
-      style={{ borderColor: color }}
-    >
-      <span className="text-[18px] font-extrabold leading-none" style={{ color }}>{score}</span>
-      <span className="text-[9px] font-bold" style={{ color }}>{label}</span>
+    <div style={{ width: 56, height: 56, borderRadius: '50%', border: `3px solid ${color}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1, color }}>{score}</span>
+      <span style={{ fontSize: 9, fontWeight: 700, color }}>{label}</span>
     </div>
   );
 }
+
+const headerStyle: React.CSSProperties = {
+  backgroundColor: C.surface, borderBottom: `1px solid ${C.sep}`,
+  position: 'sticky', top: 0, zIndex: 10,
+  paddingTop: 'env(safe-area-inset-top, 0px)',
+};
+
+const navBtn: React.CSSProperties = {
+  width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  borderRadius: '50%', border: 'none', backgroundColor: 'transparent', cursor: 'pointer',
+};
 
 export default function ResumePreviewPage() {
   const router = useRouter();
@@ -59,39 +72,34 @@ export default function ResumePreviewPage() {
     setExporting(true);
     const url = `${API_URL}/api/resume/${user._id}/export-pdf`;
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'resume.pdf';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = 'resume.pdf'; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => setExporting(false), 1500);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-brand" />
+      <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} color={C.brand} className="animate-spin" />
       </div>
     );
   }
 
   if (!resume || resume.resume_type !== 'created') {
     return (
-      <div className="min-h-screen bg-bg flex flex-col">
-        <header className="bg-surface border-b border-rim sticky top-0 z-10 header-shell">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg transition-colors">
-              <ChevronLeft size={22} className="text-ink" />
-            </button>
-            <h1 className="text-[17px] font-bold text-ink">Resume</h1>
-            <div className="w-10" />
+      <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', flexDirection: 'column' }}>
+        <header style={headerStyle}>
+          <div style={{ maxWidth: 512, margin: '0 auto', padding: '0 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button onClick={() => router.back()} style={navBtn}><ChevronLeft size={22} color={C.ink} /></button>
+            <h1 style={{ fontSize: 17, fontWeight: 700, color: C.ink, margin: 0 }}>Resume</h1>
+            <div style={{ width: 40 }} />
           </div>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-          <FileText size={52} className="text-ink-3" />
-          <p className="text-[16px] font-semibold text-ink-2">ไม่พบ Resume</p>
-          <button onClick={() => router.push('/resume-setup')} className="bg-brand text-white font-bold px-6 py-3 rounded-2xl hover:opacity-90 transition-opacity">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center' }}>
+          <FileText size={52} color={C.ink3} />
+          <p style={{ fontSize: 16, fontWeight: 600, color: C.ink2, margin: 0 }}>ไม่พบ Resume</p>
+          <button onClick={() => router.push('/resume-setup')}
+            style={{ backgroundColor: C.brand, color: '#fff', fontWeight: 700, padding: '12px 24px', borderRadius: 16, border: 'none', cursor: 'pointer' }}>
             สร้าง Resume
           </button>
         </div>
@@ -107,83 +115,74 @@ export default function ResumePreviewPage() {
   const certifications: any[] = data.certifications || [];
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
-      {/* Toolbar */}
-      <header className="bg-surface border-b border-rim sticky top-0 z-10 header-shell">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg transition-colors">
-            <ChevronLeft size={22} className="text-ink" />
-          </button>
-          <h1 className="text-[17px] font-bold text-ink">Resume</h1>
-          <button
-            onClick={handleExportPDF}
-            disabled={exporting}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg transition-colors disabled:opacity-50"
-          >
-            {exporting ? <Loader2 size={20} className="animate-spin text-brand" /> : <Download size={20} className="text-brand" />}
+    <div style={{ minHeight: '100vh', backgroundColor: '#F0F2F5' }}>
+      <header style={headerStyle}>
+        <div style={{ maxWidth: 512, margin: '0 auto', padding: '0 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => router.back()} style={navBtn}><ChevronLeft size={22} color={C.ink} /></button>
+          <h1 style={{ fontSize: 17, fontWeight: 700, color: C.ink, margin: 0 }}>Resume</h1>
+          <button onClick={handleExportPDF} disabled={exporting}
+            style={{ ...navBtn, opacity: exporting ? 0.5 : 1 }}>
+            {exporting ? <Loader2 size={20} color={C.brand} className="animate-spin" /> : <Download size={20} color={C.brand} />}
           </button>
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-4 pb-16">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '16px 16px 64px' }}>
         {/* Paper card */}
-        <div className="bg-surface rounded-2xl p-6 shadow-md">
+        <div style={{ backgroundColor: C.surface, borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
           {/* Name & contact */}
-          <p className="text-[24px] font-extrabold text-[#111827] mb-2 tracking-tight">
+          <p style={{ fontSize: 24, fontWeight: 800, color: '#111827', margin: '0 0 8px', letterSpacing: '-0.02em' }}>
             {data.full_name || user?.display_name || user?.username}
           </p>
-          <div className="flex flex-wrap gap-3 mb-1">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
             {data.email && (
-              <span className="text-[12px] text-ink-2 flex items-center gap-1">
+              <span style={{ fontSize: 12, color: C.ink2, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span>✉️</span>{data.email}
               </span>
             )}
             {data.phone && (
-              <span className="text-[12px] text-ink-2 flex items-center gap-1">
+              <span style={{ fontSize: 12, color: C.ink2, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span>📞</span>{data.phone}
               </span>
             )}
             {data.linkedin && (
               <a
                 href={data.linkedin.startsWith('http') ? data.linkedin : `https://${data.linkedin}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] text-[#0A66C2] flex items-center gap-1"
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: '#0A66C2', display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 <span>🔗</span>LinkedIn
               </a>
             )}
           </div>
 
-          {/* Skills */}
           {skills.length > 0 && (
             <>
               <SectionDivider title="ทักษะ" />
-              <div className="flex flex-wrap -mx-[3px]">
+              <div style={{ margin: '-3px' }}>
                 {skills.map((sk, i) => <SkillChip key={i} label={sk} />)}
               </div>
             </>
           )}
 
-          {/* Work Experience */}
           {workExp.length > 0 && (
             <>
               <SectionDivider title="ประสบการณ์ทำงาน" />
               {workExp.map((job: any, i: number) => (
-                <div key={i} className="mb-4">
-                  <div className="flex items-start justify-between gap-2">
+                <div key={i} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div>
-                      <p className="text-[14px] font-bold text-[#111827]">{job.role}</p>
-                      <p className="text-[13px] text-ink-2">{job.company}</p>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0 }}>{job.role}</p>
+                      <p style={{ fontSize: 13, color: C.ink2, margin: 0 }}>{job.company}</p>
                     </div>
-                    <p className="text-[12px] text-ink-3 shrink-0">
+                    <p style={{ fontSize: 12, color: C.ink3, flexShrink: 0, margin: 0 }}>
                       {[job.start_date, job.end_date].filter(Boolean).join(' – ')}
                     </p>
                   </div>
                   {Array.isArray(job.bullets) && job.bullets.map((b: string, bi: number) => (
-                    <div key={bi} className="flex gap-2 mt-1">
-                      <span className="text-[13px] text-ink-2">•</span>
-                      <p className="text-[13px] text-[#374151] leading-5">{b}</p>
+                    <div key={bi} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                      <span style={{ fontSize: 13, color: C.ink2 }}>•</span>
+                      <p style={{ fontSize: 13, color: '#374151', lineHeight: '20px', margin: 0 }}>{b}</p>
                     </div>
                   ))}
                 </div>
@@ -191,65 +190,58 @@ export default function ResumePreviewPage() {
             </>
           )}
 
-          {/* Education */}
           {education.length > 0 && (
             <>
               <SectionDivider title="การศึกษา" />
               {education.map((edu: any, i: number) => (
-                <div key={i} className="flex items-start justify-between gap-2 mb-3">
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
                   <div>
-                    <p className="text-[14px] font-bold text-[#111827]">
+                    <p style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: 0 }}>
                       {edu.degree}{edu.field ? `, ${edu.field}` : ''}
                     </p>
-                    <p className="text-[13px] text-ink-2">{edu.institution}</p>
+                    <p style={{ fontSize: 13, color: C.ink2, margin: 0 }}>{edu.institution}</p>
                   </div>
                   {edu.graduation_year && (
-                    <p className="text-[12px] text-ink-3 shrink-0">{edu.graduation_year}</p>
+                    <p style={{ fontSize: 12, color: C.ink3, flexShrink: 0, margin: 0 }}>{edu.graduation_year}</p>
                   )}
                 </div>
               ))}
             </>
           )}
 
-          {/* Languages */}
           {languages.length > 0 && (
             <>
               <SectionDivider title="ภาษา" />
-              <div className="flex flex-wrap gap-2">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {languages.map((lang: any, i: number) => (
-                  <div key={i} className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 min-w-[140px]">
-                    <p className="text-[13px] font-bold text-[#111827]">{lang.language}</p>
-                    <p className="text-[12px] text-ink-2 mt-0.5">{lang.level}</p>
+                  <div key={i} style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', minWidth: 140 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>{lang.language}</p>
+                    <p style={{ fontSize: 12, color: C.ink2, margin: '2px 0 0' }}>{lang.level}</p>
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          {/* Certifications */}
           {certifications.length > 0 && (
             <>
               <SectionDivider title="ใบประกาศนียบัตร" />
               {certifications.map((cert: any, i: number) => (
-                <div key={i} className="flex items-start justify-between py-2 border-b border-[#F3F4F6] last:border-0">
-                  <div className="flex-1">
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < certifications.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+                  <div style={{ flex: 1 }}>
                     {cert.is_mydemy && (
-                      <span className="inline-flex items-center gap-1 bg-brand/10 text-brand text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: 'rgba(239,94,168,0.10)', color: C.brand, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, marginBottom: 4 }}>
                         <Ribbon size={10} /> Mydemy
                       </span>
                     )}
-                    <p className="text-[13px] font-bold text-[#111827]">{cert.name}</p>
-                    <p className="text-[12px] text-ink-2 mt-0.5">
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>{cert.name}</p>
+                    <p style={{ fontSize: 12, color: C.ink2, margin: '2px 0 0' }}>
                       {cert.issuer}{cert.year ? ` · ${cert.year}` : ''}
                     </p>
                   </div>
                   {cert.url && (
-                    <a
-                      href={cert.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#3B82F6] hover:opacity-70 transition-opacity ml-2 mt-1"
-                    >
+                    <a href={cert.url} target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#3B82F6', marginLeft: 8, marginTop: 4 }}>
                       🔗
                     </a>
                   )}
@@ -259,11 +251,10 @@ export default function ResumePreviewPage() {
           )}
         </div>
 
-        {/* ATS tip */}
         {resume.ats_score != null && resume.ats_score < 60 && (
-          <div className="flex items-start gap-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-4 mt-3">
-            <span className="text-lg shrink-0">💡</span>
-            <p className="text-[13px] text-[#92400E] leading-5">
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: 16, marginTop: 12 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
+            <p style={{ fontSize: 13, color: '#92400E', lineHeight: '20px', margin: 0 }}>
               เพิ่มคะแนน ATS ด้วยการเพิ่มทักษะ, ประสบการณ์ทำงาน, ใบประกาศ หรือภาษา
             </p>
           </div>

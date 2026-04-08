@@ -156,3 +156,33 @@ html, body {
 .animate-fill-bar   { animation: fillBar  2s    ease-out forwards; }
 .animate-pop-up     { animation: popUp    1.4s  ease-out forwards; }
 .animate-pulse-slow { animation: pulse    1.8s  ease-in-out infinite; }
+
+/* ══════════════════════════════════════════════════════════════
+   TOKEN CLASS FALLBACKS
+   Explicit definitions for @theme-derived classes that Tailwind v4
+   sometimes fails to emit in the static export build.
+   ══════════════════════════════════════════════════════════════ */
+/* Backgrounds */
+.bg-bg       { background-color: #F2F2F7; }
+.bg-ios-bg   { background-color: #F2F2F7; }
+.bg-surface  { background-color: #FFFFFF; }
+.bg-primary  { background-color: #ef5ea8; }
+.bg-brand    { background-color: #ef5ea8; }
+/* Borders */
+.border-rim       { border-color: rgba(0,0,0,0.08); }
+.border-separator { border-color: rgba(0,0,0,0.08); }
+.border-primary   { border-color: #ef5ea8; }
+/* Text */
+.text-ink            { color: #1C1C1E; }
+.text-ink-2          { color: #8E8E93; }
+.text-ink-3          { color: #C7C7CC; }
+.text-primary        { color: #ef5ea8; }
+.text-brand          { color: #ef5ea8; }
+.text-text-primary   { color: #1C1C1E; }
+.text-text-secondary { color: #8E8E93; }
+.text-text-tertiary  { color: #C7C7CC; }
+/* Hover variants */
+.hover\:bg-bg:hover      { background-color: #F2F2F7; }
+.hover\:bg-ios-bg:hover  { background-color: #F2F2F7; }
+/* Safe area padding */
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
