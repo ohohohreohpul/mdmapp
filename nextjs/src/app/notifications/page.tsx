@@ -9,7 +9,9 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
-const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+const C = { ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', brand: '#ef5ea8', bg: '#F2F2F7', surface: '#FFFFFF' };
+
+const TYPE_CFG: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   announcement: { icon: <Megaphone size={20} />, color: '#e8409b', bg: '#FDF2F8' },
   achievement:  { icon: <Trophy size={20} />,    color: '#F59E0B', bg: '#FFFBEB' },
   course:       { icon: <BookOpen size={20} />,  color: '#6366F1', bg: '#EEF2FF' },
@@ -57,36 +59,48 @@ export default function NotificationsPage() {
   const isUnread = (n: any) => !lastSeen || new Date(n.created_at) > new Date(lastSeen);
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="การแจ้งเตือน" />
 
-      <div className="max-w-lg mx-auto pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', paddingBottom: 80 }}>
         {loading ? (
           <Spinner />
         ) : notifs.length === 0 ? (
           <EmptyState icon={Megaphone} title="ยังไม่มีการแจ้งเตือน" body="การแจ้งเตือนใหม่จะปรากฏที่นี่" />
         ) : (
-          <div className="flex flex-col">
+          <div>
             {notifs.map((notif, i) => {
-              const cfg    = TYPE_CONFIG[notif.type] || TYPE_CONFIG.announcement;
+              const cfg    = TYPE_CFG[notif.type] || TYPE_CFG.announcement;
               const unread = isUnread(notif);
               return (
                 <button
                   key={notif._id || i}
                   onClick={() => notif.action_url && router.push(notif.action_url)}
-                  className={`flex items-start gap-3 px-4 py-4 border-b border-rim text-left transition-colors ${unread ? 'bg-brand/[0.04]' : 'bg-surface hover:bg-bg'}`}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '16px 20px', border: 'none', textAlign: 'left',
+                    borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer',
+                    backgroundColor: unread ? 'rgba(239,94,168,0.04)' : C.surface,
+                  }}
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                       style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+                    backgroundColor: cfg.bg, color: cfg.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {cfg.icon}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-[14px] font-bold text-ink truncate">{notif.title}</p>
-                      {unread && <span className="w-2 h-2 bg-brand rounded-full shrink-0" />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {notif.title}
+                      </p>
+                      {unread && <span style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.brand, flexShrink: 0 }} />}
                     </div>
-                    <p className="text-[13px] text-ink-2 leading-snug line-clamp-3">{notif.body}</p>
-                    <p className="text-[11px] text-ink-3 mt-1">{timeAgo(notif.created_at)}</p>
+                    <p style={{ fontSize: 13, color: C.ink2, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {notif.body}
+                    </p>
+                    <p style={{ fontSize: 11, color: C.ink3, marginTop: 4 }}>{timeAgo(notif.created_at)}</p>
                   </div>
                 </button>
               );

@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { Headphones, Mail, MessageCircle, ChevronDown, ChevronUp, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
 import { NavHeader } from '@/lib/ui';
 
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF' };
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
+};
+
 const FAQS = [
   { id: '1', question: 'วิธีเริ่มเรียนคอร์ส?',          answer: 'ไปที่หน้า "สำรวจ" เลือกคอร์สที่สนใจ แล้วกด "เริ่มเรียน"' },
   { id: '2', question: 'ฉันจะได้รับใบประกาศเมื่อไหร่?', answer: 'เมื่อคุณเรียนจบทุกบทเรียนและสอบผ่านข้อสอบปลายภาค' },
@@ -12,74 +19,81 @@ const FAQS = [
   { id: '5', question: 'จะยกเลิกบัญชีได้อย่างไร?',      answer: 'ติดต่อทีมซัพพอร์ตผ่านอีเมล support@mydemy.co' },
 ];
 
+const SOCIALS = [
+  { Icon: Facebook,  color: '#1877F2' },
+  { Icon: Instagram, color: '#E4405F' },
+  { Icon: Twitter,   color: '#1DA1F2' },
+  { Icon: Youtube,   color: '#FF0000' },
+];
+
 export default function HelpPage() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="ช่วยเหลือ" />
 
-      <main className="max-w-lg mx-auto px-5 py-5 pb-10">
-        {/* Contact card */}
-        <div className="bg-brand/5 rounded-2xl p-6 flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: '#FFFFFF', boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)' }}>
-            <Headphones size={32} className="text-brand" />
+      <main style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px' }}>
+
+        {/* Contact hero */}
+        <div style={{ backgroundColor: 'rgba(239,94,168,0.06)', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, boxShadow: '0px 4px 16px rgba(0,0,0,0.08)' }}>
+            <Headphones size={32} color={C.brand} />
           </div>
-          <h2 className="text-[18px] font-bold text-ink mb-1">ต้องการความช่วยเหลือ?</h2>
-          <p className="text-sm text-ink-2 mb-4">ทีมของเราพร้อมช่วยเหลือคุณ</p>
-          <div className="flex gap-3">
-            <a
-              href="mailto:support@mydemy.co"
-              className="flex items-center gap-2 bg-brand text-white px-5 py-3 rounded-2xl text-sm font-semibold"
-            >
-              <Mail size={18} />อีเมล
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 4 }}>ต้องการความช่วยเหลือ?</h2>
+          <p style={{ fontSize: 14, color: C.ink2, marginBottom: 16 }}>ทีมของเราพร้อมช่วยเหลือคุณ</p>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <a href="mailto:support@mydemy.co" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: C.brand, color: '#fff',
+              padding: '10px 20px', borderRadius: 14, fontSize: 14, fontWeight: 600,
+              textDecoration: 'none',
+            }}>
+              <Mail size={16} /> อีเมล
             </a>
-            <a
-              href="https://line.me/mydemy"
-              className="flex items-center gap-2 bg-surface border border-brand text-brand px-5 py-3 rounded-2xl text-sm font-semibold"
-            >
-              <MessageCircle size={18} />Line
+            <a href="https://line.me/mydemy" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: '#fff', color: C.brand,
+              padding: '10px 20px', borderRadius: 14, fontSize: 14, fontWeight: 600,
+              border: `1px solid ${C.brand}`, textDecoration: 'none',
+            }}>
+              <MessageCircle size={16} /> Line
             </a>
           </div>
         </div>
 
         {/* FAQ */}
-        <h2 className="text-[15px] font-bold text-ink mb-3">คำถามที่พบบ่อย</h2>
-        <div className="flex flex-col gap-2 mb-6">
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 12 }}>คำถามที่พบบ่อย</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
           {FAQS.map(faq => (
             <button
               key={faq.id}
               onClick={() => setExpandedFaq(expandedFaq === faq.id ? null : faq.id)}
-              className="rounded-2xl p-4 text-left w-full"
-              style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
+              style={{ ...card, padding: 16, textAlign: 'left', width: '100%', border: card.border, cursor: 'pointer' }}
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[14px] font-semibold text-ink">{faq.question}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{faq.question}</span>
                 {expandedFaq === faq.id
-                  ? <ChevronUp size={18} className="text-ink-3 shrink-0" />
-                  : <ChevronDown size={18} className="text-ink-3 shrink-0" />}
+                  ? <ChevronUp size={18} color={C.ink3} style={{ flexShrink: 0 }} />
+                  : <ChevronDown size={18} color={C.ink3} style={{ flexShrink: 0 }} />}
               </div>
               {expandedFaq === faq.id && (
-                <p className="text-[13px] text-ink-2 mt-3 leading-relaxed">{faq.answer}</p>
+                <p style={{ fontSize: 13, color: C.ink2, marginTop: 12, lineHeight: 1.6 }}>{faq.answer}</p>
               )}
             </button>
           ))}
         </div>
 
         {/* Social */}
-        <h2 className="text-[15px] font-bold text-ink mb-3">ติดตามเรา</h2>
-        <div className="flex gap-3">
-          {[
-            { icon: Facebook,  color: '#1877F2' },
-            { icon: Instagram, color: '#E4405F' },
-            { icon: Twitter,   color: '#1DA1F2' },
-            { icon: Youtube,   color: '#FF0000' },
-          ].map(({ icon: Icon, color }, i) => (
-            <button key={i} className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 12 }}>ติดตามเรา</p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {SOCIALS.map(({ Icon, color }, i) => (
+            <button key={i} style={{ ...card, width: 48, height: 48, border: card.border, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon size={22} style={{ color }} />
             </button>
           ))}
         </div>
+
       </main>
     </div>
   );

@@ -8,6 +8,12 @@ import { NavHeader, Spinner, EmptyState, PrimaryBtn, ProgressBar } from '@/lib/u
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF', green: '#10B981' };
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
+};
 
 export default function MyCoursesPage() {
   const router = useRouter();
@@ -37,31 +43,36 @@ export default function MyCoursesPage() {
   const totalLessons   = courses.reduce((sum, c) => sum + (c.completed || 0), 0);
 
   if (!user) return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 px-6 text-center">
-      <School size={48} className="text-ink-3" />
-      <p className="font-bold text-ink">กรุณาเข้าสู่ระบบ</p>
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center' }}>
+      <School size={48} color={C.ink3} />
+      <p style={{ fontWeight: 700, color: C.ink }}>กรุณาเข้าสู่ระบบ</p>
       <PrimaryBtn href="/auth">เข้าสู่ระบบ</PrimaryBtn>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="คอร์สของฉัน" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px' }}>
         {loading ? (
           <Spinner />
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            {/* Stats row — single card with dividers */}
+            <div style={{ ...card, display: 'flex', overflow: 'hidden', marginBottom: 20 }}>
               {[
                 { value: courses.length, label: 'กำลังเรียน' },
                 { value: completedCount, label: 'เรียนจบ' },
                 { value: totalLessons,   label: 'บทเรียน' },
               ].map((s, i) => (
-                <div key={i} className="rounded-2xl p-4 flex flex-col items-center" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
-                  <p className="text-[26px] font-extrabold text-brand">{s.value}</p>
-                  <p className="text-[12px] text-ink-2 mt-1">{s.label}</p>
+                <div key={i} style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '16px 0',
+                  borderRight: i < 2 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                }}>
+                  <p style={{ fontSize: 26, fontWeight: 800, color: C.brand }}>{s.value}</p>
+                  <p style={{ fontSize: 12, color: C.ink2, marginTop: 2 }}>{s.label}</p>
                 </div>
               ))}
             </div>
@@ -71,25 +82,24 @@ export default function MyCoursesPage() {
                 action={<PrimaryBtn href="/explore">สำรวจคอร์ส</PrimaryBtn>} />
             ) : (
               <>
-                <p className="text-[14px] font-bold text-ink mb-3">กำลังเรียน</p>
-                <div className="flex flex-col gap-3">
+                <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 12 }}>กำลังเรียน</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {courses.map(course => (
                     <button
                       key={course._id}
                       onClick={() => router.push(`/course-detail?id=${course._id}`)}
-                      className="rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
-                      style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}
+                      style={{ ...card, padding: 16, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', border: card.border, cursor: 'pointer', width: '100%' }}
                     >
-                      <div className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shrink-0">
-                        <School size={22} className="text-white" />
+                      <div style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: C.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <School size={22} color="#fff" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-ink truncate">{course.title}</p>
-                        <p className="text-[12px] text-ink-3 mb-2">{course.completed}/{course.total} บทเรียน</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{course.title}</p>
+                        <p style={{ fontSize: 12, color: C.ink3, marginBottom: 6 }}>{course.completed}/{course.total} บทเรียน</p>
                         <ProgressBar pct={course.pct} />
-                        <p className="text-[11px] text-brand font-semibold mt-1">{course.pct}% เสร็จแล้ว</p>
+                        <p style={{ fontSize: 11, color: C.brand, fontWeight: 600, marginTop: 4 }}>{course.pct}% เสร็จแล้ว</p>
                       </div>
-                      {course.pct === 100 && <CheckCircle2 size={24} className="text-[#10B981] shrink-0" />}
+                      {course.pct === 100 && <CheckCircle2 size={24} color={C.green} style={{ flexShrink: 0 }} />}
                     </button>
                   ))}
                 </div>

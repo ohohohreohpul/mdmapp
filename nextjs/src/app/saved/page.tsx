@@ -8,6 +8,12 @@ import { NavHeader, Spinner, EmptyState, PrimaryBtn } from '@/lib/ui';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF' };
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)',
+};
 
 export default function SavedPage() {
   const router = useRouter();
@@ -43,10 +49,10 @@ export default function SavedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="บันทึกไว้" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px' }}>
         {loading ? (
           <Spinner />
         ) : courses.length === 0 ? (
@@ -58,34 +64,30 @@ export default function SavedPage() {
           />
         ) : (
           <>
-            <p className="text-[13px] text-ink-3 mb-4">{courses.length} คอร์สที่บันทึกไว้</p>
-            <div className="flex flex-col gap-3">
+            <p style={{ fontSize: 13, color: C.ink3, marginBottom: 16 }}>{courses.length} คอร์สที่บันทึกไว้</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {courses.map((course) => {
                 const id = course._id || course.id;
                 return (
-                  <div key={id} className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <div key={id} style={{ ...card, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button
                       onClick={() => router.push(`/course-detail?id=${id}`)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textAlign: 'left', border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
                     >
-                      <div className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shrink-0">
-                        <School size={22} className="text-white" />
+                      <div style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: C.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <School size={22} color="#fff" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-ink truncate">{course.title}</p>
-                        {course.career_path && (
-                          <p className="text-[13px] text-brand font-semibold">{course.career_path}</p>
-                        )}
-                        {course.total_lessons != null && (
-                          <p className="text-[12px] text-ink-3">{course.total_lessons} บทเรียน</p>
-                        )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</p>
+                        {course.career_path && <p style={{ fontSize: 13, color: C.brand, fontWeight: 600 }}>{course.career_path}</p>}
+                        {course.total_lessons != null && <p style={{ fontSize: 12, color: C.ink3 }}>{course.total_lessons} บทเรียน</p>}
                       </div>
                     </button>
                     <button
                       onClick={() => unsave(id)}
-                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg transition-colors shrink-0"
+                      style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: 'rgba(239,94,168,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                     >
-                      <BookmarkX size={20} className="text-brand" />
+                      <BookmarkX size={20} color={C.brand} />
                     </button>
                   </div>
                 );

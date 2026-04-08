@@ -1,10 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Key, Globe, Bell, Mail, Moon, Play, Eye, EyeOff, Loader2, X } from 'lucide-react';
+import { User, Key, Globe, Bell, Mail, Moon, Play, Eye, EyeOff, Loader2, X, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
 import { NavHeader, Toggle } from '@/lib/ui';
+
+const C = {
+  brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC',
+  bg: '#F2F2F7', surface: '#FFFFFF', sep: 'rgba(0,0,0,0.06)',
+};
+const card: React.CSSProperties = {
+  backgroundColor: '#FFFFFF', borderRadius: 16,
+  boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)',
+  border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden',
+};
 
 const PREFS_KEY = 'app_preferences';
 
@@ -79,48 +89,65 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg }}>
       <NavHeader title="การตั้งค่า" />
 
-      <div className="max-w-lg mx-auto px-5 py-5 flex flex-col gap-5 pb-10">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '20px 20px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Account */}
         <Section title="บัญชี">
-          <SettingRow icon={<User size={20} className="text-ink-2" />} label="แก้ไขโปรไฟล์" sub={user?.username}
+          <Row icon={<User size={20} color={C.ink2} />} label="แก้ไขโปรไฟล์" sub={user?.username}
             onClick={() => { if (!user) { toast.error('กรุณาเข้าสู่ระบบก่อน'); return; } setDisplayName(user.username || ''); setEditProfileOpen(true); }} />
-          <SettingRow icon={<Key size={20} className="text-ink-2" />} label="เปลี่ยนรหัสผ่าน"
+          <Row icon={<Key size={20} color={C.ink2} />} label="เปลี่ยนรหัสผ่าน"
             onClick={() => { if (!user) { toast.error('กรุณาเข้าสู่ระบบก่อน'); return; } setCurrentPass(''); setNewPass(''); setConfirmPass(''); setChangePassOpen(true); }} />
-          <SettingRow icon={<Globe size={20} className="text-ink-2" />} label="ภาษา" value="ไทย" last />
+          <Row icon={<Globe size={20} color={C.ink2} />} label="ภาษา" value="ไทย" last />
         </Section>
 
+        {/* Notifications */}
         <Section title="การแจ้งเตือน">
-          <SettingToggle icon={<Bell size={20} className="text-ink-2" />} label="Push Notifications" value={notifications} onChange={v => { setNotifications(v); savePrefs({ notifications: v }); }} />
-          <SettingToggle icon={<Mail size={20} className="text-ink-2" />} label="Email Updates" value={emailUpdates} onChange={v => { setEmailUpdates(v); savePrefs({ emailUpdates: v }); }} last />
+          <RowToggle icon={<Bell size={20} color={C.ink2} />} label="Push Notifications" value={notifications} onChange={v => { setNotifications(v); savePrefs({ notifications: v }); }} />
+          <RowToggle icon={<Mail size={20} color={C.ink2} />} label="Email Updates" value={emailUpdates} onChange={v => { setEmailUpdates(v); savePrefs({ emailUpdates: v }); }} last />
         </Section>
 
+        {/* App */}
         <Section title="การตั้งค่าแอป">
-          <SettingToggle icon={<Moon size={20} className="text-ink-2" />} label="Dark Mode" value={darkMode} onChange={v => { setDarkMode(v); savePrefs({ darkMode: v }); }} />
-          <SettingToggle icon={<Play size={20} className="text-ink-2" />} label="Auto-play วิดีโอ" value={autoPlay} onChange={v => { setAutoPlay(v); savePrefs({ autoPlay: v }); }} last />
+          <RowToggle icon={<Moon size={20} color={C.ink2} />} label="Dark Mode" value={darkMode} onChange={v => { setDarkMode(v); savePrefs({ darkMode: v }); }} />
+          <RowToggle icon={<Play size={20} color={C.ink2} />} label="Auto-play วิดีโอ" value={autoPlay} onChange={v => { setAutoPlay(v); savePrefs({ autoPlay: v }); }} last />
         </Section>
 
+        {/* About */}
         <Section title="เกี่ยวกับ">
-          <SettingRow icon={<span className="text-base">📄</span>} label="นโยบายความเป็นส่วนตัว" onClick={() => {}} />
-          <SettingRow icon={<span className="text-base">📋</span>} label="เงื่อนไขการใช้งาน" onClick={() => {}} />
-          <SettingRow icon={<span className="text-base">ℹ️</span>} label="เวอร์ชัน" value="1.0.0" last />
+          <Row icon={<span>📄</span>} label="นโยบายความเป็นส่วนตัว" onClick={() => {}} />
+          <Row icon={<span>📋</span>} label="เงื่อนไขการใช้งาน" onClick={() => {}} />
+          <Row icon={<span>ℹ️</span>} label="เวอร์ชัน" value="1.0.0" last />
         </Section>
+
       </div>
 
+      {/* Edit Profile Modal */}
       {editProfileOpen && (
         <Modal title="แก้ไขโปรไฟล์" onClose={() => setEditProfileOpen(false)}>
-          <label className="block text-[13px] font-semibold text-ink mb-2">ชื่อผู้ใช้</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>ชื่อผู้ใช้</label>
           <input
             type="text"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
-            className="w-full border border-rim rounded-2xl px-4 py-3 text-[15px] text-ink outline-none focus:border-brand transition-colors mb-4 bg-surface"
+            style={{
+              width: '100%', border: `1px solid ${C.sep}`, borderRadius: 14,
+              padding: '12px 16px', fontSize: 15, color: C.ink, outline: 'none',
+              marginBottom: 16, backgroundColor: C.bg, boxSizing: 'border-box',
+            }}
           />
           <button
             onClick={handleSaveProfile}
             disabled={savingProfile}
-            className="w-full bg-brand text-white font-bold py-3.5 rounded-2xl disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{
+              width: '100%', backgroundColor: C.brand, color: '#fff',
+              fontWeight: 700, padding: '14px 0', borderRadius: 14,
+              border: 'none', cursor: savingProfile ? 'not-allowed' : 'pointer',
+              opacity: savingProfile ? 0.6 : 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
           >
             {savingProfile && <Loader2 size={18} className="animate-spin" />}
             บันทึก
@@ -128,6 +155,7 @@ export default function SettingsPage() {
         </Modal>
       )}
 
+      {/* Change Password Modal */}
       {changePassOpen && (
         <Modal title="เปลี่ยนรหัสผ่าน" onClose={() => setChangePassOpen(false)}>
           <PassField label="รหัสผ่านปัจจุบัน" value={currentPass} onChange={setCurrentPass} show={showCurrent} onToggle={() => setShowCurrent(!showCurrent)} />
@@ -136,7 +164,13 @@ export default function SettingsPage() {
           <button
             onClick={handleChangePassword}
             disabled={savingPass}
-            className="w-full bg-brand text-white font-bold py-3.5 rounded-2xl mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{
+              width: '100%', backgroundColor: C.brand, color: '#fff',
+              fontWeight: 700, padding: '14px 0', borderRadius: 14,
+              border: 'none', cursor: savingPass ? 'not-allowed' : 'pointer',
+              opacity: savingPass ? 0.6 : 1, marginTop: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
           >
             {savingPass && <Loader2 size={18} className="animate-spin" />}
             บันทึก
@@ -150,37 +184,48 @@ export default function SettingsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[12px] font-bold text-ink-3 uppercase tracking-wider px-1 mb-2">{title}</p>
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderRadius: 16, boxShadow: '0px 1px 4px rgba(0,0,0,0.06), 0px 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.06)' }}>{children}</div>
+      <p style={{ fontSize: 12, fontWeight: 700, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4, marginBottom: 8 }}>{title}</p>
+      <div style={card}>{children}</div>
     </div>
   );
 }
 
-function SettingRow({ icon, label, sub, value, onClick, last }: {
+function Row({ icon, label, sub, value, onClick, last }: {
   icon: React.ReactNode; label: string; sub?: string; value?: string; onClick?: () => void; last?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-bg ${!last ? 'border-b border-rim' : ''}`}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 16px', border: 'none', backgroundColor: 'transparent',
+        cursor: onClick ? 'pointer' : 'default', textAlign: 'left',
+        borderBottom: last ? 'none' : `1px solid ${C.sep}`,
+      }}
     >
-      <span className="text-ink-2 shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-ink">{label}</p>
-        {sub && <p className="text-[12px] text-ink-2">{sub}</p>}
+      <span style={{ color: C.ink2, flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: C.ink }}>{label}</p>
+        {sub && <p style={{ fontSize: 12, color: C.ink2, marginTop: 1 }}>{sub}</p>}
       </div>
-      {value ? <span className="text-[13px] text-ink-2">{value}</span> : onClick ? <span className="text-ink-3">›</span> : null}
+      {value
+        ? <span style={{ fontSize: 13, color: C.ink2 }}>{value}</span>
+        : onClick ? <ChevronRight size={16} color={C.ink3} /> : null}
     </button>
   );
 }
 
-function SettingToggle({ icon, label, value, onChange, last }: {
+function RowToggle({ icon, label, value, onChange, last }: {
   icon: React.ReactNode; label: string; value: boolean; onChange: (v: boolean) => void; last?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 px-4 py-3.5 ${!last ? 'border-b border-rim' : ''}`}>
-      <span className="text-ink-2 shrink-0">{icon}</span>
-      <p className="flex-1 text-[14px] font-medium text-ink">{label}</p>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 16px',
+      borderBottom: last ? 'none' : `1px solid ${C.sep}`,
+    }}>
+      <span style={{ color: C.ink2, flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <p style={{ flex: 1, fontSize: 14, fontWeight: 500, color: C.ink }}>{label}</p>
       <Toggle value={value} onChange={onChange} />
     </div>
   );
@@ -188,13 +233,22 @@ function SettingToggle({ icon, label, value, onChange, last }: {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50" onClick={onClose}>
-      <div className="bg-surface rounded-t-3xl w-full max-w-lg p-5 pb-8" onClick={e => e.stopPropagation()}
-           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[17px] font-bold text-ink">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-bg transition-colors">
-            <X size={18} className="text-ink-2" />
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.50)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          backgroundColor: '#fff', borderRadius: '24px 24px 0 0',
+          width: '100%', maxWidth: 512, padding: 20,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>{title}</h2>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 16, border: 'none', backgroundColor: C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={18} color={C.ink2} />
           </button>
         </div>
         {children}
@@ -207,17 +261,21 @@ function PassField({ label, value, onChange, show, onToggle }: {
   label: string; value: string; onChange?: (v: string) => void; show: boolean; onToggle?: () => void;
 }) {
   return (
-    <div className="mb-3">
-      <label className="block text-[13px] font-semibold text-ink mb-1.5">{label}</label>
-      <div className="flex items-center border border-rim rounded-2xl px-4 py-3 gap-2 focus-within:border-brand transition-colors bg-surface">
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 6 }}>{label}</label>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        border: `1px solid ${C.sep}`, borderRadius: 14,
+        padding: '12px 16px', backgroundColor: C.bg,
+      }}>
         <input
           type={show ? 'text' : 'password'}
           value={value}
           onChange={e => onChange?.(e.target.value)}
-          className="flex-1 text-[15px] text-ink outline-none bg-transparent"
+          style={{ flex: 1, fontSize: 15, color: C.ink, outline: 'none', backgroundColor: 'transparent', border: 'none' }}
         />
         {onToggle && (
-          <button type="button" onClick={onToggle} className="text-ink-3 hover:text-ink-2">
+          <button type="button" onClick={onToggle} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: C.ink3, display: 'flex' }}>
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
