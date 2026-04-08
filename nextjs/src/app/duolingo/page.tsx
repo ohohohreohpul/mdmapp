@@ -254,7 +254,6 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, correct, onSubmi
     });
   });
 
-  // Build correct labels from all blanks using original answer IDs
   const idToLabel: Record<string, string> = {};
   blanks.forEach((blank: any) => {
     (blank.options || []).forEach((o: any) => { if (o?.id) idToLabel[o.id] = o.label || o.id; });
@@ -283,7 +282,7 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, correct, onSubmi
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
         {allOpts.map((o: any) => {
           const oLabel  = o.label || o.id;
-          const chosen  = answered ? selections.includes(oLabel) : selections.includes(oLabel);
+          const chosen  = selections.includes(oLabel);
           const isRight = correctLabels.has(oLabel);
           const bg = answered
             ? isRight ? 'rgba(16,185,129,0.12)' : chosen ? 'rgba(239,68,68,0.10)' : '#F3F4F6'
@@ -312,6 +311,7 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, correct, onSubmi
     </div>
   );
 }
+
 
 // ── Question renderer ─────────────────────────────────────────────────────────
 
