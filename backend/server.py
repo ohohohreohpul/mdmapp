@@ -440,6 +440,130 @@ async def update_admin_settings(settings: AdminSettingsUpdate):
     return row
 
 
+# ===== MIGRATION: embedded practice questions → quizzes table =====
+
+def _transform_practice_question(q: dict) -> dict:
+    """Convert one embedded question (prompt/answer/content) to renderer format
+    (question/options/correct_answer/micro_lesson/concept_reveal/scenario_nodes)."""
+    q_type  = (q.get("type") or q.get("question_type") or "multiple-choice").strip()
+    content = q.get("content") or {}
+    out     = dict(q)
+    out["type"] = q_type
+
+    if not out.get("question"):
+        out["question"] = out.get("prompt") or ""
+
+    if q_type == "micro-lesson":
+        if not out.get("micro_lesson"):
+            out["micro_lesson"] = {"cards": content.get("cards") or []}
+        return out
+
+    if q_type == "concept-reveal":
+        if not out.get("concept_reveal"):
+            out["concept_reveal"] = content.get("conceptReveal") or {}
+        return out
+
+    if q_type == "scenario":
+        if not out.get("scenario_nodes"):
+            out["scenario_nodes"] = content.get("scenarioNodes") or []
+        if not out.get("correct_answer") and out.get("answer"):
+            out["correct_answer"] = str(out["answer"])
+        return out
+
+    if q_type == "fill-blank":
+        if not out.get("correct_answer"):
+            blanks = (content.get("visual") or {}).get("config", {}).get("blanks", [])
+            if blanks:
+                id_to_label: dict = {}
+                for blank in blanks:
+                    for opt in blank.get("options", []):
+                        id_to_label[opt["id"]] = opt.get("label") or opt["id"]
+                raw = str(out.get("answer") or "").split(",")[0].strip()
+                out["correct_answer"] = id_to_label.get(raw, raw)
+            elif out.get("answer"):
+                out["correct_answer"] = str(out["answer"])
+        return out
+
+    if q_type == "drag-arrange":
+        return out
+
+    # multiple-choice / comparison / chart-* — resolve option ID → text
+    content_opts = content.get("options") or []
+    if content_opts:
+        out["options"] = [
+            (o.get("content") or o.get("label") or str(o.get("id", "")))
+            for o in content_opts if isinstance(o, dict)
+        ]
+        raw_answer = str(out.get("answer") or "")
+        id_to_text = {
+            o["id"]: (o.get("content") or o.get("label") or o["id"])
+            for o in content_opts if isinstance(o, dict) and "id" in o
+        }
+        out["correct_answer"] = id_to_text.get(raw_answer, raw_answer)
+
+    return out
+
+
+@api_router.post("/admin/migrate-practice-quizzes")
+async def migrate_practice_quizzes():
+    """One-time migration: reads all practice_modules, transforms embedded
+    questions to renderer format, and upserts one quiz row per module into
+    the quizzes table (quiz_type = module_key).
+
+    Safe to run multiple times — uses upsert logic (update if exists, insert if not).
+    """
+    mods_res = await supabase.table("practice_modules") \
+        .select("id, course_id, module_key, title, questions") \
+        .execute()
+    modules = mods_res.data or []
+
+    results = []
+    for mod in modules:
+        course_id  = mod.get("course_id")
+        module_key = mod.get("module_key") or mod["id"]
+        title      = mod.get("title") or module_key
+        embedded   = mod.get("questions") or []
+
+        if not embedded:
+            results.append({"module": title, "status": "skipped", "questions": 0})
+            continue
+
+        transformed = [_transform_practice_question(dict(q)) for q in embedded]
+
+        # Upsert: update existing row or insert new one
+        existing = await supabase.table("quizzes") \
+            .select("id") \
+            .eq("course_id", course_id) \
+            .eq("quiz_type", module_key) \
+            .limit(1).execute()
+
+        existing_row = _one(existing)
+        if existing_row:
+            await supabase.table("quizzes") \
+                .update({"questions": transformed, "title": title}) \
+                .eq("id", existing_row["id"]) \
+                .execute()
+            status = "updated"
+        else:
+            await supabase.table("quizzes").insert({
+                "course_id": course_id,
+                "quiz_type": module_key,
+                "title":     title,
+                "questions": transformed,
+            }).execute()
+            status = "inserted"
+
+        results.append({"module": title, "status": status, "questions": len(transformed)})
+
+    total_q = sum(r["questions"] for r in results)
+    return {
+        "ok": True,
+        "modules_processed": len(results),
+        "total_questions": total_q,
+        "details": results,
+    }
+
+
 # ===== USERS =====
 
 async def _build_user_response(user: dict) -> dict:
