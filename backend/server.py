@@ -446,7 +446,8 @@ def _transform_practice_question(q: dict) -> dict:
     """Convert one embedded question (prompt/answer/content) to renderer format
     (question/options/correct_answer/micro_lesson/concept_reveal/scenario_nodes)."""
     q_type  = (q.get("type") or q.get("question_type") or "multiple-choice").strip()
-    content = q.get("content") or {}
+    raw_content = q.get("content")
+    content = raw_content if isinstance(raw_content, dict) else {}
     out     = dict(q)
     out["type"] = q_type
 
