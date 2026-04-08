@@ -45,10 +45,9 @@ function DuolingoPageInner() {
 
   const loadQuestions = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/practice/module/${moduleId}/questions`, {
-        params: { user_id: user?._id || 'demo_user', limit: SESSION_SIZE },
-      });
-      setQuestions(Array.isArray(res.data) ? res.data : []);
+      const res = await axios.get(`${API_URL}/api/practice/module/${moduleId}`);
+      const qs = Array.isArray(res.data) ? res.data : (res.data?.questions ?? []);
+      setQuestions(qs.slice(0, SESSION_SIZE));
     } catch { setQuestions([]); }
     finally   { setLoading(false); }
   };
