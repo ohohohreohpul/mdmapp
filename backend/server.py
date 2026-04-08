@@ -1566,6 +1566,37 @@ async def get_practice_modules(course_id: str, user_id: str = "demo_user"):
     return modules
 
 
+@api_router.get("/practice/debug/{module_id}")
+async def debug_practice_module(module_id: str):
+    """Debug: show raw data for a practice module and its quizzes."""
+    pm_res = await supabase.table("practice_modules").select("*").eq("id", module_id).limit(1).execute()
+    pm = _one(pm_res)
+    if not pm:
+        return {"error": "practice_module not found", "module_id": module_id}
+    course_id = pm.get("course_id")
+    embedded_q_count = len(pm.get("questions") or [])
+    embedded_sample = (pm.get("questions") or [])[:1]
+
+    quiz_res = await supabase.table("quizzes").select("id,quiz_type,title,course_id").eq("course_id", course_id).execute()
+    quizzes_found = quiz_res.data or []
+
+    full_quiz_res = await supabase.table("quizzes").select("questions").eq("course_id", course_id).execute()
+    all_qs = []
+    for row in (full_quiz_res.data or []):
+        all_qs.extend(row.get("questions") or [])
+    sample_q = all_qs[:1]
+
+    return {
+        "module_id": module_id,
+        "course_id": course_id,
+        "embedded_question_count": embedded_q_count,
+        "embedded_question_sample": embedded_sample,
+        "quizzes_for_course": quizzes_found,
+        "quiz_question_count": len(all_qs),
+        "quiz_question_sample": sample_q,
+    }
+
+
 @api_router.get("/practice/module/{module_id}")
 async def get_practice_module(module_id: str):
     """Single module with full questions array.
