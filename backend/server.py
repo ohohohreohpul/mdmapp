@@ -534,10 +534,22 @@ async def migrate_practice_quizzes():
                 results.append({"module": title, "status": "skipped_no_questions", "questions": 0})
                 continue
 
-            try:
-                transformed = [_transform_practice_question(dict(q)) for q in embedded]
-            except Exception as e:
-                results.append({"module": title, "status": f"transform_error: {e}", "questions": 0})
+            transformed = []
+            transform_error = None
+            for qi, q in enumerate(embedded):
+                try:
+                    transformed.append(_transform_practice_question(dict(q)))
+                except Exception as e:
+                    import traceback as _tb
+                    transform_error = {
+                        "question_index": qi,
+                        "question_id": q.get("id") if isinstance(q, dict) else str(q)[:40],
+                        "error": str(e),
+                        "trace": _tb.format_exc().splitlines()[-5:],
+                    }
+                    break
+            if transform_error:
+                results.append({"module": title, "status": "transform_error", "questions": 0, "detail": transform_error})
                 continue
 
             try:
