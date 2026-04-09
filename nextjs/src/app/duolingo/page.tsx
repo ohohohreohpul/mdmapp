@@ -123,8 +123,8 @@ function ChartSvg({ config }: { config: any }) {
 
 // ── Shared MC option button ───────────────────────────────────────────────────
 
-function McButton({ label, chosen, isCorrect, answered, onPress }: {
-  label: string; chosen: boolean; isCorrect: boolean; answered: boolean; onPress: () => void;
+function McButton({ optId, label, imageUrl, chosen, isCorrect, answered, onPress }: {
+  optId?: string; label: string; imageUrl?: string; chosen: boolean; isCorrect: boolean; answered: boolean; onPress: () => void;
 }) {
   const reveal = answered;
   const bg = reveal
@@ -138,12 +138,26 @@ function McButton({ label, chosen, isCorrect, answered, onPress }: {
     : chosen ? C.brand : C.ink;
   return (
     <button onClick={() => !answered && onPress()}
-      style={{ width: '100%', textAlign: 'left', padding: 16, borderRadius: 16,
+      style={{ width: '100%', textAlign: 'left', padding: '12px 16px', borderRadius: 16, display: 'flex',
+               alignItems: imageUrl ? 'flex-start' : 'center', gap: 10,
                border: `2px solid ${border}`, backgroundColor: bg,
                cursor: answered ? 'default' : 'pointer',
-               opacity: reveal && !isCorrect && !chosen ? 0.5 : 1,
-               fontSize: 15, fontWeight: 500, color, marginBottom: 8 }}>
-      {label}
+               opacity: reveal && !isCorrect && !chosen ? 0.5 : 1, marginBottom: 8 }}>
+      {optId && (
+        <span style={{ fontSize: 12, fontWeight: 700, color: border, minWidth: 20, flexShrink: 0,
+                       width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${border}`,
+                       display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {optId.toUpperCase()}
+        </span>
+      )}
+      <span style={{ flex: 1 }}>
+        {imageUrl && (
+          <img src={imageUrl} alt={label}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            style={{ width: '100%', maxHeight: 120, objectFit: 'contain', borderRadius: 8, marginBottom: 6, display: 'block' }} />
+        )}
+        <span style={{ fontSize: 15, fontWeight: 500, color }}>{label}</span>
+      </span>
     </button>
   );
 }
@@ -151,7 +165,7 @@ function McButton({ label, chosen, isCorrect, answered, onPress }: {
 // ── Comparison renderer (separate component so it can own useState) ───────────
 
 function mkHtmlDoc(body: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"><\/script><style>*{box-sizing:border-box}body{margin:0;padding:8px;font-family:sans-serif}</style></head><body>${body}</body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><script src="https://cdn.tailwindcss.com"><\/script><style>*{box-sizing:border-box}body{margin:0;padding:8px;font-family:sans-serif}img{max-width:100%;height:auto}</style><script>document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('img').forEach(function(img){img.onerror=function(){var ph=document.createElement('div');ph.style.cssText='background:#F3F4F6;border-radius:8px;padding:16px;text-align:center;font-size:20px;color:#9CA3AF;';ph.textContent='🖼️';this.parentNode&&this.parentNode.replaceChild(ph,this);};});});<\/script></head><body>${body}</body></html>`;
 }
 
 function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
@@ -190,9 +204,8 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
 
       <div style={{ display: 'flex', gap: 10 }}>
         {opts.map((opt: any) => {
-          const optVal   = opt.content || opt.label || opt.id;
-          const chosen   = selected === optVal;
-          const isAnswer = q.correct_answer === optVal;
+          const chosen   = selected === opt.id;
+          const isAnswer = opt.id === (q.answer || q.correct_answer);
           const reveal   = answered;
           const border   = reveal ? isAnswer ? C.green : chosen ? C.red : C.sep : chosen ? C.brand : C.sep;
           const headerBg = reveal ? isAnswer ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : '#F9FAFB' : chosen ? 'rgba(239,94,168,0.10)' : '#F9FAFB';
@@ -207,7 +220,7 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
               </div>
               <div
                 style={{ height: 170, overflow: 'hidden', position: 'relative', cursor: answered ? 'default' : 'pointer', backgroundColor: '#fff' }}
-                onClick={() => !answered && onSelect(optVal)}
+                onClick={() => !answered && onSelect(opt.id)}
               >
                 <iframe
                   srcDoc={mkHtmlDoc(opt.content || `<div class="p-4 text-sm text-gray-600">${opt.label}</div>`)}
@@ -226,7 +239,7 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
                 </div>
               </div>
               <button
-                onClick={() => !answered && onSelect(optVal)}
+                onClick={() => !answered && onSelect(opt.id)}
                 disabled={answered}
                 style={{ width: '100%', padding: '10px 0', fontWeight: 700, fontSize: 14, border: 'none', cursor: answered ? 'default' : 'pointer',
                          backgroundColor: chosen ? (reveal ? (isAnswer ? C.green : C.red) : C.brand) : '#F3F4F6',
@@ -273,7 +286,11 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, onSubmit }: any)
   const [slots, setSlots]     = useState<(string | null)[]>(Array(numBlanks).fill(null));
   const [submitted, setSubmit] = useState(false);
 
-  const getLabel = (id: string | null) => allOpts.find((o: any) => o.id === id)?.label ?? id ?? '';
+  const getLabel = (id: string | null) => {
+    if (!id) return '';
+    const opt = allOpts.find((o: any) => o.id === id);
+    return opt?.label || opt?.content || id;
+  };
 
   const placeOpt = (optId: string) => {
     if (submitted) return;
@@ -465,7 +482,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   // ── Comparison ────────────────────────────────────────────────────────────
   if (qType === 'comparison') {
-    return <ComparisonRenderer q={q} content={content} selected={selected} answered={answered} onSelect={onSelect} />;
+    return <ComparisonRenderer key={q?.id || q?.prompt} q={q} content={content} selected={selected} answered={answered} onSelect={onSelect} />;
   }
 
   // ── Chart-reading / Chart-comparison ─────────────────────────────────────
@@ -480,14 +497,15 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
           <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
           {chartConfig && <ChartSvg config={chartConfig} />}
         </div>
-        {displayOpts.map((opt: any) => {
-          const optVal   = opt.content || opt.label || opt.id;
-          const chosen   = selected === optVal;
-          const isAnswer = q.correct_answer === optVal;
-          return (
-            <McButton key={opt.id ?? optVal} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
-          );
-        })}
+        {displayOpts.map((opt: any) => (
+          <McButton key={opt.id}
+            optId={String(opt.id)}
+            label={opt.label || opt.content || String(opt.id)}
+            chosen={selected === opt.id}
+            isCorrect={opt.id === (q.answer || q.correct_answer)}
+            answered={answered}
+            onPress={() => onSelect(opt.id)} />
+        ))}
       </div>
     );
   }
@@ -501,7 +519,8 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
     if (hasWordBank) {
       return (
         <FillBlankWordBankRenderer
-          q={q} visualConfig={visualConfig} answered={answered} correct={correct}
+          key={q?.id || q?.prompt}
+          q={q} visualConfig={visualConfig} answered={answered}
           onSubmit={onWordBankSubmit}
         />
       );
@@ -540,14 +559,16 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
         <div style={{ ...cardStyle, padding: 20 }}>
           <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0 }}>{q.question || q.prompt}</p>
         </div>
-        {contentOpts.map((opt: any, i: number) => {
-          const optVal   = opt.content || opt.label || opt.id;
-          const chosen   = selected === optVal;
-          const isAnswer = q.correct_answer === optVal;
-          return (
-            <McButton key={opt.id ?? i} label={opt.content || opt.label || String(opt.id)} chosen={chosen} isCorrect={isAnswer} answered={answered} onPress={() => onSelect(optVal)} />
-          );
-        })}
+        {contentOpts.map((opt: any, i: number) => (
+          <McButton key={opt.id ?? i}
+            optId={String(opt.id)}
+            label={opt.content || opt.label || String(opt.id)}
+            imageUrl={opt.imageUrl}
+            chosen={selected === opt.id}
+            isCorrect={opt.id === (q.answer || q.correct_answer)}
+            answered={answered}
+            onPress={() => onSelect(opt.id)} />
+        ))}
       </div>
     );
   }
@@ -621,10 +642,11 @@ function DuolingoPageInner() {
     } else if (qt === 'micro-lesson' || qt === 'concept-reveal') {
       isCorrect = true;
     } else if (qt === 'scenario') {
-      // Scenario: compare choice id against q.correct_answer (which is the answer id)
-      isCorrect = answer === q.correct_answer || (q.content?.scenarioNodes?.[0]?.choices || []).find((c: any) => c.id === answer)?.isCorrect;
+      isCorrect = answer === q.answer || answer === q.correct_answer ||
+        !!(q.content?.scenarioNodes?.[0]?.choices || []).find((c: any) => c.id === answer)?.isCorrect;
     } else {
-      isCorrect = answer === q.correct_answer;
+      // Use original answer ID (q.answer) first; fall back to migrated content string (q.correct_answer)
+      isCorrect = answer === q.answer || answer === q.correct_answer;
     }
     setCorrect(isCorrect);
     if (isCorrect) setXpEarned(prev => prev + 10);
