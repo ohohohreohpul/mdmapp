@@ -29,94 +29,472 @@ const fmtNum = (n: number) =>
   : n >= 1_000   ? `${(n / 1_000).toFixed(0)}K`
   : String(Math.round(n));
 
-// ── Chart SVG renderer — bar and line, no external dependencies ───────────────
+// ── Chart renderer — all types, pure SVG/div, no external deps ───────────────
+
+const PAL = ['#f573bd', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
 
 function ChartSvg({ config }: { config: any }) {
   if (!config?.data?.length) return null;
-  const W = 320, H = 180;
-  const pad = { l: 40, r: 10, t: 20, b: 32 };
-  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
 
-  const xKey   = config.xKey   || Object.keys(config.data[0])[0];
-  const rawY   = config.yKey;
-  const yKey   = typeof rawY === 'string' ? rawY
-               : Array.isArray(rawY)      ? rawY[0]
-               : Object.keys(config.data[0])[1];
-  const isLine = (config.type || 'bar') === 'line';
-  const data   = config.data as any[];
-  const PAL    = ['#10b981', '#f573bd', '#6366f1', '#f59e0b', '#ef4444', '#3b82f6'];
+  // Normalise type alias
+  const rawType: string = (config.type || 'bar').toLowerCase();
+  const type = rawType === 'pie' ? 'donut'
+    : rawType === 'dots' ? 'scatter'
+    : rawType;
 
-  const vals   = data.map(d => Number(d[yKey]) || 0);
-  const maxY   = Math.max(...vals, 1);
-  const minY   = isLine ? Math.min(...vals) : 0;
-  const range  = maxY - minY || 1;
-
-  return (
+  const wrap = (inner: React.ReactNode) => (
     <div style={{ backgroundColor: '#F9FAFB', borderRadius: 12, padding: '8px 4px 4px', marginBottom: 12 }}>
       {config.title && (
-        <p style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'center', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#374151', textAlign: 'center', margin: '0 0 6px' }}>
           {config.title}
         </p>
       )}
+      {inner}
+    </div>
+  );
+
+  const data: any[] = config.data;
+
+  // ── Bar ──────────────────────────────────────────────────────────────────────
+  if (type === 'bar' || type === 'histogram') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 10, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const yKey = (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const vals = data.map(d => Number(d[yKey]) || 0);
+    const maxY = Math.max(...vals, 1);
+    const barW = cw / data.length, gap = barW * 0.22;
+    return wrap(
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        {/* Grid */}
-        {[0, 0.25, 0.5, 0.75, 1].map(t => {
+        {[0, 0.5, 1].map(t => {
           const y = pad.t + ch * (1 - t);
-          return (
-            <g key={t}>
+          return <g key={t}>
+            <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
+            <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(maxY * t)}</text>
+          </g>;
+        })}
+        {data.map((d, i) => {
+          const val = Number(d[yKey]) || 0;
+          const bh = (val / maxY) * ch;
+          const x = pad.l + i * barW + gap / 2;
+          return <g key={i}>
+            <rect x={x} y={pad.t + ch - bh} width={barW - gap} height={bh} fill={PAL[i % PAL.length]} rx="3" />
+            <text x={x + (barW - gap) / 2} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">
+              {String(d[xKey] || '').slice(0, 5)}
+            </text>
+          </g>;
+        })}
+      </svg>
+    );
+  }
+
+  // ── Line / Area ───────────────────────────────────────────────────────────────
+  if (type === 'line' || type === 'area') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 10, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const yKey = (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const vals = data.map(d => Number(d[yKey]) || 0);
+    const minY = Math.min(...vals), maxY = Math.max(...vals, minY + 1);
+    const range = maxY - minY || 1;
+    const ptX = (i: number) => pad.l + (data.length > 1 ? (i / (data.length - 1)) * cw : cw / 2);
+    const ptY = (v: number) => pad.t + ch - ((v - minY) / range) * ch;
+    const pts = data.map((d, i) => ({ x: ptX(i), y: ptY(Number(d[yKey]) || 0), lbl: String(d[xKey] || '').slice(0, 5) }));
+    const line = pts.map(p => `${p.x},${p.y}`).join(' ');
+    const fill = pts.length > 1
+      ? `M${pts[0].x},${pad.t + ch} ${pts.map(p => `L${p.x},${p.y}`).join(' ')} L${pts[pts.length - 1].x},${pad.t + ch} Z`
+      : '';
+    return wrap(
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <g key={t}>
+            <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
+            <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(minY + range * t)}</text>
+          </g>;
+        })}
+        {fill && <path d={fill} fill="#f573bd" fillOpacity="0.12" />}
+        <polyline points={line} fill="none" stroke="#f573bd" strokeWidth="2" strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="3" fill="#f573bd" />
+            <text x={p.x} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">{p.lbl}</text>
+          </g>
+        ))}
+      </svg>
+    );
+  }
+
+  // ── Multi-line ────────────────────────────────────────────────────────────────
+  if (type === 'multi-line') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 10, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const series: string[] = [config.yKey as string, (config as any).yKey2 as string].filter(Boolean);
+    const allVals = data.flatMap(d => series.map(k => Number(d[k] || 0)));
+    const minY = Math.min(...allVals), maxY = Math.max(...allVals, minY + 1), range = maxY - minY || 1;
+    const ptX = (i: number) => pad.l + (data.length > 1 ? (i / (data.length - 1)) * cw : cw / 2);
+    const ptY = (v: number) => pad.t + ch - ((v - minY) / range) * ch;
+    return wrap(
+      <>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+          {[0, 0.5, 1].map(t => {
+            const y = pad.t + ch * (1 - t);
+            return <g key={t}>
               <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
-              <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">
-                {fmtNum(minY + range * t)}
+              <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(minY + range * t)}</text>
+            </g>;
+          })}
+          {series.map((key, ki) => {
+            const pts = data.map((d, i) => `${ptX(i)},${ptY(Number(d[key] || 0))}`).join(' ');
+            return <g key={key}>
+              <polyline points={pts} fill="none" stroke={PAL[ki]} strokeWidth="2" />
+              {data.map((d, i) => <circle key={i} cx={ptX(i)} cy={ptY(Number(d[key] || 0))} r="3" fill={PAL[ki]} />)}
+            </g>;
+          })}
+          {data.map((d, i) => (
+            <text key={i} x={ptX(i)} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">
+              {String(d[xKey] || '').slice(0, 5)}
+            </text>
+          ))}
+        </svg>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', padding: '2px 8px' }}>
+          {series.map((k, i) => (
+            <span key={k} style={{ fontSize: 10, color: PAL[i], display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PAL[i], display: 'inline-block' }} />{k}
+            </span>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // ── Stacked-bar ───────────────────────────────────────────────────────────────
+  if (type === 'stacked-bar') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 10, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const series: string[] = [config.yKey as string, (config as any).yKey2 as string].filter(Boolean);
+    const totals = data.map(d => series.reduce((s, k) => s + Number(d[k] || 0), 0));
+    const maxY = Math.max(...totals, 1);
+    const barW = cw / data.length, gap = barW * 0.22;
+    return wrap(
+      <>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+          {[0, 0.5, 1].map(t => {
+            const y = pad.t + ch * (1 - t);
+            return <g key={t}>
+              <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
+              <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(maxY * t)}</text>
+            </g>;
+          })}
+          {data.map((d, i) => {
+            const x = pad.l + i * barW + gap / 2;
+            let bottom = pad.t + ch;
+            return <g key={i}>
+              {series.map((key, ki) => {
+                const val = Number(d[key] || 0);
+                const bh = (val / maxY) * ch;
+                bottom -= bh;
+                return <rect key={key} x={x} y={bottom} width={barW - gap} height={bh} fill={PAL[ki]} rx={ki === series.length - 1 ? 3 : 0} />;
+              })}
+              <text x={x + (barW - gap) / 2} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">
+                {String(d[xKey] || '').slice(0, 5)}
               </text>
-            </g>
+            </g>;
+          })}
+        </svg>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', padding: '2px 8px' }}>
+          {series.map((k, i) => (
+            <span key={k} style={{ fontSize: 10, color: PAL[i], display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PAL[i], display: 'inline-block' }} />{k}
+            </span>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // ── Dual-axis (bars + line) ───────────────────────────────────────────────────
+  if (type === 'dual-axis') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 36, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const yKey = config.yKey as string;
+    const yKey2 = (config as any).yKey2 as string;
+    const barVals = data.map(d => Number(d[yKey] || 0));
+    const lineVals = data.map(d => Number(d[yKey2] || 0));
+    const maxBar = Math.max(...barVals, 1);
+    const minLine = Math.min(...lineVals), maxLine = Math.max(...lineVals, minLine + 1), rangeL = maxLine - minLine || 1;
+    const barW = cw / data.length, gap = barW * 0.25;
+    const ptX = (i: number) => pad.l + i * barW + barW / 2;
+    const ptY = (v: number) => pad.t + ch - ((v - minLine) / rangeL) * ch;
+    const linePts = data.map((d, i) => `${ptX(i)},${ptY(Number(d[yKey2] || 0))}`).join(' ');
+    return wrap(
+      <>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+          {[0, 0.5, 1].map(t => {
+            const y = pad.t + ch * (1 - t);
+            return <g key={t}>
+              <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
+              <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(maxBar * t)}</text>
+              <text x={W - pad.r + 4} y={y + 3} fontSize="8" fill="#6366f1" textAnchor="start">{fmtNum(minLine + rangeL * t)}</text>
+            </g>;
+          })}
+          {data.map((d, i) => {
+            const bh = (Number(d[yKey] || 0) / maxBar) * ch;
+            const x = pad.l + i * barW + gap / 2;
+            return <g key={i}>
+              <rect x={x} y={pad.t + ch - bh} width={barW - gap} height={bh} fill="#f573bd" fillOpacity="0.8" rx="3" />
+              <text x={ptX(i)} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">
+                {String(d[xKey] || '').slice(0, 5)}
+              </text>
+            </g>;
+          })}
+          <polyline points={linePts} fill="none" stroke="#6366f1" strokeWidth="2" />
+          {data.map((d, i) => <circle key={i} cx={ptX(i)} cy={ptY(Number(d[yKey2] || 0))} r="3" fill="#6366f1" />)}
+        </svg>
+        <div style={{ display: 'flex', gap: 10, padding: '2px 8px' }}>
+          <span style={{ fontSize: 10, color: '#f573bd', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: '#f573bd', display: 'inline-block' }} />{yKey}
+          </span>
+          <span style={{ fontSize: 10, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 3, backgroundColor: '#6366f1', display: 'inline-block' }} />{yKey2}
+          </span>
+        </div>
+      </>
+    );
+  }
+
+  // ── Scatter / dots ────────────────────────────────────────────────────────────
+  if (type === 'scatter') {
+    const W = 320, H = 180;
+    const pad = { l: 40, r: 10, t: 16, b: 32 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const xKey = config.xKey || Object.keys(data[0])[0];
+    const yKey = (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const xs = data.map(d => Number(d[xKey])), ys = data.map(d => Number(d[yKey]));
+    const minX = Math.min(...xs), maxX = Math.max(...xs, minX + 1), rx = maxX - minX || 1;
+    const minY = Math.min(...ys), maxY = Math.max(...ys, minY + 1), ry = maxY - minY || 1;
+    return wrap(
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {[0, 0.5, 1].map(t => {
+          const y = pad.t + ch * (1 - t);
+          return <g key={t}>
+            <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#E5E7EB" strokeWidth="0.5" />
+            <text x={pad.l - 4} y={y + 3} fontSize="8" fill="#9CA3AF" textAnchor="end">{fmtNum(minY + ry * t)}</text>
+          </g>;
+        })}
+        {data.map((d, i) => (
+          <circle key={i}
+            cx={pad.l + ((Number(d[xKey]) - minX) / rx) * cw}
+            cy={pad.t + ch - ((Number(d[yKey]) - minY) / ry) * ch}
+            r="5" fill="#f573bd" fillOpacity="0.75"
+          />
+        ))}
+        <text x={W / 2} y={H - 2} fontSize="8" fill="#6B7280" textAnchor="middle">{xKey}</text>
+      </svg>
+    );
+  }
+
+  // ── Pie / Donut ───────────────────────────────────────────────────────────────
+  if (type === 'donut') {
+    const size = 220;
+    const cx = size / 2, cy = size / 2;
+    const outerR = size / 2 - 20, innerR = outerR * 0.5;
+    const keyField = config.key || config.nameKey || Object.keys(data[0])[0];
+    const valueKey = config.valueKey || (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const total = data.reduce((s: number, d: any) => s + Number(d[valueKey] || 0), 0) || 1;
+    let startAngle = -Math.PI / 2;
+    const slices = data.map((d: any, i: number) => {
+      const val = Number(d[valueKey] || 0);
+      const angle = (val / total) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      const slice = { label: String(d[keyField] ?? i), val, pct: Math.round((val / total) * 100), color: PAL[i % PAL.length], startAngle, endAngle };
+      startAngle = endAngle;
+      return slice;
+    });
+    const slicePath = (s: typeof slices[0]) => {
+      const large = s.endAngle - s.startAngle > Math.PI ? 1 : 0;
+      const ox1 = cx + outerR * Math.cos(s.startAngle), oy1 = cy + outerR * Math.sin(s.startAngle);
+      const ox2 = cx + outerR * Math.cos(s.endAngle),   oy2 = cy + outerR * Math.sin(s.endAngle);
+      const ix1 = cx + innerR * Math.cos(s.endAngle),   iy1 = cy + innerR * Math.sin(s.endAngle);
+      const ix2 = cx + innerR * Math.cos(s.startAngle), iy2 = cy + innerR * Math.sin(s.startAngle);
+      return `M${ox1},${oy1} A${outerR},${outerR},0,${large},1,${ox2},${oy2} L${ix1},${iy1} A${innerR},${innerR},0,${large},0,${ix2},${iy2} Z`;
+    };
+    return wrap(
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <svg viewBox={`0 0 ${size} ${size}`} style={{ width: Math.min(size, 180), height: 'auto', display: 'block' }}>
+          {slices.map((s, i) => <path key={i} d={slicePath(s)} fill={s.color} />)}
+        </svg>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', padding: '4px 0' }}>
+          {slices.map(s => (
+            <span key={s.label} style={{ fontSize: 10, color: '#374151', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: s.color, display: 'inline-block', flexShrink: 0 }} />
+              {s.label} {s.pct}%
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Radar ─────────────────────────────────────────────────────────────────────
+  if (type === 'radar') {
+    const size = 220;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 44;
+    const keyField = config.key || Object.keys(data[0])[0];
+    const valueKeys: string[] = config.valueKeys || [Object.keys(data[0])[1]];
+    const allVals = data.flatMap((d: any) => valueKeys.map(k => Number(d[k] || 0)));
+    const maxVal = Math.max(...allVals, 1);
+    const n = data.length;
+    const angle = (i: number) => (2 * Math.PI * i) / n - Math.PI / 2;
+    const pt = (i: number, ratio: number) =>
+      `${cx + r * ratio * Math.cos(angle(i))},${cy + r * ratio * Math.sin(angle(i))}`;
+    return wrap(
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <svg viewBox={`0 0 ${size} ${size}`} style={{ width: Math.min(size, 200), height: 'auto', display: 'block' }}>
+          {[0.25, 0.5, 0.75, 1].map(lv => (
+            <path key={lv} d={`M${Array.from({ length: n }, (_, i) => pt(i, lv)).join(' L')} Z`}
+              fill="none" stroke="#E5E7EB" strokeWidth="1" />
+          ))}
+          {Array.from({ length: n }, (_, i) => (
+            <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle(i))} y2={cy + r * Math.sin(angle(i))}
+              stroke="#E5E7EB" strokeWidth="1" />
+          ))}
+          {valueKeys.map((key, ki) => (
+            <path key={key}
+              d={`M${data.map((d: any, i: number) => pt(i, Number(d[key] || 0) / maxVal)).join(' L')} Z`}
+              fill={PAL[ki]} fillOpacity="0.2" stroke={PAL[ki]} strokeWidth="2" />
+          ))}
+          {data.map((d: any, i: number) => {
+            const lx = cx + (r + 22) * Math.cos(angle(i));
+            const ly = cy + (r + 22) * Math.sin(angle(i));
+            return <text key={i} x={lx} y={ly} fontSize="9" fill="#374151" textAnchor="middle" dominantBaseline="middle">
+              {String(d[keyField]).slice(0, 8)}
+            </text>;
+          })}
+        </svg>
+        {valueKeys.length > 1 && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            {valueKeys.map((k, i) => (
+              <span key={k} style={{ fontSize: 10, color: PAL[i], display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: PAL[i], display: 'inline-block' }} />{k}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Heatmap ───────────────────────────────────────────────────────────────────
+  if (type === 'heatmap') {
+    const rowLabelKey = config.yKey as string || Object.keys(data[0]).find(k => k !== 'data') || 'id';
+    const allVals: number[] = data.flatMap((row: any) =>
+      Array.isArray(row.data) ? row.data.map((c: any) => Number(c.y ?? c.value ?? 0)) : []
+    );
+    const minV = Math.min(...allVals, 0), maxV = Math.max(...allVals, 1);
+    const cols: string[] = data[0]?.data?.map((c: any) => String(c.x ?? '')) || [];
+    return wrap(
+      <div style={{ overflowX: 'auto' }}>
+        {/* Column headers */}
+        <div style={{ display: 'flex', paddingLeft: 52, marginBottom: 2 }}>
+          {cols.map((c: string) => (
+            <div key={c} style={{ flex: 1, minWidth: 28, fontSize: 9, color: '#9CA3AF', textAlign: 'center', overflow: 'hidden' }}>
+              {c.slice(0, 6)}
+            </div>
+          ))}
+        </div>
+        {data.map((row: any, ri: number) => (
+          <div key={ri} style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+            <div style={{ width: 52, fontSize: 9, color: '#6B7280', overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {String(row[rowLabelKey] || row.id || ri).slice(0, 8)}
+            </div>
+            {(row.data || []).map((cell: any, ci: number) => {
+              const val = Number(cell.y ?? cell.value ?? 0);
+              const intensity = (val - minV) / (maxV - minV);
+              const alpha = (0.15 + intensity * 0.85).toFixed(2);
+              return (
+                <div key={ci} style={{
+                  flex: 1, minWidth: 28, height: 24,
+                  backgroundColor: `rgba(245,115,189,${alpha})`,
+                  borderRadius: 3, margin: '0 1px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 8, color: intensity > 0.55 ? '#fff' : '#374151', fontWeight: 600 }}>
+                    {val}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ── Treemap ───────────────────────────────────────────────────────────────────
+  if (type === 'treemap') {
+    const nameKey = config.nameKey || config.xKey || Object.keys(data[0])[0];
+    const valueKey = config.valueKey || (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const sorted = [...data].sort((a: any, b: any) => Number(b[valueKey]) - Number(a[valueKey]));
+    const total = sorted.reduce((s: number, d: any) => s + Number(d[valueKey] || 0), 1);
+    return wrap(
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        {sorted.map((d: any, i: number) => {
+          const pct = (Number(d[valueKey]) / total) * 100;
+          return (
+            <div key={i} style={{
+              width: `${Math.max(pct, 8)}%`,
+              minHeight: 40, backgroundColor: PAL[i % PAL.length],
+              borderRadius: 6, padding: '4px 6px',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.2 }}>
+                {String(d[nameKey]).slice(0, 12)}
+              </span>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)' }}>{fmtNum(Number(d[valueKey]))}</span>
+            </div>
           );
         })}
+      </div>
+    );
+  }
 
-        {isLine ? (() => {
-          const pts = data.map((d, i) => ({
-            x: pad.l + (data.length > 1 ? (i / (data.length - 1)) * cw : cw / 2),
-            y: pad.t + ch - ((Number(d[yKey]) - minY) / range) * ch,
-            lbl: String(d[xKey] || '').slice(0, 5),
-          }));
-          const line = pts.map(p => `${p.x},${p.y}`).join(' ');
-          const fill = pts.length > 1
-            ? `M${pts[0].x},${pad.t + ch} ${pts.map(p => `L${p.x},${p.y}`).join(' ')} L${pts[pts.length - 1].x},${pad.t + ch} Z`
-            : '';
+  // ── Funnel ────────────────────────────────────────────────────────────────────
+  if (type === 'funnel') {
+    const nameKey = config.nameKey || config.xKey || Object.keys(data[0])[0];
+    const valueKey = config.valueKey || (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
+    const maxVal = Math.max(...data.map((d: any) => Number(d[valueKey] || 0)), 1);
+    return wrap(
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        {data.map((d: any, i: number) => {
+          const pct = Number(d[valueKey] || 0) / maxVal;
           return (
-            <>
-              {fill && <path d={fill} fill="#f573bd" fillOpacity="0.12" />}
-              <polyline points={line} fill="none" stroke="#f573bd" strokeWidth="2" strokeLinejoin="round" />
-              {pts.map((p, i) => (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r="3" fill="#f573bd" />
-                  <text x={p.x} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">{p.lbl}</text>
-                </g>
-              ))}
-            </>
+            <div key={i} style={{
+              width: `${Math.max(pct * 100, 20)}%`, minHeight: 32,
+              backgroundColor: PAL[i % PAL.length], borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{String(d[nameKey]).slice(0, 14)}</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }}>{fmtNum(Number(d[valueKey]))}</span>
+            </div>
           );
-        })() : (() => {
-          const barW = cw / data.length;
-          const gap  = barW * 0.25;
-          return (
-            <>
-              {data.map((d, i) => {
-                const val  = Number(d[yKey]) || 0;
-                const barH = (val / maxY) * ch;
-                const x    = pad.l + i * barW + gap / 2;
-                const y    = pad.t + ch - barH;
-                return (
-                  <g key={i}>
-                    <rect x={x} y={y} width={barW - gap} height={barH} fill={PAL[i % PAL.length]} rx="3" />
-                    <text x={x + (barW - gap) / 2} y={H - pad.b + 12} fontSize="8" fill="#6B7280" textAnchor="middle">
-                      {String(d[xKey] || '').slice(0, 5)}
-                    </text>
-                  </g>
-                );
-              })}
-            </>
-          );
-        })()}
-      </svg>
+        })}
+      </div>
+    );
+  }
+
+  // ── Unsupported fallback ──────────────────────────────────────────────────────
+  return wrap(
+    <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+      📊 {config.title || `กราฟ (${type})`}
     </div>
   );
 }
