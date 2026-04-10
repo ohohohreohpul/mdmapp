@@ -43,7 +43,7 @@ export default function CertificatesPage() {
 
   const loadCerts = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/certificates/${user!._id}`);
+      const res = await axios.get(`${API_URL}/api/certificates/user/${user!._id}`);
       setCerts(Array.isArray(res.data) ? res.data : []);
     } catch { setCerts([]); }
     finally   { setLoading(false); }
