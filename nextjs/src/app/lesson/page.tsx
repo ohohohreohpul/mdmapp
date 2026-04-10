@@ -259,11 +259,22 @@ function LessonPageInner() {
               )}
             </div>
           ) : (
-            /* Video still playing — show a locked placeholder */
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, backgroundColor: C.bg, borderRadius: 16, padding: '20px 16px' }}>
-              <PlayCircle size={28} color={C.ink3} />
-              <p style={{ fontSize: 14, color: C.ink2, fontWeight: 600, margin: 0 }}>ดูวิดีโอจนจบเพื่อทำเครื่องหมายว่าเสร็จแล้ว</p>
-              <p style={{ fontSize: 12, color: C.ink3, margin: 0 }}>ปุ่มจะปรากฏเมื่อวิดีโอเล่นจบ</p>
+            /* Video still playing — placeholder + manual unlock */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, backgroundColor: C.bg, borderRadius: 16, padding: '20px 16px' }}>
+                <PlayCircle size={28} color={C.ink3} />
+                <p style={{ fontSize: 14, color: C.ink2, fontWeight: 600, margin: 0 }}>ดูวิดีโอจนจบเพื่อทำเครื่องหมายว่าเสร็จแล้ว</p>
+                <p style={{ fontSize: 12, color: C.ink3, margin: 0 }}>ปุ่มจะปรากฏอัตโนมัติเมื่อวิดีโอเล่นจบ</p>
+              </div>
+              {/* Manual fallback — always available in case auto-detect doesn't fire */}
+              <button
+                onClick={() => setVideoEnded(true)}
+                style={{ width: '100%', backgroundColor: 'transparent', color: C.ink2, fontWeight: 600,
+                         fontSize: 14, padding: '12px 0', borderRadius: 16, cursor: 'pointer',
+                         border: `1.5px solid ${C.sep}` }}
+              >
+                ฉันดูจบแล้ว →
+              </button>
             </div>
           )}
         </div>
