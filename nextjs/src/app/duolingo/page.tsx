@@ -177,15 +177,26 @@ function ComparisonRenderer({ q, content, selected, answered, onSelect }: any) {
       {expanded && (
         <div
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 200,
-                   display: 'flex', flexDirection: 'column', padding: 16 }}
+                   display: 'flex', flexDirection: 'column',
+                   paddingTop: 'env(safe-area-inset-top, 44px)',
+                   paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                   paddingLeft: 16, paddingRight: 16 }}
           onClick={() => setExpanded(null)}
         >
-          <div style={{ backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}
+          {/* Close button — always visible above the modal card */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 10 }}
                onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.sep}` }}>
+            <button onClick={() => setExpanded(null)}
+              style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                       backgroundColor: 'rgba(255,255,255,0.20)', color: '#fff', fontSize: 20,
+                       display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+          </div>
+
+          <div style={{ backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 16 }}
+               onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.sep}`, flexShrink: 0 }}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{expanded.label}</span>
-              <button onClick={() => setExpanded(null)}
-                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: C.ink2, lineHeight: 1 }}>✕</button>
+              <span style={{ fontSize: 12, color: C.ink2 }}>แตะภายนอกเพื่อปิด</span>
             </div>
             <iframe
               srcDoc={mkHtmlDoc(expanded.html)}
