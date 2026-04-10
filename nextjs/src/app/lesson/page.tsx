@@ -271,7 +271,7 @@ function LessonPageInner() {
                 onClick={() => setVideoEnded(true)}
                 style={{ width: '100%', backgroundColor: 'transparent', color: C.ink2, fontWeight: 600,
                          fontSize: 14, padding: '12px 0', borderRadius: 16, cursor: 'pointer',
-                         border: `1.5px solid ${C.sep}` }}
+                         border: '1.5px solid rgba(0,0,0,0.08)' }}
               >
                 ฉันดูจบแล้ว →
               </button>

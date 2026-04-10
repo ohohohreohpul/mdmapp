@@ -418,6 +418,50 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, onSubmit }: any)
 }
 
 
+// ── Fill-blank reveal (flashcard mode for questions without a word bank) ──────
+// These questions have no options/blanks array — show a flashcard where the
+// student reads the answer rather than typing it from scratch.
+
+function FillBlankRevealRenderer({ q, answered, onSubmit }: any) {
+  const [revealed, setRevealed] = useState(false);
+  const answer = q.correct_answer || q.answer || '';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ ...cardStyle, padding: 20 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 14px' }}>{q.question || q.prompt}</p>
+
+        {/* Answer area */}
+        <div style={{ borderRadius: 14, overflow: 'hidden', border: `2px solid ${revealed ? C.green : C.sep}` }}>
+          {revealed ? (
+            <div style={{ padding: '14px 16px', backgroundColor: 'rgba(16,185,129,0.08)' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.green, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>คำตอบ</p>
+              <p style={{ fontSize: 15, color: C.ink, fontFamily: 'monospace', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.6 }}>{answer}</p>
+            </div>
+          ) : (
+            <button onClick={() => setRevealed(true)}
+              style={{ width: '100%', padding: '14px 16px', backgroundColor: C.bg, border: 'none', cursor: 'pointer',
+                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>👁</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.ink2 }}>แตะเพื่อดูคำตอบ</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {revealed && !answered && (
+        <button onClick={() => onSubmit(true)}
+          style={{ width: '100%', backgroundColor: C.green, color: '#fff', fontWeight: 700, fontSize: 15,
+                   padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer',
+                   boxShadow: '0px 6px 14px rgba(16,185,129,0.28)',
+                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          เข้าใจแล้ว ✓
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Concept-reveal renderer (with hotspot annotations) ───────────────────────
 
 function ConceptRevealRenderer({ cr, hotspots, q }: any) {
@@ -730,28 +774,8 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
       );
     }
 
-    // Simple text-input fill-blank
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ ...cardStyle, padding: 20 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
-          <input
-            type="text" value={fillValue} onChange={e => onFillChange(e.target.value)} disabled={answered}
-            placeholder="พิมพ์คำตอบ..."
-            style={{ width: '100%', borderRadius: 16, padding: '12px 16px', fontSize: 15, outline: 'none', boxSizing: 'border-box',
-                     border: `2px solid ${answered ? (correct ? C.green : C.red) : C.sep}`,
-                     color: answered ? (correct ? C.green : C.red) : C.ink, backgroundColor: C.surface }}
-            onKeyDown={e => { if (e.key === 'Enter' && !answered) onFillSubmit(); }}
-          />
-        </div>
-        {!answered && (
-          <button onClick={onFillSubmit} disabled={!fillValue.trim()}
-            style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer', opacity: !fillValue.trim() ? 0.4 : 1 }}>
-            ตรวจคำตอบ
-          </button>
-        )}
-      </div>
-    );
+    // No word bank — flashcard reveal (no free-text typing)
+    return <FillBlankRevealRenderer key={q?.id || q?.prompt} q={q} answered={answered} onSubmit={onWordBankSubmit} />;
   }
 
   // ── Multiple-choice (default) ─────────────────────────────────────────────
