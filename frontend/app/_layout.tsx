@@ -64,14 +64,6 @@ export default function RootLayout() {
 
   // ── Normal app (install gate disabled) ───────────────────────────────────
 
-  // ── Browser (not installed) → show full-screen install gate ──────────────
-  // Public paths like /verify/* are exempt so certificate links always work.
-  if (Platform.OS === 'web' && !isStandalone) {
-    return <PWAInstallPrompt />;
-  }
-
-  // ── Installed PWA or native → normal app ─────────────────────────────────
-  
   return (
     <SafeAreaProvider>
       <WebBottomInsetZero>
