@@ -418,6 +418,96 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, onSubmit }: any)
 }
 
 
+// ── Scenario renderer — full multi-node progression matching Expo ─────────────
+
+function ScenarioRenderer({ q, content, onSubmit }: any) {
+  const nodes = [...(q.scenario_nodes || content.scenarioNodes || [])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  const [nodeIdx, setNodeIdx]     = useState(0);
+  const [choice, setChoice]       = useState<string | null>(null);
+  const [outcome, setOutcome]     = useState<string | null>(null);
+
+  const node = nodes[nodeIdx];
+  if (!node) return null;
+
+  const choiceObj = node.choices?.find((c: any) => c.id === choice);
+  const correct   = choiceObj?.isCorrect ?? false;
+
+  const handleChoice = (c: any) => {
+    if (outcome) return;
+    setChoice(c.id);
+    setOutcome(c.outcome || '');
+  };
+
+  const handleNext = () => {
+    const nextIdx = nodeIdx + 1;
+    if (nextIdx >= nodes.length) {
+      onSubmit(true);
+    } else {
+      setNodeIdx(nextIdx);
+      setChoice(null);
+      setOutcome(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Node progress dots */}
+      {nodes.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+          {nodes.map((_: any, i: number) => (
+            <div key={i} style={{ width: 7, height: 7, borderRadius: '50%',
+              backgroundColor: i < nodeIdx ? C.green : i === nodeIdx ? C.brand : C.ink3 }} />
+          ))}
+        </div>
+      )}
+
+      {/* Situation card */}
+      <div style={{ ...cardStyle, padding: 20 }}>
+        {node.icon && <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>{node.icon}</span>}
+        <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, margin: '0 0 6px' }}>{node.situation}</p>
+        {node.context && <p style={{ fontSize: 13, color: C.ink2, lineHeight: 1.6, margin: 0 }}>{node.context}</p>}
+      </div>
+
+      {/* Choices (hidden after selection) */}
+      {!outcome && (node.choices || []).map((c: any) => (
+        <button key={c.id} onClick={() => handleChoice(c)}
+          style={{ width: '100%', textAlign: 'left', padding: 16, borderRadius: 16, cursor: 'pointer',
+                   border: `2px solid ${C.sep}`, backgroundColor: C.surface, fontWeight: 600, fontSize: 14, color: C.ink }}>
+          {c.label}
+        </button>
+      ))}
+
+      {/* Outcome panel */}
+      {outcome !== null && (
+        <div style={{ borderRadius: 16, padding: 16,
+                      backgroundColor: correct ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)',
+                      border: `2px solid ${correct ? C.green : C.red}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: outcome ? 8 : 0 }}>
+            <span style={{ fontSize: 20 }}>{correct ? '✅' : '❌'}</span>
+            <span style={{ fontWeight: 700, color: correct ? C.green : C.red, fontSize: 14 }}>
+              {correct ? 'ถูกต้อง!' : 'ยังไม่ถูก'}
+            </span>
+          </div>
+          {outcome && <p style={{ fontSize: 13, color: C.ink2, margin: 0, lineHeight: 1.6 }}>{outcome}</p>}
+          {correct ? (
+            <button onClick={handleNext}
+              style={{ width: '100%', marginTop: 12, backgroundColor: C.green, color: '#fff',
+                       fontWeight: 700, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer' }}>
+              {nodeIdx + 1 >= nodes.length ? 'เสร็จสิ้น ✓' : 'ต่อไป →'}
+            </button>
+          ) : (
+            <button onClick={() => { setChoice(null); setOutcome(null); }}
+              style={{ width: '100%', marginTop: 12, backgroundColor: C.red, color: '#fff',
+                       fontWeight: 700, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer' }}>
+              ลองใหม่อีกครั้ง
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Fill-blank reveal (flashcard mode for questions without a word bank) ──────
 // These questions have no options/blanks array — show a flashcard where the
 // student reads the answer rather than typing it from scratch.
@@ -666,19 +756,31 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   // ── Micro-lesson ──────────────────────────────────────────────────────────
   if (qType === 'micro-lesson') {
-    const cards = q.micro_lesson?.cards || content.cards || [];
+    const cards = [...(q.micro_lesson?.cards || content.cards || [])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     const card  = cards[microIdx];
     if (!card) return null;
+    const cardColors: Record<string, string> = { concept: '#6366f1', analogy: '#f59e0b', example: '#10b981', tip: C.brand, summary: '#3b82f6' };
+    const accent = cardColors[card.cardType] || C.brand;
     return (
-      <div style={{ ...cardStyle, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ ...cardStyle, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, borderTop: `4px solid ${accent}` }}>
         <span style={{ fontSize: 30 }}>{card.icon || '📖'}</span>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.brand, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{card.cardType}</p>
+        <p style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{card.cardType}</p>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, margin: 0 }}>{card.title}</h2>
         <p style={{ fontSize: 15, color: C.ink2, lineHeight: 1.6, margin: 0 }}>{card.body}</p>
-        {microIdx < cards.length - 1 && (
-          <button onClick={onMicroNext} style={{ alignSelf: 'flex-end', color: C.brand, fontWeight: 600, fontSize: 14, border: 'none', background: 'none', cursor: 'pointer' }}>ถัดไป →</button>
-        )}
-        <p style={{ fontSize: 11, color: C.ink3, textAlign: 'right', margin: 0 }}>{microIdx + 1}/{cards.length}</p>
+        {/* Dot indicators */}
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+          {cards.map((_: any, i: number) => (
+            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: i === microIdx ? accent : C.ink3 }} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {microIdx > 0 ? (
+            <button onClick={() => onMicroNext(-1)} style={{ color: C.ink2, fontWeight: 600, fontSize: 14, border: 'none', background: 'none', cursor: 'pointer' }}>← ก่อนหน้า</button>
+          ) : <span />}
+          {microIdx < cards.length - 1 ? (
+            <button onClick={() => onMicroNext(1)} style={{ color: accent, fontWeight: 700, fontSize: 14, border: 'none', background: 'none', cursor: 'pointer' }}>ถัดไป →</button>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -694,31 +796,7 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
 
   // ── Scenario ──────────────────────────────────────────────────────────────
   if (qType === 'scenario') {
-    const nodes = q.scenario_nodes || content.scenarioNodes || [];
-    const node  = nodes[0];
-    if (!node) return null;
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ ...cardStyle, padding: 20 }}>
-          <span style={{ fontSize: 30, display: 'block', marginBottom: 8 }}>{node.icon}</span>
-          <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, margin: '0 0 4px' }}>{node.situation}</p>
-          <p style={{ fontSize: 13, color: C.ink2, lineHeight: 1.6, margin: 0 }}>{node.context}</p>
-        </div>
-        {(node.choices || []).map((c: any) => {
-          const chosen = selected === c.id;
-          const reveal = answered && (chosen || c.isCorrect);
-          const bg = reveal ? c.isCorrect ? 'rgba(16,185,129,0.10)' : chosen ? 'rgba(239,68,68,0.10)' : C.surface : chosen ? 'rgba(239,94,168,0.10)' : C.surface;
-          const border = reveal ? c.isCorrect ? C.green : chosen ? C.red : C.sep : chosen ? C.brand : C.sep;
-          return (
-            <button key={c.id} onClick={() => !answered && onSelect(c.id)}
-              style={{ width: '100%', textAlign: 'left', padding: 16, borderRadius: 16, border: `2px solid ${border}`, backgroundColor: bg, cursor: answered ? 'default' : 'pointer', opacity: reveal && !c.isCorrect && !chosen ? 0.5 : 1 }}>
-              <p style={{ fontWeight: 600, fontSize: 14, color: C.ink, margin: 0 }}>{c.label}</p>
-              {reveal && c.outcome && <p style={{ fontSize: 12, color: C.ink2, marginTop: 4, marginBottom: 0 }}>{c.outcome}</p>}
-            </button>
-          );
-        })}
-      </div>
-    );
+    return <ScenarioRenderer key={q?.id || q?.prompt} q={q} content={content} onSubmit={onWordBankSubmit} />;
   }
 
   // ── Comparison ────────────────────────────────────────────────────────────
@@ -744,6 +822,11 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
         <div style={{ ...cardStyle, padding: 20 }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 12px' }}>{q.question || q.prompt}</p>
           {chartConfig && <ChartSvg config={chartConfig} />}
+          {qType === 'chart-comparison' && (
+            <div style={{ backgroundColor: C.bg, borderRadius: 10, padding: 14, textAlign: 'center', marginTop: 8 }}>
+              <p style={{ fontSize: 13, color: C.ink3, margin: 0 }}>📊 แผนภูมิที่ 2 (กำลังอัปเดตข้อมูล)</p>
+            </div>
+          )}
         </div>
         {displayOpts.map((opt: any) => (
           <McButton key={opt.id}
@@ -762,7 +845,8 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   if (qType === 'fill-blank') {
     const visualConfig = content.visual?.config;
     const blanks: any[] = (visualConfig?.blanks || []).filter((b: any) => typeof b === 'object' && b !== null);
-    const hasWordBank   = blanks.length > 0;
+    // content.options is also a valid word-bank source (Format 3)
+    const hasWordBank   = blanks.length > 0 || (content.options || []).length > 0;
 
     if (hasWordBank) {
       return (
@@ -991,7 +1075,7 @@ function DuolingoPageInner() {
         <QuestionRenderer
           q={q} selected={selected} fillValue={fillValue}
           onFillChange={setFillValue} answered={answered} correct={correct}
-          microIdx={microIdx} onMicroNext={() => setMicroIdx(i => i + 1)}
+          microIdx={microIdx} onMicroNext={(dir: number = 1) => setMicroIdx(i => Math.max(0, i + dir))}
           onSelect={checkAnswer}
           onFillSubmit={() => checkAnswer(fillValue)}
           onWordBankSubmit={checkWordBank}
