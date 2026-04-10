@@ -26,7 +26,7 @@ const FEATURES = [
 
 export default function JobsPage() {
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
 
       {/* ── Glass header ─────────────────────────────────── */}
       <div

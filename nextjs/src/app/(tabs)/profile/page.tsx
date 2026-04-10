@@ -64,7 +64,7 @@ export default function ProfilePage() {
   const handleLogout = () => { logout(); router.replace('/auth'); };
 
   if (!user) return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
       <GlassHeader />
       <div
         className="max-w-lg mx-auto flex flex-col items-center text-center"
@@ -90,7 +90,7 @@ export default function ProfilePage() {
   const initial = (user.display_name || user.username || 'U')[0].toUpperCase();
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
       <GlassHeader />
 
       <div className="max-w-lg mx-auto flex flex-col" style={{ padding: '20px 20px 36px', gap: 16 }}>

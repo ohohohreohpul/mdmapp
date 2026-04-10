@@ -83,7 +83,7 @@ export default function ExplorePage() {
   const activePath = PATHS.find(p => p.id === selectedPath);
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
 
       {/* ── Glass header ─────────────────────────────────── */}
       <div

@@ -111,7 +111,7 @@ export default function HomePage() {
   const initial = (user?.display_name || user?.username || '?')[0].toUpperCase();
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
 
       {/* ── Header ──────────────────────────────────────────── */}
       <header

@@ -96,7 +96,7 @@ export default function LearningPage() {
   }, [user]);
 
   if (!user) return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
       <GlassHeader />
       <div
         className="max-w-lg mx-auto flex flex-col items-center text-center"
@@ -126,7 +126,7 @@ export default function LearningPage() {
   const overallPct   = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+    <div style={{ backgroundColor: C.bg }}>
       <GlassHeader />
 
       <div className="max-w-lg mx-auto flex flex-col" style={{ padding: '20px 20px 0', gap: 20 }}>
