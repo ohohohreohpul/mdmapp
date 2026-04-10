@@ -492,7 +492,9 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   }
 
   // ── Comparison ────────────────────────────────────────────────────────────
-  if (qType === 'comparison') {
+  // Only use the rich ComparisonRenderer when there are actual HTML option cards;
+  // otherwise fall through to standard MC so q.options strings still render.
+  if (qType === 'comparison' && (content.options || []).length > 0) {
     return <ComparisonRenderer key={q?.id || q?.prompt} q={q} content={content} selected={selected} answered={answered} onSelect={onSelect} />;
   }
 
@@ -585,14 +587,35 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   }
 
   // Fallback: q.options flat string array
+  const qOpts: string[] = q.options || [];
+  if (qOpts.length > 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ ...cardStyle, padding: 20 }}>
+          <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0 }}>{q.question || q.prompt}</p>
+        </div>
+        {qOpts.map((opt: string, i: number) => (
+          <McButton key={i} label={opt} chosen={selected === opt} isCorrect={q.correct_answer === opt} answered={answered} onPress={() => onSelect(opt)} />
+        ))}
+      </div>
+    );
+  }
+
+  // No options anywhere — question data is incomplete.
+  // Auto-pass so the user isn't stuck on a blank screen.
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ ...cardStyle, padding: 20 }}>
-        <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: 0 }}>{q.question || q.prompt}</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: C.ink, margin: '0 0 10px' }}>{q.question || q.prompt}</p>
+        <p style={{ fontSize: 13, color: C.ink3, margin: 0 }}>⚠️ ข้อมูลตัวเลือกไม่สมบูรณ์</p>
       </div>
-      {(q.options || []).map((opt: string, i: number) => (
-        <McButton key={i} label={opt} chosen={selected === opt} isCorrect={q.correct_answer === opt} answered={answered} onPress={() => onSelect(opt)} />
-      ))}
+      {!answered && (
+        <button onClick={() => onWordBankSubmit(true)}
+          style={{ width: '100%', backgroundColor: C.ink3, color: '#fff', fontWeight: 700,
+                   padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer' }}>
+          ข้ามคำถามนี้
+        </button>
+      )}
     </div>
   );
 }

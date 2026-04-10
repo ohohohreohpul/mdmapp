@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle, PlayCircle, Headphones, FileText, Clock, Info, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, PlayCircle, Headphones, FileText, Clock, Info, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/contexts/UserContext';
 import { stripHtml } from '@shared/contentUtils';
@@ -13,10 +13,10 @@ const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const C = { brand: '#ef5ea8', ink: '#1C1C1E', ink2: '#8E8E93', ink3: '#C7C7CC', bg: '#F2F2F7', surface: '#FFFFFF', green: '#10B981' };
 
 function LessonPageInner() {
-  const router  = useRouter();
-  const params  = useSearchParams();
-  const lessonId = params.get('id') ?? '';
-  const courseId = params.get('courseId') ?? '';
+  const router   = useRouter();
+  const params   = useSearchParams();
+  const lessonId  = params.get('id') ?? '';
+  const courseId  = params.get('courseId') ?? '';
   const { user, updateProgress, getUserProgress } = useUser();
 
   const [lesson, setLesson]           = useState<any>(null);
@@ -24,6 +24,11 @@ function LessonPageInner() {
   const [error, setError]             = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
   const [completing, setCompleting]   = useState(false);
+
+  // Video-specific state: buttons only appear after video ends
+  const [videoEnded, setVideoEnded]   = useState(false);
+  const [nextLesson, setNextLesson]   = useState<any>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { if (lessonId) loadLesson(); }, [lessonId]);
 
@@ -34,13 +39,61 @@ function LessonPageInner() {
     }
   }, [user, courseId, lessonId]);
 
+  // Listen for Bunny.net (and generic) video-end postMessage events
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      try {
+        const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (
+          d?.event === 'ended' || d?.type === 'ended' ||
+          d?.action === 'playerended' || d?.name === 'ended'
+        ) {
+          setVideoEnded(true);
+        }
+      } catch {}
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
   const loadLesson = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/lessons/${lessonId}`);
-      setLesson(res.data);
+      const data = res.data;
+      setLesson(data);
+
+      // For non-video lessons the buttons are always available
+      if (data.content_type !== 'video') {
+        setVideoEnded(true);
+      } else {
+        // Timer fallback: unlock buttons after 90% of the stated duration
+        // so the page still works even if postMessage never fires
+        const mins = Number(data.duration_minutes) || 0;
+        if (mins > 0) {
+          const ms = mins * 60 * 1000 * 0.9;
+          timerRef.current = setTimeout(() => setVideoEnded(true), ms);
+        }
+        // No duration? Unlock after 60 s as a last resort
+        else {
+          timerRef.current = setTimeout(() => setVideoEnded(true), 60_000);
+        }
+      }
+
+      // Load the module's lesson list to find the next lesson
+      if (data.module_id) {
+        try {
+          const modRes = await axios.get(`${API_URL}/api/lessons/module/${data.module_id}`);
+          const list: any[] = modRes.data || [];
+          const idx = list.findIndex((l: any) => l._id === lessonId);
+          if (idx >= 0 && idx < list.length - 1) setNextLesson(list[idx + 1]);
+        } catch {}
+      }
     } catch { setError('ไม่สามารถโหลดบทเรียนได้'); }
     finally   { setLoading(false); }
   };
+
+  // Clean up the fallback timer on unmount
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const markAsComplete = async () => {
     if (!user) { toast.error('กรุณาเข้าสู่ระบบเพื่อบันทึกความคืบหน้า'); return; }
@@ -51,6 +104,13 @@ function LessonPageInner() {
       toast.success('เรียนจบบทเรียนนี้แล้ว!');
     } catch { toast.error('ไม่สามารถบันทึกความคืบหน้าได้'); }
     finally   { setCompleting(false); }
+  };
+
+  const markAndNext = async () => {
+    if (!isCompleted) await markAsComplete();
+    if (nextLesson) {
+      router.push(`/lesson?id=${nextLesson._id}&courseId=${courseId}`);
+    }
   };
 
   if (loading) return (
@@ -69,6 +129,8 @@ function LessonPageInner() {
     </div>
   );
 
+  const isVideo = lesson.content_type === 'video';
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: C.surface }}>
       <NavHeader
@@ -79,7 +141,7 @@ function LessonPageInner() {
       <div style={{ maxWidth: 512, margin: '0 auto', paddingBottom: 40 }}>
 
         {/* Video */}
-        {lesson.content_type === 'video' && (
+        {isVideo && (
           <div style={{ width: '100%', backgroundColor: '#000', aspectRatio: '16/9' }}>
             {lesson.video_url ? (
               <iframe
@@ -157,27 +219,51 @@ function LessonPageInner() {
             </div>
           )}
 
-          {/* Complete button */}
-          {!isCompleted ? (
-            <button
-              onClick={markAsComplete}
-              disabled={completing}
-              style={{
-                width: '100%', backgroundColor: C.green, color: '#fff',
-                fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16,
-                border: 'none', cursor: completing ? 'not-allowed' : 'pointer',
-                opacity: completing ? 0.6 : 1,
-                boxShadow: '0px 6px 14px rgba(16,185,129,0.30)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              {completing ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} color="#fff" />}
-              {completing ? 'กำลังบันทึก...' : 'ทำเครื่องหมายว่าเสร็จแล้ว'}
-            </button>
+          {/* ── Action buttons ───────────────────────────────────── */}
+
+          {isCompleted ? (
+            /* Already completed — show status + optional next */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(16,185,129,0.10)', borderRadius: 16, padding: '16px 0' }}>
+                <CheckCircle size={24} color={C.green} />
+                <span style={{ color: C.green, fontWeight: 700, fontSize: 16 }}>เรียนจบแล้ว</span>
+              </div>
+              {nextLesson && (
+                <button
+                  onClick={() => router.push(`/lesson?id=${nextLesson._id}&courseId=${courseId}`)}
+                  style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer', boxShadow: '0px 6px 14px rgba(239,94,168,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  บทเรียนถัดไป <ChevronRight size={20} />
+                </button>
+              )}
+            </div>
+          ) : videoEnded ? (
+            /* Video finished (or non-video) — show action buttons */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={markAsComplete}
+                disabled={completing}
+                style={{ width: '100%', backgroundColor: C.green, color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16, border: 'none', cursor: completing ? 'not-allowed' : 'pointer', opacity: completing ? 0.6 : 1, boxShadow: '0px 6px 14px rgba(16,185,129,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                {completing ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} color="#fff" />}
+                {completing ? 'กำลังบันทึก...' : 'ทำเครื่องหมายว่าเสร็จแล้ว'}
+              </button>
+              {nextLesson && (
+                <button
+                  onClick={markAndNext}
+                  disabled={completing}
+                  style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700, fontSize: 16, padding: '16px 0', borderRadius: 16, border: 'none', cursor: completing ? 'not-allowed' : 'pointer', boxShadow: '0px 6px 14px rgba(239,94,168,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  บทเรียนถัดไป <ChevronRight size={20} />
+                </button>
+              )}
+            </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(16,185,129,0.10)', borderRadius: 16, padding: '16px 0' }}>
-              <CheckCircle size={24} color={C.green} />
-              <span style={{ color: C.green, fontWeight: 700, fontSize: 16 }}>เรียนจบแล้ว</span>
+            /* Video still playing — show a locked placeholder */
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, backgroundColor: C.bg, borderRadius: 16, padding: '20px 16px' }}>
+              <PlayCircle size={28} color={C.ink3} />
+              <p style={{ fontSize: 14, color: C.ink2, fontWeight: 600, margin: 0 }}>ดูวิดีโอจนจบเพื่อทำเครื่องหมายว่าเสร็จแล้ว</p>
+              <p style={{ fontSize: 12, color: C.ink3, margin: 0 }}>ปุ่มจะปรากฏเมื่อวิดีโอเล่นจบ</p>
             </div>
           )}
         </div>
