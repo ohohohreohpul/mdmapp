@@ -49,10 +49,19 @@ const IOS_STEPS = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const LS_KEY = 'pwa_standalone';
+
+function readStandaloneCache(): boolean | null {
+  if (typeof window === 'undefined') return null;
+  const v = localStorage.getItem(LS_KEY);
+  return v === null ? null : v === 'true';
+}
+
 export default function PWAGate({ children }: { children: React.ReactNode }) {
-  const [isStandalone, setIsStandalone]     = useState<boolean | null>(null);
-  const [isIOS, setIsIOS]                   = useState(false);
-  const [isAndroid, setIsAndroid]           = useState(false);
+  // Initialise from localStorage so returning visitors never see the null flash
+  const [isStandalone, setIsStandalone] = useState<boolean | null>(() => readStandaloneCache());
+  const [isIOS, setIsIOS]               = useState(false);
+  const [isAndroid, setIsAndroid]       = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installing, setInstalling]         = useState(false);
   const [showSheet, setShowSheet]           = useState(false);
@@ -61,20 +70,18 @@ export default function PWAGate({ children }: { children: React.ReactNode }) {
   // Detect standalone + platform on mount (client only)
   useEffect(() => {
     const ua = getUA();
-    const ios = /iPhone|iPad|iPod/.test(ua);
-    const android = /Android/.test(ua);
-    setIsIOS(ios);
-    setIsAndroid(android);
+    setIsIOS(/iPhone|iPad|iPod/.test(ua));
+    setIsAndroid(/Android/.test(ua));
 
     const standalone =
-      // iOS Safari
       (window.navigator as any).standalone === true ||
-      // All others (Chrome/Edge/Samsung etc.)
       window.matchMedia('(display-mode: standalone)').matches ||
       window.matchMedia('(display-mode: fullscreen)').matches ||
       window.matchMedia('(display-mode: minimal-ui)').matches;
 
     setIsStandalone(standalone);
+    // Persist so next render is instant (no null → blank flash)
+    localStorage.setItem(LS_KEY, String(standalone));
   }, []);
 
   // Capture Android beforeinstallprompt

@@ -7,6 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import { ARTICLES } from '@/lib/articles';
 import { HScroll, SectionHead, ProgressBar, Skel } from '@/lib/ui';
 import axios from 'axios';
+import { getCached, setCached, isFresh } from '@/lib/apiCache';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
@@ -45,9 +46,13 @@ function streakMsg(n: number) {
 
 export default function HomePage() {
   const { user } = useUser();
-  const [dash, setDash]           = useState<any>(null);
-  const [courses, setCourses]     = useState<any[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const COURSES_KEY = `${API_URL}/api/courses?published_only=true`;
+  const DASH_KEY    = user?._id ? `${API_URL}/api/gamification/dashboard/${user._id}` : '';
+
+  // Initialise from cache so the page shows data instantly on return visits
+  const [dash, setDash]           = useState<any>(() => getCached(DASH_KEY) ?? null);
+  const [courses, setCourses]     = useState<any[]>(() => getCached(COURSES_KEY) ?? []);
+  const [loading, setLoading]     = useState(() => !getCached(COURSES_KEY));
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [xpPop, setXpPop]         = useState(0);
@@ -57,16 +62,20 @@ export default function HomePage() {
 
   const load = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_URL}/api/courses?published_only=true`);
-      const all = Array.isArray(r.data) ? r.data : [];
-      setCourses([...all].sort(() => 0.5 - Math.random()).slice(0, 8));
-      if (user?._id) {
-        axios.get(`${API_URL}/api/gamification/dashboard/${user._id}`)
-          .then(r => setDash(r.data)).catch(() => {});
+      // Only block on loading spinner for cold cache; otherwise refresh silently
+      if (!isFresh(COURSES_KEY)) {
+        const r = await axios.get(COURSES_KEY);
+        const all = Array.isArray(r.data) ? r.data : [];
+        setCached(COURSES_KEY, r.data);
+        const shuffled = [...all].sort(() => 0.5 - Math.random()).slice(0, 8);
+        setCourses(shuffled);
+      }
+      if (user?._id && !isFresh(DASH_KEY)) {
+        axios.get(DASH_KEY).then(r => { setDash(r.data); setCached(DASH_KEY, r.data); }).catch(() => {});
       }
       setCheckedIn(localStorage.getItem(todayKey) === 'true');
     } catch { /* silent */ } finally { setLoading(false); }
-  }, [user?._id, todayKey]);
+  }, [user?._id, todayKey, COURSES_KEY, DASH_KEY]);
 
   useEffect(() => { load(); }, [load]);
 

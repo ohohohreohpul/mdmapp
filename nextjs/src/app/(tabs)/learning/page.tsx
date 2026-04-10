@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { PrimaryBtn, Skel, ProgressBar } from '@/lib/ui';
 import axios from 'axios';
+import { getCached, setCached, isFresh } from '@/lib/apiCache';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
@@ -63,23 +64,36 @@ const GlassHeader = () => (
   </div>
 );
 
+const COURSES_KEY = `${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/courses`;
+
 export default function LearningPage() {
   const { user } = useUser();
-  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const filterEnrolled = (all: any[]) => all.filter((c: any) => user?.progress?.[c._id]);
+  const cached = getCached(COURSES_KEY);
+
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>(() =>
+    cached && user ? filterEnrolled(cached) : []
+  );
+  const [loading, setLoading] = useState(() => !cached && !!user);
 
   useEffect(() => {
-    if (user) loadEnrolledCourses();
-    else setLoading(false);
+    if (!user) { setLoading(false); return; }
+    // Show from cache immediately
+    const c = getCached(COURSES_KEY);
+    if (c) { setEnrolledCourses(filterEnrolled(c)); setLoading(false); }
+    if (isFresh(COURSES_KEY)) return;
+    // Background refresh (or blocking if cold)
+    if (!c) setLoading(true);
+    axios.get(COURSES_KEY)
+      .then(res => {
+        const all = Array.isArray(res.data) ? res.data : [];
+        setCached(COURSES_KEY, all);
+        setEnrolledCourses(filterEnrolled(all));
+      })
+      .catch(() => { if (!c) setEnrolledCourses([]); })
+      .finally(() => setLoading(false));
   }, [user]);
-
-  const loadEnrolledCourses = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/courses`);
-      const all = Array.isArray(res.data) ? res.data : [];
-      setEnrolledCourses(all.filter((c: any) => user?.progress?.[c._id]));
-    } catch { setEnrolledCourses([]); } finally { setLoading(false); }
-  };
 
   if (!user) return (
     <div style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
