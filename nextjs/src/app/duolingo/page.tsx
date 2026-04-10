@@ -53,16 +53,36 @@ function ChartSvg({ config }: { config: any }) {
     </div>
   );
 
-  const data: any[] = config.data;
+  // ── Histogram — bin raw values then fall through to bar ──────────────────────
+  let data: any[] = config.data;
+  let effectiveType = type;
+  if (type === 'histogram') {
+    const numKey = Object.keys(data[0] || {}).find(k => typeof data[0][k] === 'number') || 'value';
+    const values = data.map((d: any) => Number(d[numKey]));
+    const binCount = config.bins || 5;
+    const minV = Math.min(...values), maxV = Math.max(...values);
+    const bw = (maxV - minV) / binCount || 1;
+    const bins = Array.from({ length: binCount }, (_, i) => {
+      const lo = minV + i * bw, hi = lo + bw;
+      return {
+        label: `${Math.round(lo)}-${Math.round(hi)}`,
+        count: values.filter((v: number) => v >= lo && (i === binCount - 1 ? v <= hi : v < hi)).length,
+      };
+    });
+    data = bins;
+    // Override config keys so bar renderer picks them up correctly
+    config = { ...config, data: bins, xKey: 'label', yKey: 'count' };
+    effectiveType = 'bar';
+  }
 
   // ── Bar ──────────────────────────────────────────────────────────────────────
-  if (type === 'bar' || type === 'histogram') {
+  if (effectiveType === 'bar') {
     const W = 320, H = 180;
     const pad = { l: 40, r: 10, t: 16, b: 32 };
     const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
     const xKey = config.xKey || Object.keys(data[0])[0];
     const yKey = (typeof config.yKey === 'string' ? config.yKey : null) || Object.keys(data[0])[1];
-    const vals = data.map(d => Number(d[yKey]) || 0);
+    const vals = data.map((d: any) => Number(d[yKey]) || 0);
     const maxY = Math.max(...vals, 1);
     const barW = cw / data.length, gap = barW * 0.22;
     return wrap(
