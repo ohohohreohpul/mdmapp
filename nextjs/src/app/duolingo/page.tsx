@@ -418,6 +418,199 @@ function FillBlankWordBankRenderer({ q, visualConfig, answered, onSubmit }: any)
 }
 
 
+// ── Concept-reveal renderer (with hotspot annotations) ───────────────────────
+
+function ConceptRevealRenderer({ cr, hotspots, q }: any) {
+  const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
+  const hs = hotspots.find((h: any) => h.id === activeHotspot);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ ...cardStyle, padding: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.brand, margin: '0 0 8px' }}>💡 Concept</p>
+        <p style={{ fontSize: 15, color: C.ink, lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}>{cr.content || q.question || q.prompt}</p>
+        {cr.summary && (
+          <div style={{ backgroundColor: 'rgba(239,94,168,0.10)', borderRadius: 12, padding: 12, marginTop: 10 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.brand, margin: 0 }}>{cr.summary}</p>
+          </div>
+        )}
+      </div>
+
+      {hotspots.length > 0 && (
+        <>
+          <p style={{ fontSize: 12, color: C.ink2, textAlign: 'center', margin: 0 }}>แตะหัวข้อเพื่อดูคำอธิบาย</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {hotspots.map((h: any) => (
+              <button key={h.id} onClick={() => setActiveHotspot(activeHotspot === h.id ? null : h.id)}
+                style={{ padding: '8px 14px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                         border: `2px solid ${activeHotspot === h.id ? C.brand : C.sep}`,
+                         backgroundColor: activeHotspot === h.id ? 'rgba(239,94,168,0.10)' : C.surface,
+                         color: activeHotspot === h.id ? C.brand : C.ink, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>{h.icon}</span><span>{h.label}</span>
+              </button>
+            ))}
+          </div>
+          {hs && (
+            <div style={{ ...cardStyle, padding: 16, borderLeft: `4px solid ${C.brand}` }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.brand, margin: '0 0 6px' }}>{hs.icon} {hs.label}</p>
+              <p style={{ fontSize: 14, color: C.ink2, lineHeight: 1.6, margin: 0 }}>{hs.annotation}</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Drag-arrange renderer ────────────────────────────────────────────────────
+
+function DragArrangeRenderer({ q, answered, onSubmit }: any) {
+  const da = q.content?.dragArrange || q.content?.drag_arrange || {};
+  const mode: 'categorize' | 'order' = da.mode || 'order';
+  const categories: string[] = da.categories || [];
+  const rawItems: any[] = da.items || [];
+
+  // shuffle once on mount
+  const [items] = useState<any[]>(() => [...rawItems].sort(() => Math.random() - 0.5));
+  const [assign, setAssign]           = useState<Record<string, string>>({});  // categorize
+  const [order, setOrder]             = useState<string[]>(() => items.map((i: any) => i.id)); // ordering
+  const [selected, setSelected]       = useState<string | null>(null); // currently tapped item
+  const [submitted, setSubmit]        = useState(false);
+
+  const moveItem = (idx: number, dir: -1 | 1) => {
+    if (submitted) return;
+    const next = [...order];
+    const swap = idx + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    setOrder(next);
+  };
+
+  const handleSubmitCat = () => {
+    if (submitted) return;
+    setSubmit(true);
+    const correct = rawItems.every((item: any) => assign[item.id] === item.category);
+    onSubmit(correct);
+  };
+
+  const handleSubmitOrder = () => {
+    if (submitted) return;
+    setSubmit(true);
+    const correct = rawItems.every((item: any) => {
+      const pos = order.indexOf(item.id);
+      return pos === (item.correctPosition - 1);
+    });
+    onSubmit(correct);
+  };
+
+  if (mode === 'categorize') {
+    const unassigned = items.filter((i: any) => !assign[i.id]);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ ...cardStyle, padding: 20 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 6px' }}>{q.question || q.prompt}</p>
+          {da.instruction && <p style={{ fontSize: 13, color: C.ink2, margin: 0 }}>{da.instruction}</p>}
+        </div>
+
+        {/* Category buckets */}
+        {categories.map((cat: string) => {
+          const assigned = Object.entries(assign).filter(([, c]) => c === cat).map(([id]) => rawItems.find((i: any) => i.id === id)).filter(Boolean);
+          return (
+            <div key={cat}
+              onClick={() => {
+                if (!selected || submitted) return;
+                setAssign(prev => ({ ...prev, [selected]: cat }));
+                setSelected(null);
+              }}
+              style={{ ...cardStyle, padding: 14, cursor: selected && !submitted ? 'pointer' : 'default',
+                       border: `2px solid ${selected && !submitted ? C.brand : 'rgba(0,0,0,0.06)'}`,
+                       backgroundColor: selected && !submitted ? 'rgba(239,94,168,0.04)' : C.surface }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.brand, margin: '0 0 8px' }}>{cat}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 32 }}>
+                {assigned.map((item: any) => {
+                  const correct = submitted ? assign[item.id] === item.category : null;
+                  return (
+                    <span key={item.id}
+                      onClick={(e) => { e.stopPropagation(); if (!submitted) { setAssign(prev => { const n = { ...prev }; delete n[item.id]; return n; }); } }}
+                      style={{ padding: '6px 12px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: submitted ? 'default' : 'pointer',
+                               backgroundColor: correct === true ? 'rgba(16,185,129,0.15)' : correct === false ? 'rgba(239,68,68,0.15)' : 'rgba(239,94,168,0.12)',
+                               color: correct === true ? C.green : correct === false ? C.red : C.brand,
+                               border: `1.5px solid ${correct === true ? C.green : correct === false ? C.red : C.brand}` }}>
+                      {item.label} {!submitted && '✕'}
+                    </span>
+                  );
+                })}
+                {assigned.length === 0 && <span style={{ fontSize: 12, color: C.ink3 }}>แตะรายการด้านล่าง แล้วแตะที่นี่</span>}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Unassigned chips */}
+        {unassigned.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {unassigned.map((item: any) => (
+              <button key={item.id} onClick={() => setSelected(selected === item.id ? null : item.id)}
+                style={{ padding: '8px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                         border: `2px solid ${selected === item.id ? C.brand : C.sep}`,
+                         backgroundColor: selected === item.id ? 'rgba(239,94,168,0.10)' : C.surface,
+                         color: selected === item.id ? C.brand : C.ink }}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!submitted && Object.keys(assign).length === rawItems.length && (
+          <button onClick={handleSubmitCat}
+            style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700,
+                     padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer' }}>
+            ตรวจคำตอบ
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Order mode ────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ ...cardStyle, padding: 20 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, margin: '0 0 6px' }}>{q.question || q.prompt}</p>
+        {da.instruction && <p style={{ fontSize: 13, color: C.ink2, margin: 0 }}>{da.instruction}</p>}
+      </div>
+      <p style={{ fontSize: 12, color: C.ink2, textAlign: 'center', margin: 0 }}>ใช้ ↑ ↓ เพื่อเรียงลำดับ</p>
+      {order.map((itemId: string, idx: number) => {
+        const item = rawItems.find((i: any) => i.id === itemId);
+        const correct = submitted ? order[idx] === rawItems.find((i: any) => i.correctPosition === idx + 1)?.id : null;
+        return (
+          <div key={itemId}
+            style={{ ...cardStyle, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                     border: `2px solid ${correct === true ? C.green : correct === false ? C.red : 'rgba(0,0,0,0.06)'}`,
+                     backgroundColor: correct === true ? 'rgba(16,185,129,0.06)' : correct === false ? 'rgba(239,68,68,0.06)' : C.surface }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.ink3, minWidth: 18 }}>{idx + 1}</span>
+            <span style={{ flex: 1, fontSize: 14, color: C.ink, fontWeight: 500 }}>{item?.label}</span>
+            {!submitted && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button onClick={() => moveItem(idx, -1)} disabled={idx === 0}
+                  style={{ width: 28, height: 24, border: `1px solid ${C.sep}`, borderRadius: 6, cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, backgroundColor: C.bg, fontSize: 12 }}>↑</button>
+                <button onClick={() => moveItem(idx, 1)} disabled={idx === order.length - 1}
+                  style={{ width: 28, height: 24, border: `1px solid ${C.sep}`, borderRadius: 6, cursor: idx === order.length - 1 ? 'default' : 'pointer', opacity: idx === order.length - 1 ? 0.3 : 1, backgroundColor: C.bg, fontSize: 12 }}>↓</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {!submitted && (
+        <button onClick={handleSubmitOrder}
+          style={{ width: '100%', backgroundColor: C.brand, color: '#fff', fontWeight: 700,
+                   padding: '16px 0', borderRadius: 16, border: 'none', cursor: 'pointer' }}>
+          ตรวจคำตอบ
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Question renderer ─────────────────────────────────────────────────────────
 
 function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, correct,
@@ -449,16 +642,9 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   // ── Concept-reveal ────────────────────────────────────────────────────────
   if (qType === 'concept-reveal') {
     const cr = q.concept_reveal || content.conceptReveal || {};
+    const hotspots: any[] = [...(cr.hotspots || [])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     return (
-      <div style={{ ...cardStyle, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: C.brand, margin: 0 }}>💡 Concept</p>
-        <p style={{ fontSize: 15, color: C.ink, lineHeight: 1.6, whiteSpace: 'pre-line', margin: 0 }}>{cr.content || q.question}</p>
-        {cr.summary && (
-          <div style={{ backgroundColor: 'rgba(239,94,168,0.10)', borderRadius: 12, padding: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: C.brand, margin: 0 }}>{cr.summary}</p>
-          </div>
-        )}
-      </div>
+      <ConceptRevealRenderer cr={cr} hotspots={hotspots} q={q} key={q?.id} />
     );
   }
 
@@ -496,6 +682,11 @@ function QuestionRenderer({ q, selected, fillValue, onFillChange, answered, corr
   // otherwise fall through to standard MC so q.options strings still render.
   if (qType === 'comparison' && (content.options || []).length > 0) {
     return <ComparisonRenderer key={q?.id || q?.prompt} q={q} content={content} selected={selected} answered={answered} onSelect={onSelect} />;
+  }
+
+  // ── Drag-arrange ──────────────────────────────────────────────────────────
+  if (qType === 'drag-arrange') {
+    return <DragArrangeRenderer key={q?.id || q?.prompt} q={q} answered={answered} onSubmit={onWordBankSubmit} />;
   }
 
   // ── Chart-reading / Chart-comparison ─────────────────────────────────────
