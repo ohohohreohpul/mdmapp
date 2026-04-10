@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'sonner';
 import { UserProvider } from '@/contexts/UserContext';
 import './globals.css';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 export const metadata: Metadata = {
   title: 'Mydemy',
