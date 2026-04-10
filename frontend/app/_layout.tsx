@@ -63,6 +63,7 @@ export default function RootLayout() {
   }, []);
 
   // ── Normal app (install gate disabled) ───────────────────────────────────
+
   return (
     <SafeAreaProvider>
       <WebBottomInsetZero>

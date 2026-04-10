@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { Skel } from '@/lib/ui';
 import axios from 'axios';
+import { getCached, setCached, isFresh } from '@/lib/apiCache';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
@@ -39,23 +40,38 @@ export default function ExplorePage() {
   const { user } = useUser();
   const [searchQuery, setSearchQuery]   = useState('');
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [courses, setCourses]           = useState<any[]>([]);
-  const [loading, setLoading]           = useState(false);
+
+  const cacheKey = (path: string | null) => {
+    const params: any = { published_only: true };
+    const p = PATHS.find(x => x.id === path);
+    if (p) params.career_path = p.api;
+    return `${API_URL}/api/courses?${new URLSearchParams(params).toString()}`;
+  };
+
+  const [courses, setCourses] = useState<any[]>(() => getCached(cacheKey(null)) ?? []);
+  const [loading, setLoading] = useState(() => !getCached(cacheKey(null)));
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
 
   useEffect(() => { loadCourses(); }, [selectedPath]);
 
   const loadCourses = async () => {
+    const key = cacheKey(selectedPath);
+    // Show cached data immediately; only block-load on cold cache
+    const cached = getCached(key);
+    if (cached) { setCourses(cached); setLoading(false); }
+    if (isFresh(key)) return; // still fresh — skip network call
     try {
-      setLoading(true);
+      if (!cached) setLoading(true);
       const params: any = { published_only: true };
       const path = PATHS.find(p => p.id === selectedPath);
       if (path) params.career_path = path.api;
       if (user?._id) params.user_id = user._id;
       const res = await axios.get(`${API_URL}/api/courses`, { params });
-      setCourses(Array.isArray(res.data) ? res.data : []);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setCached(key, data);
+      setCourses(data);
     } catch {
-      setCourses([]);
+      if (!cached) setCourses([]);
     } finally {
       setLoading(false);
     }

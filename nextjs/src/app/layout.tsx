@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'sonner';
 import { UserProvider } from '@/contexts/UserContext';
+import PWAGate from '@/components/PWAGate';
 import './globals.css';
+
 
 export const metadata: Metadata = {
   title: 'Mydemy',
@@ -35,7 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <UserProvider>
-          {children}
+          <PWAGate>
+            {children}
+          </PWAGate>
           <Toaster position="top-center" richColors />
         </UserProvider>
       </body>
