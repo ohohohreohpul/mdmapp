@@ -113,7 +113,7 @@ export default function JobDetailPage() {
   const locStyle = LOC_COLOR[locType] ?? LOC_COLOR.unknown;
 
   return (
-    <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: 100 }}>
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh', paddingBottom: 80 }}>
 
       {/* Glass header */}
       <header className="sticky top-0 z-20 header-shell" style={{
@@ -235,11 +235,13 @@ export default function JobDetailPage() {
 
       </div>
 
-      {/* Sticky Apply CTA */}
+      {/* Sticky Apply CTA — sits above tab bar (tab bar is z-50, this is z-40 but rendered inside main scroll area via fixed) */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
         background: 'linear-gradient(to top, rgba(242,242,247,1) 60%, rgba(242,242,247,0))',
-        padding: 'calc(env(safe-area-inset-bottom, 0px) + 20px) 20px 20px',
+        /* bottom padding = tab bar height (96px) + safe area + 12px gap */
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 108px)',
+        paddingTop: 20, paddingLeft: 20, paddingRight: 20,
         pointerEvents: 'none',
       }}>
         <div className="max-w-lg mx-auto" style={{ pointerEvents: 'auto' }}>
