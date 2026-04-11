@@ -3006,6 +3006,14 @@ def _normalise_seek(item: dict, career_path: str) -> dict | None:
     }
 
 
+@api_router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    res = await supabase.table("job_listings").select("*").eq("id", job_id).eq("is_active", True).maybe_single().execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return with_id(res.data)
+
+
 @api_router.get("/jobs")
 async def list_jobs(career_path: str = "", limit: int = 50):
     query = (

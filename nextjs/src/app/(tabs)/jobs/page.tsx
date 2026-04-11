@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Building2, RefreshCw, Trash2, ExternalLink, DollarSign } from 'lucide-react';
+import { Briefcase, Building2, RefreshCw, Trash2, ChevronRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { cachedGet } from '@/lib/apiCache';
 import { useUser } from '@/contexts/UserContext';
@@ -9,7 +9,6 @@ import { useUser } from '@/contexts/UserContext';
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
-
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 const CAREER_PATHS = [
@@ -38,29 +37,13 @@ const cardStyle: React.CSSProperties = {
   border: '1px solid rgba(0,0,0,0.06)',
 };
 
-/* ─── Source badge ───────────────────────────────────────────────────────── */
-
-const SOURCE_STYLES: Record<string, { label: string; bg: string; color: string }> = {
-  linkedin: { label: 'LinkedIn', bg: '#E7F0FA', color: '#0A66C2' },
-  seek:     { label: 'Seek',     bg: '#E8F5E9', color: '#1B5E20' },
+const LOC_ICON: Record<string, string> = {
+  remote: '🌐', hybrid: '🏠', onsite: '🏢', unknown: '📍',
 };
 
-function SourceBadge({ source }: { source: string }) {
-  const s = SOURCE_STYLES[source] ?? { label: source, bg: '#F3F4F6', color: '#6B7280' };
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: '0.03em',
-      color: s.color, backgroundColor: s.bg,
-      borderRadius: 6, padding: '3px 7px',
-    }}>
-      {s.label}
-    </span>
-  );
-}
+/* ─── Types ──────────────────────────────────────────────────────────────── */
 
-/* ─── Job card ───────────────────────────────────────────────────────────── */
-
-interface Job {
+export interface Job {
   id: string;
   source: string;
   title: string;
@@ -71,99 +54,87 @@ interface Job {
   salary_label?: string;
   url: string;
   career_path?: string;
+  description?: string;
   posted_at?: string;
   fetched_at: string;
 }
 
-function JobCard({ job, onDelete }: { job: Job; onDelete?: (id: string) => void }) {
-  const locIcon: Record<string, string> = {
-    remote: '🌐', hybrid: '🏠', onsite: '🏢', unknown: '📍',
-  };
+/* ─── Job card ───────────────────────────────────────────────────────────── */
 
+function JobCard({ job, isAdmin, onDelete }: { job: Job; isAdmin: boolean; onDelete: (id: string) => void }) {
   return (
-    <div style={{ ...cardStyle, padding: 16 }}>
-      {/* Top row */}
-      <div className="flex items-start" style={{ gap: 12, marginBottom: 10 }}>
-        {/* Logo / initials */}
+    <div style={{ position: 'relative' }}>
+      <Link
+        href={`/jobs/${job.id}`}
+        className="flex items-center active:opacity-70 transition-opacity"
+        style={{ ...cardStyle, padding: '14px 16px', gap: 14, textDecoration: 'none', display: 'flex' }}
+      >
+        {/* Company avatar */}
         <div style={{
-          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          width: 48, height: 48, borderRadius: 14, flexShrink: 0,
           backgroundColor: 'rgba(239,94,168,0.08)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
         }}>
           {job.company_logo
             ? <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ fontSize: 18, fontWeight: 700, color: C.primary }}>
+            : <span style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>
                 {job.company.charAt(0).toUpperCase()}
               </span>
           }
         </div>
 
-        {/* Title / company */}
+        {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginBottom: 2 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.3, marginBottom: 3 }}>
             {job.title}
           </p>
-          <p style={{ fontSize: 12, color: C.ink2 }}>{job.company}</p>
+          <p style={{ fontSize: 12, color: C.ink2, marginBottom: 6 }}>{job.company}</p>
+
+          {/* Tags */}
+          <div className="flex flex-wrap" style={{ gap: 6 }}>
+            {job.location && (
+              <span style={{ fontSize: 11, color: C.ink2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                {LOC_ICON[job.location_type ?? 'unknown']} {job.location}
+              </span>
+            )}
+            {job.salary_label && (
+              <span style={{
+                fontSize: 11, color: '#10B981', fontWeight: 600,
+                backgroundColor: 'rgba(16,185,129,0.08)', borderRadius: 6, padding: '1px 6px',
+              }}>
+                {job.salary_label}
+              </span>
+            )}
+            {job.career_path && (
+              <span style={{
+                fontSize: 11, color: C.primary, fontWeight: 600,
+                backgroundColor: 'rgba(239,94,168,0.08)', borderRadius: 6, padding: '1px 6px',
+              }}>
+                {job.career_path}
+              </span>
+            )}
+          </div>
         </div>
 
-        <SourceBadge source={job.source} />
-      </div>
+        <ChevronRight size={18} style={{ color: C.ink3, flexShrink: 0 }} />
+      </Link>
 
-      {/* Meta row */}
-      <div className="flex flex-wrap" style={{ gap: 8, marginBottom: 12 }}>
-        {job.location && (
-          <span style={{ fontSize: 11, color: C.ink2, display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span>{locIcon[job.location_type ?? 'unknown']}</span>
-            {job.location}
-          </span>
-        )}
-        {job.salary_label && (
-          <span style={{ fontSize: 11, color: '#10B981', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <DollarSign size={10} />
-            {job.salary_label}
-          </span>
-        )}
-        {job.career_path && (
-          <span style={{
-            fontSize: 10, color: C.primary, backgroundColor: 'rgba(239,94,168,0.08)',
-            borderRadius: 6, padding: '2px 7px',
-          }}>
-            {job.career_path}
-          </span>
-        )}
-      </div>
-
-      {/* Action row */}
-      <div className="flex items-center" style={{ gap: 8 }}>
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center"
+      {/* Admin delete — floats over card */}
+      {isAdmin && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(job.id); }}
           style={{
-            flex: 1, gap: 6, justifyContent: 'center',
-            backgroundColor: C.primary, color: '#fff',
-            borderRadius: 10, padding: '8px 14px',
-            fontSize: 13, fontWeight: 700, textDecoration: 'none',
+            position: 'absolute', top: 10, right: 38,
+            width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
+            backgroundColor: 'rgba(255,59,48,0.10)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1,
           }}
         >
-          <ExternalLink size={13} />
-          ดูงาน
-        </a>
-        {onDelete && (
-          <button
-            onClick={() => onDelete(job.id)}
-            style={{
-              width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer',
-              backgroundColor: 'rgba(255,59,48,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Trash2 size={15} style={{ color: '#FF3B30' }} />
-          </button>
-        )}
-      </div>
+          <Trash2 size={13} style={{ color: '#FF3B30' }} />
+        </button>
+      )}
     </div>
   );
 }
@@ -171,10 +142,10 @@ function JobCard({ job, onDelete }: { job: Job; onDelete?: (id: string) => void 
 /* ─── Admin job board ─────────────────────────────────────────────────────── */
 
 function AdminJobBoard() {
-  const [jobs, setJobs]               = useState<Job[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [syncing, setSyncing]         = useState(false);
-  const [syncResult, setSyncResult]   = useState<string | null>(null);
+  const [jobs, setJobs]             = useState<Job[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [syncing, setSyncing]       = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('ทั้งหมด');
 
   const fetchJobs = async (path?: string) => {
@@ -195,17 +166,14 @@ function AdminJobBoard() {
     try {
       const res = await fetch(`${API}/api/admin/jobs/sync`, { method: 'POST' });
       const d   = await res.json();
-      if (d.errors?.length) {
-        setSyncResult(`เพิ่ม ${d.upserted} งาน (${d.errors.length} ข้อผิดพลาด)`);
-      } else {
-        setSyncResult(`เพิ่ม ${d.upserted} งานสำเร็จ ✓`);
-      }
+      setSyncResult(d.errors?.length
+        ? `เพิ่ม ${d.upserted} งาน (${d.errors.length} error)`
+        : `เพิ่ม ${d.upserted} งานสำเร็จ ✓`
+      );
       fetchJobs(activeFilter);
     } catch (e: any) {
       setSyncResult(`ข้อผิดพลาด: ${e.message}`);
-    } finally {
-      setSyncing(false);
-    }
+    } finally { setSyncing(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -213,28 +181,17 @@ function AdminJobBoard() {
     await fetch(`${API}/api/admin/jobs/${id}`, { method: 'DELETE' });
   };
 
-  const counts = {
-    linkedin: jobs.filter(j => j.source === 'linkedin').length,
-    seek:     jobs.filter(j => j.source === 'seek').length,
-  };
-
   return (
     <div style={{ backgroundColor: C.bg }}>
       {/* Glass header */}
-      <div
-        className="sticky top-0 z-20 header-shell"
-        style={{
-          background: 'rgba(255,255,255,0.94)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
-        }}
-      >
+      <div className="sticky top-0 z-20 header-shell" style={{
+        background: 'rgba(255,255,255,0.94)',
+        backdropFilter: 'saturate(180%) blur(20px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
+      }}>
         <div className="flex items-center max-w-lg mx-auto" style={{ height: 54, paddingLeft: 20, paddingRight: 20, gap: 10 }}>
-          <h1 style={{ flex: 1, fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>
-            Job Board
-          </h1>
-          {/* Admin sync button */}
+          <h1 style={{ flex: 1, fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>งาน</h1>
           <button
             onClick={handleSync}
             disabled={syncing}
@@ -254,27 +211,10 @@ function AdminJobBoard() {
 
       <div className="max-w-lg mx-auto" style={{ padding: '16px 0 36px' }}>
 
-        {/* Source stats */}
-        <div className="flex" style={{ gap: 8, paddingLeft: 20, paddingRight: 20, marginBottom: 12 }}>
-          {Object.entries(counts).map(([src, n]) => {
-            const s = SOURCE_STYLES[src];
-            return (
-              <div key={src} style={{
-                flex: 1, ...cardStyle, padding: '10px 14px',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <SourceBadge source={src} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{n}</span>
-                <span style={{ fontSize: 12, color: C.ink2 }}>งาน</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Sync result toast */}
+        {/* Sync result */}
         {syncResult && (
           <div style={{
-            marginLeft: 20, marginRight: 20, marginBottom: 12,
+            margin: '0 20px 12px',
             backgroundColor: syncResult.includes('ข้อผิดพลาด') ? 'rgba(255,59,48,0.08)' : 'rgba(52,199,89,0.10)',
             border: `1px solid ${syncResult.includes('ข้อผิดพลาด') ? 'rgba(255,59,48,0.2)' : 'rgba(52,199,89,0.2)'}`,
             borderRadius: 12, padding: '10px 14px',
@@ -285,10 +225,7 @@ function AdminJobBoard() {
         )}
 
         {/* Career filter pills */}
-        <div
-          className="flex no-scrollbar"
-          style={{ overflowX: 'auto', paddingLeft: 20, paddingRight: 20, gap: 8, marginBottom: 16 }}
-        >
+        <div className="flex no-scrollbar" style={{ overflowX: 'auto', paddingLeft: 20, paddingRight: 20, gap: 8, marginBottom: 16 }}>
           {CAREER_PATHS.map(cp => (
             <button
               key={cp}
@@ -309,29 +246,24 @@ function AdminJobBoard() {
         </div>
 
         {/* Job list */}
-        <div className="flex flex-col" style={{ gap: 12, paddingLeft: 20, paddingRight: 20 }}>
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ ...cardStyle, padding: 16, height: 120 }}
-                className="skel-shimmer" />
-            ))
-          ) : jobs.length === 0 ? (
-            <div style={{ ...cardStyle, padding: 32, textAlign: 'center' }}>
-              <p style={{ fontSize: 32, marginBottom: 10 }}>🔍</p>
-              <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 6 }}>
-                ยังไม่มีงาน
-              </p>
-              <p style={{ fontSize: 13, color: C.ink2 }}>
-                กด Sync เพื่อดึงงานจาก LinkedIn และ Seek
-              </p>
-            </div>
-          ) : (
-            jobs.map(job => (
-              <JobCard key={job.id} job={job} onDelete={handleDelete} />
-            ))
-          )}
+        <div className="flex flex-col" style={{ gap: 10, paddingLeft: 20, paddingRight: 20 }}>
+          {loading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="skel-shimmer" style={{ ...cardStyle, height: 88 }} />
+              ))
+            : jobs.length === 0
+              ? (
+                <div style={{ ...cardStyle, padding: 36, textAlign: 'center' }}>
+                  <p style={{ fontSize: 28, marginBottom: 10 }}>🔍</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 6 }}>ยังไม่มีงาน</p>
+                  <p style={{ fontSize: 13, color: C.ink2 }}>กด Sync เพื่อดึงงานจาก LinkedIn และ Seek</p>
+                </div>
+              )
+              : jobs.map(job => (
+                  <JobCard key={job.id} job={job} isAdmin onDelete={handleDelete} />
+                ))
+          }
         </div>
-
       </div>
     </div>
   );
@@ -356,7 +288,7 @@ function ComingSoon() {
         borderBottom: '1px solid rgba(0,0,0,0.08)',
       }}>
         <div className="flex items-center max-w-lg mx-auto" style={{ height: 54, paddingLeft: 20, paddingRight: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>Job Board</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.02em' }}>งาน</h1>
         </div>
       </div>
 
@@ -413,9 +345,10 @@ function ComingSoon() {
             <p style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>สำหรับบริษัท</p>
             <p style={{ fontSize: 12, color: C.ink2 }}>ต้องการลงประกาศรับสมัครงาน?</p>
           </div>
-          <a href="mailto:contact@mydemy.co" className="active:scale-95 transition-transform" style={{
+          <a href="mailto:contact@mydemy.co" style={{
             fontSize: 13, fontWeight: 700, color: 'white',
             backgroundColor: '#10B981', borderRadius: 10, padding: '9px 16px', flexShrink: 0,
+            textDecoration: 'none',
           }}>
             ติดต่อ
           </a>
@@ -428,7 +361,7 @@ function ComingSoon() {
             { href: '/explore', emoji: '📚', title: 'เรียนทักษะเพิ่ม', desc: 'ฝึกทักษะที่นายจ้างต้องการ' },
           ].map(({ href, emoji, title, desc }) => (
             <Link key={href} href={href} className="flex items-center active:opacity-70 transition-opacity"
-              style={{ gap: 12, padding: '12px 16px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+              style={{ gap: 12, padding: '12px 16px', borderTop: '1px solid rgba(0,0,0,0.05)', textDecoration: 'none' }}>
               <span style={{ fontSize: 22, flexShrink: 0 }}>{emoji}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{title}</p>
@@ -447,9 +380,7 @@ function ComingSoon() {
 
 export default function JobsPage() {
   const { user, loading } = useUser();
-
   if (loading) return null;
-
   const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '');
   return isAdmin ? <AdminJobBoard /> : <ComingSoon />;
 }
