@@ -2877,169 +2877,200 @@ async def delete_notification(notif_id: str):
     return {"ok": True}
 
 
-# ══════════════════════════════════════════════════════════════
-# JOB BOARD
-# ══════════════════════════════════════════════════════════════
+# ── Job Board ─────────────────────────────────────────────────────────────────
+#
+# Two sources:
+#   • LinkedIn  — curious_coder/linkedin-jobs-scraper
+#   • Seek      — websift/seek-job-scraper  (seek.co.th, strong Thai market)
+#
+# Apify actor names use "~" as the namespace separator in REST URLs.
 
-# Career path → LinkedIn search keywords (Thai market)
+APIFY_BASE      = "https://api.apify.com/v2"
+LINKEDIN_ACTOR  = "curious_coder~linkedin-jobs-scraper"
+SEEK_ACTOR      = "websift~seek-job-scraper"
+
+# Career paths → search queries sent to each scraper
 _JOB_SEARCHES: dict[str, list[str]] = {
-    "UX Design":          ["UX Designer Thailand", "Product Designer Thailand", "UI UX Designer Bangkok"],
-    "Data Analysis":      ["Data Analyst Thailand", "Business Analyst Bangkok", "Data Scientist Thailand"],
-    "Digital Marketing":  ["Digital Marketing Thailand", "Marketing Analyst Bangkok", "SEO Specialist Thailand"],
-    "Project Management": ["Project Manager Thailand", "Product Manager Bangkok", "Scrum Master Thailand"],
-    "Learning Designer":  ["Instructional Designer Thailand", "Learning Designer Bangkok", "L&D Specialist Thailand"],
-    "QA Tester":          ["QA Engineer Thailand", "Software Tester Bangkok", "QA Automation Thailand"],
+    "UX Design":         ["UX Designer Thailand", "Product Designer Bangkok", "UI UX Designer Thailand"],
+    "Data Analysis":     ["Data Analyst Thailand", "Business Intelligence Bangkok", "Data Scientist Thailand"],
+    "Digital Marketing": ["Digital Marketing Manager Thailand", "SEO Specialist Bangkok", "Social Media Manager Thailand"],
+    "Full-Stack Web":    ["Full Stack Developer Thailand", "Web Developer Bangkok", "React Developer Thailand"],
+    "Sales":             ["Sales Manager Thailand", "Business Development Bangkok", "Account Manager Thailand"],
+    "Graphic Design":    ["Graphic Designer Thailand", "Visual Designer Bangkok", "Creative Designer Thailand"],
 }
 
-APIFY_ACTOR = "bebity/linkedin-jobs-scraper"  # swap actor ID as needed
-APIFY_BASE  = "https://api.apify.com/v2"
 
-
-async def _run_apify_actor(actor: str, input_body: dict) -> list[dict]:
-    """Run an Apify actor synchronously and return dataset items."""
+async def _run_apify_actor(actor: str, input_body: dict, wait: int = 120) -> list[dict]:
+    """POST an Apify actor run (synchronous wait) and return all dataset items."""
     api_key = os.environ.get("APIFY_API_KEY", "")
     if not api_key:
         raise HTTPException(status_code=503, detail="APIFY_API_KEY not configured")
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    async with httpx.AsyncClient(timeout=120) as client:
-        # Start run
-        run_res = await client.post(
-            f"{APIFY_BASE}/acts/{actor}/runs?waitForFinish=90",
-            json=input_body, headers=headers,
-        )
+    run_url = f"{APIFY_BASE}/acts/{actor}/runs?waitForFinish={wait}&token={api_key}"
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        run_res = await client.post(run_url, json=input_body)
         run_res.raise_for_status()
-        run_data = run_res.json().get("data", {})
-        dataset_id = run_data.get("defaultDatasetId")
-        if not dataset_id:
-            return []
+        dataset_id = run_res.json()["data"]["defaultDatasetId"]
 
-        # Fetch results
         items_res = await client.get(
-            f"{APIFY_BASE}/datasets/{dataset_id}/items?format=json&limit=200",
-            headers=headers,
+            f"{APIFY_BASE}/datasets/{dataset_id}/items",
+            params={"token": api_key, "limit": 200},
         )
         items_res.raise_for_status()
-        return items_res.json() if isinstance(items_res.json(), list) else []
+        return items_res.json()
 
 
-def _normalise_job(item: dict, career_path: str) -> dict | None:
-    """Map a LinkedIn scraper result to our job_listings schema."""
-    url = item.get("url") or item.get("jobUrl") or item.get("applyUrl") or ""
-    if not url:
-        return None
+def _loc_type(location: str) -> str:
+    low = (location or "").lower()
+    if "remote" in low:  return "remote"
+    if "hybrid" in low:  return "hybrid"
+    if location:         return "onsite"
+    return "unknown"
 
-    title   = item.get("title") or item.get("positionName") or ""
+
+def _normalise_linkedin(item: dict, career_path: str) -> dict | None:
+    """Map a curious_coder/linkedin-jobs-scraper item to our schema."""
+    title   = item.get("title") or item.get("jobTitle") or ""
     company = item.get("companyName") or item.get("company") or ""
-    if not title or not company:
+    url     = item.get("jobUrl") or item.get("url") or item.get("applyUrl") or ""
+    if not title or not company or not url:
         return None
 
-    # location type
-    lt_raw = (item.get("workType") or item.get("jobType") or "").lower()
-    if "remote" in lt_raw:
-        loc_type = "remote"
-    elif "hybrid" in lt_raw:
-        loc_type = "hybrid"
-    elif lt_raw:
-        loc_type = "onsite"
-    else:
-        loc_type = "unknown"
-
-    # salary
-    salary_label = item.get("salary") or item.get("salaryRange") or ""
-
-    # posted_at
-    posted_raw = item.get("postedAt") or item.get("publishedAt") or ""
-    try:
-        posted_at = datetime.fromisoformat(posted_raw.replace("Z", "+00:00")).isoformat() if posted_raw else None
-    except Exception:
-        posted_at = None
-
-    # stable external id
-    ext_id = item.get("id") or item.get("jobId") or url
+    location = item.get("location") or item.get("formattedLocation") or ""
+    ext_id   = (
+        item.get("id") or item.get("jobId") or
+        url.split("?")[0].rstrip("/").split("/")[-1]
+    )
 
     return {
-        "external_id":     str(ext_id)[:500],
-        "source":          "linkedin",
-        "title":           title[:300],
-        "company":         company[:200],
-        "company_logo":    item.get("companyLogo") or item.get("companyImageUrl"),
-        "location":        (item.get("location") or "")[:200],
-        "location_type":   loc_type,
-        "salary_label":    salary_label[:200] if salary_label else None,
-        "url":             url[:1000],
-        "description":     (item.get("description") or item.get("descriptionHtml") or "")[:8000],
-        "career_path":     career_path,
-        "tags":            [],
-        "is_active":       True,
-        "posted_at":       posted_at,
-        "fetched_at":      datetime.utcnow().isoformat(),
+        "external_id":   f"linkedin:{ext_id}",
+        "source":        "linkedin",
+        "title":         title,
+        "company":       company,
+        "company_logo":  item.get("companyLogo") or item.get("logo") or None,
+        "location":      location or None,
+        "location_type": _loc_type(location),
+        "salary_label":  item.get("salary") or item.get("salaryRange") or None,
+        "salary_currency": "THB",
+        "url":           url,
+        "description":   item.get("description") or item.get("jobDescription") or None,
+        "career_path":   career_path,
+        "tags":          [],
+        "is_active":     True,
+        "posted_at":     item.get("postedAt") or item.get("postedDate") or None,
+    }
+
+
+def _normalise_seek(item: dict, career_path: str) -> dict | None:
+    """Map a websift/seek-job-scraper item to our schema."""
+    title   = item.get("title") or item.get("jobTitle") or ""
+    company = (
+        item.get("company") or item.get("advertiser") or
+        item.get("advertiserName") or ""
+    )
+    url = item.get("url") or item.get("jobUrl") or item.get("link") or ""
+    if not title or not company or not url:
+        return None
+
+    location = (
+        item.get("location") or item.get("area") or
+        item.get("locationLabel") or item.get("suburb") or ""
+    )
+    ext_id = (
+        item.get("id") or item.get("jobId") or
+        url.split("?")[0].rstrip("/").split("/")[-1]
+    )
+
+    return {
+        "external_id":   f"seek:{ext_id}",
+        "source":        "seek",
+        "title":         title,
+        "company":       company,
+        "company_logo":  None,
+        "location":      location or None,
+        "location_type": _loc_type(location),
+        "salary_label":  item.get("salary") or item.get("salaryLabel") or None,
+        "salary_currency": "THB",
+        "url":           url,
+        "description":   (
+            item.get("teaser") or item.get("description") or
+            item.get("snippet") or None
+        ),
+        "career_path":   career_path,
+        "tags":          [],
+        "is_active":     True,
+        "posted_at":     (
+            item.get("listingDate") or item.get("postedDate") or
+            item.get("date") or None
+        ),
     }
 
 
 @api_router.get("/jobs")
 async def list_jobs(career_path: str = "", limit: int = 50):
-    """Return active job listings, optionally filtered by career_path."""
-    q = supabase.table("job_listings").select(
-        "id,title,company,company_logo,location,location_type,"
-        "salary_label,url,career_path,tags,posted_at,fetched_at"
-    ).eq("is_active", True).order("fetched_at", desc=True).limit(limit)
+    query = (
+        supabase.table("job_listings")
+        .select("*")
+        .eq("is_active", True)
+        .order("fetched_at", desc=True)
+        .limit(limit)
+    )
     if career_path:
-        q = q.eq("career_path", career_path)
-    res = await q.execute()
-    return res.data or []
+        query = query.eq("career_path", career_path)
+    res = await query.execute()
+    return rows_with_id(res.data or [])
 
 
 @api_router.post("/admin/jobs/sync")
 async def sync_jobs():
-    """
-    Admin: trigger Apify LinkedIn scraper for all career paths,
-    upsert results into job_listings, deactivate stale rows.
-    """
-    total_new = 0
+    """Run LinkedIn + Seek scrapers for every career path and upsert results."""
+    if not os.environ.get("APIFY_API_KEY"):
+        raise HTTPException(status_code=503, detail="APIFY_API_KEY not configured")
+
+    total_upserted = 0
     errors: list[str] = []
 
     for career_path, queries in _JOB_SEARCHES.items():
-        try:
-            items = await _run_apify_actor(APIFY_ACTOR, {
-                "searchQueries": queries,
-                "maxResults":    20,          # per query
-                "country":       "TH",
-            })
-        except Exception as exc:
-            errors.append(f"{career_path}: {exc}")
-            continue
-
-        for raw in items:
-            row = _normalise_job(raw, career_path)
-            if not row:
-                continue
+        for q in queries:
+            # ── LinkedIn ──
             try:
-                await supabase.table("job_listings").upsert(
-                    row, on_conflict="external_id"
-                ).execute()
-                total_new += 1
-            except Exception as exc:
-                errors.append(str(exc))
+                items = await _run_apify_actor(
+                    LINKEDIN_ACTOR,
+                    {"queries": [q], "maxResults": 25, "location": "Thailand"},
+                )
+                for item in items:
+                    job = _normalise_linkedin(item, career_path)
+                    if job:
+                        await supabase.table("job_listings").upsert(
+                            job, on_conflict="external_id"
+                        ).execute()
+                        total_upserted += 1
+            except Exception as e:
+                errors.append(f"linkedin/{q}: {e}")
 
-    # Deactivate listings older than 30 days
-    cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    cutoff_str = cutoff.isoformat()
-    try:
-        await supabase.table("job_listings").update({"is_active": False}).lt(
-            "fetched_at", cutoff_str
-        ).execute()
-    except Exception:
-        pass
+            # ── Seek ──
+            try:
+                items = await _run_apify_actor(
+                    SEEK_ACTOR,
+                    {"keyword": q, "location": "Thailand", "maxItems": 25},
+                )
+                for item in items:
+                    job = _normalise_seek(item, career_path)
+                    if job:
+                        await supabase.table("job_listings").upsert(
+                            job, on_conflict="external_id"
+                        ).execute()
+                        total_upserted += 1
+            except Exception as e:
+                errors.append(f"seek/{q}: {e}")
 
-    return {"synced": total_new, "errors": errors}
+    return {"upserted": total_upserted, "errors": errors}
 
 
 @api_router.delete("/admin/jobs/{job_id}")
 async def delete_job(job_id: str):
-    """Admin: remove a single job listing."""
-    await supabase.table("job_listings").delete().eq("id", job_id).execute()
+    """Soft-delete a job listing (sets is_active = false)."""
+    await supabase.table("job_listings").update({"is_active": False}).eq("id", job_id).execute()
     return {"ok": True}
 
 
