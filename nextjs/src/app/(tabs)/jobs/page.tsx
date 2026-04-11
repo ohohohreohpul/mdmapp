@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Building2, RefreshCw, Trash2, ExternalLink, MapPin, DollarSign } from 'lucide-react';
+import { Briefcase, Building2, RefreshCw, Trash2, ExternalLink, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { cachedGet } from '@/lib/apiCache';
+import { useUser } from '@/contexts/UserContext';
 
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 const CAREER_PATHS = [
   'ทั้งหมด',
@@ -445,22 +446,10 @@ function ComingSoon() {
 /* ─── Page entry ─────────────────────────────────────────────────────────── */
 
 export default function JobsPage() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [checked, setChecked]     = useState(false);
+  const { user, loading } = useUser();
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user');
-      if (raw) {
-        const u = JSON.parse(raw);
-        setUserEmail(u?.email ?? null);
-      }
-    } catch {}
-    setChecked(true);
-  }, []);
+  if (loading) return null;
 
-  if (!checked) return null;
-
-  const isAdmin = ADMIN_EMAILS.includes(userEmail ?? '');
+  const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '');
   return isAdmin ? <AdminJobBoard /> : <ComingSoon />;
 }
