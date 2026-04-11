@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Briefcase, Building2, RefreshCw, Trash2, ChevronRight, X, ExternalLink, MapPin, Banknote } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Briefcase, Building2, RefreshCw, Trash2, ChevronRight, X, ExternalLink, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { cachedGet } from '@/lib/apiCache';
 import { useUser } from '@/contexts/UserContext';
@@ -59,11 +60,16 @@ function JobSheet({ job, isAdmin, onClose, onDelete }: {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  return (
-    /* Backdrop */
+  // On iOS PWA, target="_blank" can restart the app — open safely
+  const handleApply = () => {
+    window.open(job.url, '_blank', 'noopener,noreferrer');
+  };
+
+  return createPortal(
+    /* Backdrop — rendered in document.body, escapes any CSS stacking context */
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 200,
+        position: 'fixed', inset: 0, zIndex: 9999,
         backgroundColor: 'rgba(0,0,0,0.45)',
         display: 'flex', alignItems: 'flex-end',
       }}
@@ -158,25 +164,24 @@ function JobSheet({ job, isAdmin, onClose, onDelete }: {
             </div>
           )}
 
-          {/* Apply button */}
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center"
+          {/* Apply button — window.open avoids iOS PWA restart from target=_blank */}
+          <button
+            onClick={handleApply}
+            className="flex items-center justify-center w-full"
             style={{
               gap: 8, backgroundColor: C.primary, color: '#fff',
               borderRadius: 16, padding: '16px 24px', marginBottom: 24,
-              fontSize: 16, fontWeight: 700, textDecoration: 'none',
+              fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer',
               boxShadow: '0 4px 16px rgba(239,94,168,0.40)',
             }}
           >
             <ExternalLink size={18} />
             สมัครงานนี้
-          </a>
+          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
