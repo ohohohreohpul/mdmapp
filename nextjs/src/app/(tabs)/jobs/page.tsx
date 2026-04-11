@@ -450,7 +450,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('mdm_user');
+      const raw = localStorage.getItem('user');
       if (raw) {
         const u = JSON.parse(raw);
         setUserEmail(u?.email ?? null);
