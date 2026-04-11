@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, LogOut } from 'lucide-react';
+import { ChevronRight, LogOut, Bug } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { PrimaryBtn } from '@/lib/ui';
@@ -10,6 +10,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const ADMIN_EMAILS = ['jiranan@mydemy.co'];
+const BUG_EMAIL = 'bug@mydemy.co';
 
 const C = {
   primary: '#ef5ea8',
@@ -48,10 +49,124 @@ const GlassHeader = () => (
   </div>
 );
 
+// ── Bug report sheet ──────────────────────────────────────────────────────────
+function BugReportSheet({
+  userEmail,
+  onClose,
+}: { userEmail: string; onClose: () => void }) {
+  const [desc, setDesc]       = useState('');
+  const [sent, setSent]       = useState(false);
+  const sheetRef              = useRef<HTMLDivElement>(null);
+
+  // Close on outside tap
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const handleSend = () => {
+    if (!desc.trim()) return;
+
+    const subject = encodeURIComponent('แจ้งปัญหา Mydemy App');
+    const body    = encodeURIComponent(
+      `จาก: ${userEmail}\n\nรายละเอียดปัญหา:\n${desc.trim()}\n\n---\nDevice: ${navigator.userAgent}`,
+    );
+
+    // ── TO SWITCH TO RESEND: replace the mailto line below with a
+    //    fetch('/api/bug-report', { method:'POST', body: JSON.stringify({from: userEmail, desc}) })
+    //    and add the Resend call in your backend endpoint.
+    window.open(`mailto:${BUG_EMAIL}?subject=${subject}&body=${body}`);
+
+    setSent(true);
+    setTimeout(onClose, 1200);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100000,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      display: 'flex', alignItems: 'flex-end',
+    }}>
+      <div ref={sheetRef} style={{
+        width: '100%', backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        padding: '12px 20px 40px',
+      }}>
+        {/* Handle */}
+        <div style={{
+          width: 36, height: 4, borderRadius: 2,
+          backgroundColor: 'rgba(0,0,0,0.12)',
+          margin: '0 auto 20px',
+        }} />
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Bug size={18} style={{ color: C.ink2 }} />
+            <p style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>แจ้งปัญหา</p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+              backgroundColor: 'rgba(0,0,0,0.06)', color: C.ink2, fontSize: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >✕</button>
+        </div>
+
+        {sent ? (
+          <p style={{ textAlign: 'center', fontSize: 15, color: '#34C759', fontWeight: 600, padding: '24px 0' }}>
+            ขอบคุณ! เราได้รับรายงานแล้ว 🙏
+          </p>
+        ) : (
+          <>
+            <textarea
+              placeholder="อธิบายปัญหาที่พบ เช่น หน้าใด, ทำอะไรอยู่, เกิดอะไรขึ้น…"
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              rows={5}
+              style={{
+                width: '100%', borderRadius: 12, padding: '12px 14px',
+                border: '1px solid rgba(0,0,0,0.10)', fontSize: 14,
+                color: C.ink, lineHeight: 1.55, resize: 'none',
+                backgroundColor: C.bg, outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <p style={{ fontSize: 11, color: C.ink3, marginTop: 6, marginBottom: 16 }}>
+              จะส่งไปยัง {BUG_EMAIL} พร้อมข้อมูล device อัตโนมัติ
+            </p>
+            <button
+              onClick={handleSend}
+              disabled={!desc.trim()}
+              style={{
+                width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+                backgroundColor: desc.trim() ? C.primary : 'rgba(0,0,0,0.08)',
+                color: desc.trim() ? '#fff' : C.ink3,
+                fontSize: 15, fontWeight: 700, cursor: desc.trim() ? 'pointer' : 'default',
+                transition: 'background-color 0.15s',
+              }}
+            >
+              ส่งรายงาน
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, logout } = useUser();
-  const [gam, setGam] = useState<GamDashboard | null>(null);
+  const [gam, setGam]             = useState<GamDashboard | null>(null);
+  const [showBugSheet, setShowBugSheet] = useState(false);
   const isAdmin = ADMIN_EMAILS.includes((user?.email || '').toLowerCase());
 
   useEffect(() => {
@@ -150,8 +265,15 @@ export default function ProfilePage() {
         <MenuSection title="การตั้งค่า">
           <MenuItem href="/settings" emoji="⚙️" bg="#F2F2F7" title="การตั้งค่า"  sub="การแจ้งเตือน, ภาษา" />
           <MenuItem href="/help"     emoji="❓" bg="#F2F2F7" title="ช่วยเหลือ"   sub="FAQ และติดต่อเรา" />
+          <MenuButton
+            emoji="🐛" bg="#F2F2F7"
+            title="แจ้งปัญหา"
+            sub="พบบั๊ก? บอกเราได้เลย"
+            onClick={() => setShowBugSheet(true)}
+            last
+          />
           {isAdmin && (
-            <MenuItem href="/admin"  emoji="🛡️" bg="#F2F2F7" title="Admin Panel" sub="จัดการคอร์สและระบบ" />
+            <MenuItem href="/admin"  emoji="🛡️" bg="#F2F2F7" title="Admin Panel" sub="จัดการคอร์สและระบบ" last />
           )}
         </MenuSection>
 
@@ -198,6 +320,13 @@ export default function ProfilePage() {
         </button>
 
       </div>
+
+      {showBugSheet && (
+        <BugReportSheet
+          userEmail={user.email || ''}
+          onClose={() => setShowBugSheet(false)}
+        />
+      )}
     </div>
   );
 }
@@ -220,13 +349,13 @@ function MenuSection({ title, children }: { title: string; children: React.React
 }
 
 function MenuItem({
-  href, emoji, bg, title, sub,
-}: { href: string; emoji: string; bg: string; title: string; sub: string }) {
+  href, emoji, bg, title, sub, last = false,
+}: { href: string; emoji: string; bg: string; title: string; sub: string; last?: boolean }) {
   return (
     <Link
       href={href}
       className="flex items-center active:opacity-70 transition-opacity"
-      style={{ gap: 12, padding: '13px 16px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}
+      style={{ gap: 12, padding: '13px 16px', borderBottom: last ? 'none' : '1px solid rgba(0,0,0,0.05)' }}
     >
       <div
         className="flex items-center justify-center"
@@ -240,5 +369,29 @@ function MenuItem({
       </div>
       <ChevronRight size={17} style={{ color: C.ink3, flexShrink: 0 }} />
     </Link>
+  );
+}
+
+function MenuButton({
+  emoji, bg, title, sub, onClick, last = false,
+}: { emoji: string; bg: string; title: string; sub: string; onClick: () => void; last?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center active:opacity-70 transition-opacity w-full text-left"
+      style={{ gap: 12, padding: '13px 16px', background: 'none', border: 'none', borderBottom: last ? 'none' : '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }}
+    >
+      <div
+        className="flex items-center justify-center"
+        style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: bg, flexShrink: 0, fontSize: 18 }}
+      >
+        {emoji}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{title}</p>
+        <p style={{ fontSize: 12, color: C.ink2 }}>{sub}</p>
+      </div>
+      <ChevronRight size={17} style={{ color: C.ink3, flexShrink: 0 }} />
+    </button>
   );
 }
