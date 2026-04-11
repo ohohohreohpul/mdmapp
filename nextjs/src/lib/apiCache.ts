@@ -14,7 +14,7 @@ import axios from 'axios';
 interface Entry { data: any; ts: number; }
 
 const cache = new Map<string, Entry>();
-const TTL = 60_000; // 1 minute
+const TTL = 300_000; // 5 minutes
 
 /** Return cached value synchronously (undefined if missing or expired) */
 export function getCached(url: string): any | undefined {

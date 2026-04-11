@@ -146,8 +146,8 @@ export function Skel({
 }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={`animate-pulse-slow ${className}`}
-      style={{ backgroundColor: 'rgba(0,0,0,0.07)', borderRadius: 8, ...style }}
+      className={`skel-shimmer ${className}`}
+      style={{ borderRadius: 8, ...style }}
     />
   );
 }

@@ -148,6 +148,14 @@ html, body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.45; }
 }
+@keyframes shimmer {
+  from { background-position: 200% center; }
+  to   { background-position: -200% center; }
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .animate-fade-up    { animation: fadeUp   0.35s ease-out both; }
 .animate-fade-in    { animation: fadeIn   0.25s ease-out both; }
@@ -156,6 +164,29 @@ html, body {
 .animate-fill-bar   { animation: fillBar  2s    ease-out forwards; }
 .animate-pop-up     { animation: popUp    1.4s  ease-out forwards; }
 .animate-pulse-slow { animation: pulse    1.8s  ease-in-out infinite; }
+
+/* Skeleton shimmer */
+.skel-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.06) 25%,
+    rgba(0,0,0,0.11) 50%,
+    rgba(0,0,0,0.06) 75%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Page transition — applied per-tab-navigation */
+.page-fade-in {
+  animation: pageFadeIn 0.22s ease-out both;
+}
+
+/* Faster tap feedback — no 300ms delay, no blue flash */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* ══════════════════════════════════════════════════════════════
    TOKEN CLASS FALLBACKS

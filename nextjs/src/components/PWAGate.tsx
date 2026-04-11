@@ -107,8 +107,35 @@ export default function PWAGate({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [showSheet]);
 
-  // Still detecting — render nothing to avoid flash
-  if (isStandalone === null) return null;
+  // Still detecting — show branded splash to avoid blank flash
+  if (isStandalone === null) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, backgroundColor: '#0F0B1A',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 24, zIndex: 99999,
+      }}>
+        <div style={{
+          width: 120, height: 120, borderRadius: 60,
+          backgroundColor: '#ef5ea8',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 8px 32px rgba(239,94,168,0.45)',
+        }}>
+          <Image src="/images/mascot.png" alt="Mydemy" width={96} height={96}
+            style={{ borderRadius: 28 }} priority />
+        </div>
+        <Image src="/images/logo-wordmark.png" alt="Mydemy" width={120} height={32}
+          style={{ filter: 'brightness(0) invert(1)', objectFit: 'contain' }} priority />
+        {/* Pink spinner */}
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: '3px solid rgba(239,94,168,0.25)',
+          borderTopColor: '#ef5ea8',
+          animation: 'spin 0.7s linear infinite',
+        }} />
+      </div>
+    );
+  }
 
   // Already installed → show the real app
   if (isStandalone) return <>{children}</>;

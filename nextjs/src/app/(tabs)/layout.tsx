@@ -12,6 +12,15 @@ const TABS = [
   { href: '/profile',  label: 'โปรไฟล์', Icon: User },
 ];
 
+/** Keyed by pathname so React mounts a fresh div on every tab switch → CSS fade-in fires */
+function AnimatedPage({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  return (
+    <div key={pathname} className="page-fade-in">
+      {children}
+    </div>
+  );
+}
+
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -19,7 +28,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen" style={{ backgroundColor: '#F2F2F7' }}>
       {/* Scrollable content — padded above floating tab bar */}
       <main style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
-        {children}
+        <AnimatedPage pathname={pathname}>{children}</AnimatedPage>
       </main>
 
       {/* ── Floating pill tab bar ─────────────────────────── */}
