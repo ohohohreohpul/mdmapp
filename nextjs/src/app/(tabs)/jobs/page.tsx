@@ -60,9 +60,23 @@ function JobSheet({ job, isAdmin, onClose, onDelete }: {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // On iOS PWA, target="_blank" can restart the app — open safely
-  const handleApply = () => {
-    window.open(job.url, '_blank', 'noopener,noreferrer');
+  const [copied, setCopied] = useState(false);
+
+  // iOS PWA: any external navigation restarts the app.
+  // Web Share API opens the native iOS share sheet (safe).
+  // Fallback: copy URL to clipboard.
+  const handleApply = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${job.title} – ${job.company}`, url: job.url });
+      } else {
+        await navigator.clipboard.writeText(job.url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }
+    } catch {
+      // User cancelled share sheet — do nothing
+    }
   };
 
   return createPortal(
@@ -164,19 +178,20 @@ function JobSheet({ job, isAdmin, onClose, onDelete }: {
             </div>
           )}
 
-          {/* Apply button — window.open avoids iOS PWA restart from target=_blank */}
+          {/* Apply — uses Web Share API (iOS native sheet, no PWA restart) */}
           <button
             onClick={handleApply}
             className="flex items-center justify-center w-full"
             style={{
-              gap: 8, backgroundColor: C.primary, color: '#fff',
+              gap: 8, backgroundColor: copied ? '#34C759' : C.primary, color: '#fff',
               borderRadius: 16, padding: '16px 24px', marginBottom: 24,
               fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(239,94,168,0.40)',
+              boxShadow: `0 4px 16px ${copied ? 'rgba(52,199,89,0.35)' : 'rgba(239,94,168,0.40)'}`,
+              transition: 'background-color 0.2s, box-shadow 0.2s',
             }}
           >
             <ExternalLink size={18} />
-            สมัครงานนี้
+            {copied ? 'คัดลอกลิงก์แล้ว ✓' : 'สมัครงานนี้'}
           </button>
         </div>
       </div>
